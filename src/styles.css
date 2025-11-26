@@ -1,0 +1,404 @@
+/* ========================================================================= */
+/* MICROSOFT PLANNER — GRID VIEW STYLING                                    */
+/* ========================================================================= */
+
+.planner-grid-wrapper {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 8px;
+  box-sizing: border-box;
+  padding: 12px 18px 24px 18px;
+  font-size: 14px;
+  color: var(--text-normal);
+}
+
+.planner-grid-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.planner-grid-header h2 {
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-normal);
+}
+
+.planner-add-btn {
+  padding: 6px 14px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: var(--input-shadow);
+  transition: background 0.15s ease;
+}
+
+.planner-add-btn:hover {
+  background: var(--interactive-accent-hover);
+}
+
+/* ========================================================================= */
+/* TABLE LAYOUT                                                              */
+/* ========================================================================= */
+
+.planner-grid-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.planner-grid-table th {
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 4px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.planner-grid-table td {
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  vertical-align: middle;
+}
+
+.planner-grid-table tr:hover td {
+  background-color: var(--background-modifier-hover);
+}
+
+/* ========================================================================= */
+/* INLINE EDITING                                                            */
+/* ========================================================================= */
+
+.planner-editable {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  border-bottom: 1px dashed transparent;
+  transition: all 0.15s ease;
+}
+
+.planner-editable:hover {
+  background-color: var(--background-modifier-hover);
+  border-bottom: 1px dashed var(--interactive-accent);
+  color: var(--text-accent);
+}
+
+.planner-input,
+.planner-select,
+.planner-date {
+  width: 100%;
+  padding: 4px 6px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  box-shadow: var(--input-shadow);
+}
+
+.planner-input:focus,
+.planner-select:focus,
+.planner-date:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+
+/* ========================================================================= */
+/* PRIORITY & STATUS PILLS                                                   */
+/* ========================================================================= */
+
+.priority-pill,
+.status-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 12px;
+  color: white;
+  text-align: center;
+}
+
+.priority-low {
+  background-color: #6c757d;
+}
+.priority-medium {
+  background-color: #0a84ff;
+}
+.priority-high {
+  background-color: #ff8c00;
+}
+.priority-critical {
+  background-color: #d70022;
+}
+
+.status-not-started {
+  background-color: #6c757d;
+}
+.status-in-progress {
+  background-color: #0a84ff;
+}
+.status-blocked {
+  background-color: #d70022;
+}
+.status-completed {
+  background-color: #2f9e44;
+}
+
+/* ========================================================================= */
+/* DETAIL PANEL                                                              */
+/* ========================================================================= */
+
+.planner-detail-wrapper {
+  padding: 20px;
+  font-size: 14px;
+}
+
+.planner-detail-wrapper h2 {
+  margin-top: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.planner-detail-input,
+.planner-detail-select,
+.planner-detail-date,
+.planner-detail-textarea {
+  width: 100%;
+  padding: 6px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+}
+
+.planner-detail-textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* ========================================================================= */
+/* COMPLETED TASKS                                                           */
+/* ========================================================================= */
+
+.planner-task-completed {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* Checkbox column */
+.planner-complete-cell {
+  width: 32px;
+  text-align: center;
+}
+
+.planner-complete-cell input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* ========================================================================= */
+/* FILTER BAR                                                                */
+/* ========================================================================= */
+
+.planner-filter-bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 0 16px 0;
+}
+
+.planner-filter,
+.planner-search {
+  padding: 4px 8px;
+  font-size: 14px;
+}
+
+.planner-search {
+  width: 200px;
+}
+
+/* ========================================================================= */
+/* HIERARCHY: SUBTASKS & PARENT TASKS                                        */
+/* ========================================================================= */
+
+/* Title cell */
+.planner-title-cell {
+  position: relative;
+  padding-left: 4px;
+}
+
+/* Bold parent task titles (MS Planner Premium style) */
+.planner-parent-bold {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+/* Subtask indent */
+.planner-title-cell.subtask {
+  padding-left: 28px;
+}
+
+.planner-expand-toggle,
+.planner-expand-spacer {
+  display: inline-block;
+  width: 14px;
+  margin-right: 4px;
+  cursor: pointer;
+  opacity: 0.8;
+  font-size: 20px;
+}
+
+.planner-expand-toggle:hover {
+  opacity: 1;
+}
+
+.planner-title-inner {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Hover highlight for parent tasks (MS Planner Premium style) */
+.planner-row-parent:hover td {
+  background-color: var(--background-modifier-hover);
+}
+
+/* ========================================================================= */
+/* THREE-DOTS TASK MENU (⋯)                                                  */
+/* ========================================================================= */
+
+.planner-task-menu {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 2px 6px;
+  font-size: 16px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+}
+
+.planner-title-cell:hover .planner-task-menu {
+  opacity: 1;
+}
+
+.planner-task-menu:hover {
+  background: var(--background-modifier-hover);
+  border-radius: 4px;
+}
+
+/* Prevent overflow */
+.actions-cell {
+  width: 40px;
+  position: relative;
+}
+
+/* Row being dragged */
+.planner-row-dragging {
+  opacity: 0.35;
+  background-color: var(--background-modifier-hover);
+  border: 1px dashed var(--interactive-accent);
+}
+
+/* Drop target row */
+.planner-row-drop-target {
+  background-color: var(--background-modifier-active-hover);
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: -2px;
+}
+
+/* Thin insertion line shown above target row */
+.planner-row-drop-target::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--interactive-accent);
+  border-radius: 2px;
+}
+.planner-row {
+  transition: background-color 0.15s ease, opacity 0.15s ease, outline 0.1s ease;
+}
+
+.planner-drag-cell {
+  width: 24px;
+  padding-right: 4px;
+}
+
+.planner-drag-handle {
+  cursor: grab;
+  opacity: 0.7;
+  user-select: none;
+}
+
+.planner-drag-handle:active {
+  cursor: grabbing;
+  opacity: 1;
+}
+
+.planner-num-cell {
+  width: 32px;
+  padding-right: 6px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Base pill shape */
+.planner-date-pill {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* Neutral upcoming date */
+.planner-date-pill-neutral {
+  background: var(--background-secondary);
+  color: var(--text-normal);
+}
+
+/* Overdue (Planner red) */
+.planner-date-pill-overdue {
+  background: rgba(255, 0, 0, 0.1);
+  color: #e81123;
+  border: 1px solid #e81123;
+}
+
+/* Today (Planner blue) */
+.planner-date-pill-today {
+  background: rgba(0, 120, 215, 0.15);
+  color: #0078d4;
+  border: 1px solid #0078d4;
+}
+
+/* Makes TH usable for sorting */
+.planner-sortable {
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+}
+
+/* Resize handle */
+.planner-col-resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+}

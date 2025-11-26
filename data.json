@@ -1,0 +1,440 @@
+{
+  "tasks": [
+    {
+      "id": "e43d121a-e034-4454-b386-47ca4f6de0fb",
+      "title": "Grid View",
+      "status": "In Progress",
+      "priority": "Critical",
+      "startDate": "",
+      "dueDate": "",
+      "completed": false,
+      "parentId": null,
+      "collapsed": false,
+      "subtasks": []
+    },
+    {
+      "id": "796c8349-9844-4a5b-9282-e2d5006f490c",
+      "title": "Grid View - Add sub tasks to grid view",
+      "status": "Completed",
+      "priority": "Medium",
+      "startDate": "2025-11-20T21:04:00.000Z",
+      "dueDate": "2025-11-28T22:05:00.000Z",
+      "description": "Subtasks will mimic Microsoft Planner. \n\nParent task\n > Sub task",
+      "completed": true,
+      "parentId": "e43d121a-e034-4454-b386-47ca4f6de0fb",
+      "collapsed": false,
+      "subtasks": []
+    },
+    {
+      "id": "5a4785b3-ed79-4148-bc99-58443ff803b5",
+      "title": "Grid View - Add task drag and drop",
+      "status": "Completed",
+      "priority": "Medium",
+      "startDate": "2025-11-20T21:32:00.000Z",
+      "dueDate": "",
+      "description": "Add drag-and-drop functionality to tasks and subtasks on Grid View.\n\nUse native HTML5 to ensure compatibility with Obsidian.",
+      "subtasks": [
+        {
+          "id": "2377ef30-8d8d-491e-a1fd-08bcb0795818",
+          "title": "Add backend code to make it function",
+          "completed": true
+        },
+        {
+          "id": "9817569f-ea9b-4d04-9956-8ec2e22d5aea",
+          "title": "Test frontend works and appears correctly",
+          "completed": true
+        }
+      ],
+      "completed": true,
+      "parentId": "e43d121a-e034-4454-b386-47ca4f6de0fb",
+      "collapsed": false
+    },
+    {
+      "id": "7a0a8b07-8016-406b-aa23-7d587637508e",
+      "title": "Grid View - Add total tasks info to grid view table",
+      "status": "Completed",
+      "priority": "Medium",
+      "startDate": "2025-11-26T13:18:00.000Z",
+      "dueDate": "2025-11-17T14:00:00.000Z",
+      "description": "Test",
+      "completed": true,
+      "parentId": "e43d121a-e034-4454-b386-47ca4f6de0fb",
+      "collapsed": false,
+      "subtasks": []
+    },
+    {
+      "id": "bae5cf4d-234f-4770-bf28-b17e30ea47ad",
+      "title": "Grid View - Add task sorting and grouping in grid view",
+      "status": "Completed",
+      "priority": "High",
+      "startDate": "2025-11-26T03:20:00.000Z",
+      "dueDate": "",
+      "description": "Sort \"in-place\" with all tasks showing.",
+      "completed": true,
+      "parentId": "e43d121a-e034-4454-b386-47ca4f6de0fb",
+      "collapsed": false,
+      "subtasks": []
+    },
+    {
+      "id": "850c7152-5be1-42b3-9ae0-57a6a879d54d",
+      "title": "Grid View - Add scrolling",
+      "status": "Completed",
+      "priority": "Critical",
+      "startDate": "2025-11-26T12:53:00.000Z",
+      "dueDate": "2025-11-26T12:54:00.000Z",
+      "completed": true,
+      "parentId": "e43d121a-e034-4454-b386-47ca4f6de0fb",
+      "collapsed": false,
+      "subtasks": []
+    },
+    {
+      "id": "d67e8e2b-8f24-4cc9-9ea7-35fafe3327c8",
+      "title": "Move Task Grabber to the left of checkbox",
+      "status": "Completed",
+      "priority": "Medium",
+      "startDate": "2025-11-26T03:20:00.000Z",
+      "dueDate": "2025-11-26T13:02:00.000Z",
+      "completed": true,
+      "parentId": "e43d121a-e034-4454-b386-47ca4f6de0fb",
+      "collapsed": false,
+      "subtasks": []
+    },
+    {
+      "id": "40deb8c3-1895-4358-87c9-4ea6b677ed8c",
+      "title": "Remove time from Start and End",
+      "status": "Completed",
+      "priority": "Medium",
+      "startDate": "2025-11-26T13:02:00.000Z",
+      "dueDate": "2025-11-26T13:18:00.000Z",
+      "completed": true,
+      "parentId": "e43d121a-e034-4454-b386-47ca4f6de0fb",
+      "collapsed": false,
+      "subtasks": [],
+      "description": "Remove the time from Start and End fields."
+    },
+    {
+      "id": "ec991559-9e0c-4d01-b6a5-c3bc254f74b5",
+      "title": "Add option to insert task above from the context menu",
+      "status": "Completed",
+      "priority": "Medium",
+      "startDate": "",
+      "dueDate": "",
+      "completed": true,
+      "parentId": "e43d121a-e034-4454-b386-47ca4f6de0fb",
+      "collapsed": false,
+      "subtasks": []
+    },
+    {
+      "id": "e885e807-553f-4222-8059-906d57d71761",
+      "title": "All Views - Highlight overdue tasks in red",
+      "status": "Not Started",
+      "priority": "Medium",
+      "startDate": "",
+      "dueDate": "",
+      "description": "If a task is overdue, the due date should be highlighted in red. This should match MS Planner behaviour.",
+      "completed": false,
+      "parentId": null,
+      "collapsed": false,
+      "subtasks": []
+    },
+    {
+      "id": "825e5aa8-b70b-4c40-b32a-6b992bf17ef8",
+      "title": "All Views - Allow custom labels",
+      "status": "Not Started",
+      "priority": "Medium",
+      "startDate": "",
+      "dueDate": "",
+      "description": "Create a Labels column and allow users to create their own labels.\n\n- Labels should display in a pill format similar to Status and Priority.\n- Allow users to pick a colour for each label.",
+      "completed": false,
+      "parentId": null,
+      "collapsed": false,
+      "subtasks": []
+    },
+    {
+      "id": "21525b23-02f1-46fc-b86a-62d9aa0297cd",
+      "title": "All Views - Choosing Status Completed should mark ticket as completed",
+      "status": "In Progress",
+      "priority": "Medium",
+      "startDate": "",
+      "dueDate": "",
+      "completed": false,
+      "parentId": null,
+      "collapsed": false,
+      "subtasks": [],
+      "description": "When a user changes ticket status to Completed, the ticket should automatically be checked off as Completed."
+    },
+    {
+      "id": "25469dc2-7917-4474-a804-0080c00402e9",
+      "title": "Task Details - Add task checklist in task details panel",
+      "status": "In Progress",
+      "priority": "Medium",
+      "startDate": "2025-11-20T21:11:00.000Z",
+      "dueDate": "2025-11-20T21:21:00.000Z",
+      "description": "Add a checklist to the task details panel.\n\n- Checklist should be sortable.\n- Update CSS to add padding.",
+      "subtasks": [
+        {
+          "id": "73f08885-eb02-4ab3-a6ac-65c1b8f5c8e9",
+          "title": "Add checklist to ticket details",
+          "completed": true
+        },
+        {
+          "id": "e35aefbd-b874-4fde-a1f8-1fc4f5adeeab",
+          "title": "Make checklist options draggable",
+          "completed": false
+        },
+        {
+          "id": "dc747771-7d90-4ec6-be37-ff0cf24b6694",
+          "title": "Competed checklist items should be stroked out",
+          "completed": false
+        },
+        {
+          "id": "80471dfb-6cc4-4256-9c20-e821b939c452",
+          "title": "Increase the size of the input field length",
+          "completed": false
+        }
+      ],
+      "completed": false,
+      "parentId": "87ef529a-995d-4a54-aed3-0cdcf4bf1cdb",
+      "collapsed": false
+    },
+    {
+      "id": "eb3955f9-49b4-45a9-ac2b-be961dc070ea",
+      "title": "Task Details - Add comments section to task details panel.",
+      "status": "Not Started",
+      "priority": "Medium",
+      "startDate": "2025-11-20T20:55:00.000Z",
+      "dueDate": "",
+      "description": "Add a time stamp to each comment made.",
+      "completed": false,
+      "parentId": "87ef529a-995d-4a54-aed3-0cdcf4bf1cdb",
+      "collapsed": false,
+      "subtasks": []
+    },
+    {
+      "id": "ef3006ca-b628-4eee-b822-8559b9731d96",
+      "title": "Task Details - Add a follow-up button to task details",
+      "status": "Not Started",
+      "priority": "Low",
+      "startDate": "",
+      "dueDate": "",
+      "description": "Add a follow up button to the task details panel to make it easy to create a new task based on the current task. Could be useful for creating a follow up task to a closed task.",
+      "completed": false,
+      "parentId": "87ef529a-995d-4a54-aed3-0cdcf4bf1cdb",
+      "collapsed": false,
+      "subtasks": [
+        {
+          "id": "712af726-71e1-4a8f-baea-8db5dc1a91fc",
+          "title": "New checklist item",
+          "completed": false
+        },
+        {
+          "id": "1108a559-4201-416e-b5f1-4c391cb8fd0f",
+          "title": "Test",
+          "completed": false
+        }
+      ]
+    },
+    {
+      "id": "d218a055-9793-4ce6-b49e-b492f1dd3a75",
+      "title": "Task Details - Add actual and estimate time logging in task details",
+      "status": "Not Started",
+      "priority": "Medium",
+      "startDate": "",
+      "dueDate": "",
+      "completed": false,
+      "parentId": "87ef529a-995d-4a54-aed3-0cdcf4bf1cdb",
+      "collapsed": false,
+      "subtasks": []
+    },
+    {
+      "id": "0e9021c3-060f-46fc-bac5-ca7376e5ba71",
+      "title": "Task Details - Add task dependencies",
+      "status": "Not Started",
+      "priority": "Medium",
+      "startDate": "",
+      "dueDate": "",
+      "description": "",
+      "subtasks": [
+        {
+          "id": "1a7fd7f7-3d42-441a-bfbb-b8ba50526fc0",
+          "title": "New checklist item",
+          "completed": false
+        }
+      ],
+      "completed": false,
+      "parentId": "87ef529a-995d-4a54-aed3-0cdcf4bf1cdb",
+      "collapsed": false
+    },
+    {
+      "id": "944fae0d-94aa-4b6a-95c7-af8b97edbd3d",
+      "title": "Task Details - Add text formatting to Description field",
+      "status": "Not Started",
+      "priority": "Medium",
+      "startDate": "",
+      "dueDate": "",
+      "description": "Add formatting to description and comment fields. \n\nLook at adding markdown formatting to both.",
+      "completed": false,
+      "parentId": "87ef529a-995d-4a54-aed3-0cdcf4bf1cdb",
+      "collapsed": false,
+      "subtasks": []
+    },
+    {
+      "id": "d398ba18-2e53-4bf2-b57e-52be74a46db9",
+      "title": "Task Details - Fix editing in task detail panel",
+      "status": "In Progress",
+      "priority": "High",
+      "startDate": "2025-11-20T21:34:00.000Z",
+      "dueDate": "",
+      "description": "Make sure that status, priority, start, end times are syncing correctly.\n\nTroubleshooting notes:\n- It seems to be syncing but it does not update live\n- After refreshing, sorting, both the grid and task details panel sync up.",
+      "completed": false,
+      "parentId": "87ef529a-995d-4a54-aed3-0cdcf4bf1cdb",
+      "collapsed": false,
+      "subtasks": []
+    },
+    {
+      "id": "dadeabb9-bd76-4ba0-96f7-ade38fef6219",
+      "title": "Integration - Integrate time and date with calendar",
+      "status": "Not Started",
+      "priority": "Medium",
+      "startDate": "",
+      "dueDate": "",
+      "subtasks": [],
+      "description": "Integrate with Full Calendar or other Obsidian calendar plugins.",
+      "completed": false,
+      "parentId": null,
+      "collapsed": false
+    },
+    {
+      "id": "2152ec52-4955-45f6-8251-d089756bb7a4",
+      "title": "Support for multiple projects",
+      "status": "Not Started",
+      "priority": "High",
+      "startDate": "",
+      "dueDate": "",
+      "description": "Add support for multiple projects with an easy-to-use front page UX/UI.\n\nFront page should act like a dashboard, showing some basic KPIs.",
+      "completed": false,
+      "parentId": null,
+      "collapsed": false,
+      "subtasks": [
+        {
+          "id": "1ba99f4f-8a36-4d9c-94bf-9360a5490d94",
+          "title": "Add support for multiple projects",
+          "completed": false
+        },
+        {
+          "id": "e8632a53-e133-442a-98e6-18f0cda5746d",
+          "title": "Build dashboard to show basic KPIs",
+          "completed": false
+        }
+      ]
+    },
+    {
+      "id": "d6d08b24-a58f-4ed8-a2f6-03cf9985d487",
+      "title": "Integration - Integrate with daily notes",
+      "status": "Not Started",
+      "priority": "Medium",
+      "startDate": "",
+      "dueDate": "",
+      "description": "Allow tasks and projects to be added to daily notes.",
+      "subtasks": [
+        {
+          "id": "1c2a3c88-c4e9-43f8-8547-dc45e316fe71",
+          "title": "Add button to add a task to daily notes",
+          "completed": false
+        },
+        {
+          "id": "a476ce31-b410-4f09-8d98-bfea20b9ff04",
+          "title": "Add button to add a project to daily notes",
+          "completed": false
+        }
+      ],
+      "completed": false,
+      "parentId": null,
+      "collapsed": false
+    },
+    {
+      "id": "87ef529a-995d-4a54-aed3-0cdcf4bf1cdb",
+      "title": "Task Details",
+      "status": "Not Started",
+      "priority": "Medium",
+      "startDate": "",
+      "dueDate": "",
+      "completed": false,
+      "parentId": null,
+      "collapsed": true,
+      "subtasks": [
+        {
+          "id": "2beed130-7c68-40e4-9394-f257cf59ecf3",
+          "title": "New checklist item",
+          "completed": false
+        },
+        {
+          "id": "80cd5bb3-a0f3-48e4-a5ef-9b9022e86d17",
+          "title": "New checklist item",
+          "completed": false
+        }
+      ]
+    },
+    {
+      "id": "7aff7db2-331a-46ef-9d75-5b878ff4cf89",
+      "title": "Add a close button or icon to ticket details",
+      "status": "Not Started",
+      "priority": "Medium",
+      "startDate": "",
+      "dueDate": "",
+      "completed": false,
+      "parentId": "87ef529a-995d-4a54-aed3-0cdcf4bf1cdb",
+      "collapsed": false,
+      "subtasks": []
+    },
+    {
+      "id": "bbc007c7-e4b6-4f24-af93-0258ad8f8dbc",
+      "title": "Completed",
+      "status": "Not Started",
+      "priority": "Medium",
+      "startDate": "",
+      "dueDate": "",
+      "completed": false,
+      "parentId": null,
+      "collapsed": true,
+      "subtasks": []
+    },
+    {
+      "id": "871b15e3-fe6a-4a75-a849-a11c943e345b",
+      "title": "Add task filtering",
+      "status": "Completed",
+      "priority": "Medium",
+      "startDate": "",
+      "dueDate": "",
+      "completed": true,
+      "parentId": "bbc007c7-e4b6-4f24-af93-0258ad8f8dbc",
+      "collapsed": false,
+      "subtasks": []
+    },
+    {
+      "id": "47e8d194-6c55-41f1-b3b3-9e20c1e4095b",
+      "title": "Get task details panel working",
+      "status": "Completed",
+      "priority": "High",
+      "startDate": "2025-11-17T05:28:00.000Z",
+      "dueDate": "2025-11-30T19:28:00.000Z",
+      "description": "It's working now. The only issue is that you cannot update task title in task details panel.",
+      "completed": true,
+      "parentId": "bbc007c7-e4b6-4f24-af93-0258ad8f8dbc",
+      "collapsed": false,
+      "subtasks": []
+    },
+    {
+      "id": "48299f97-5ad4-4b83-98e1-6beedf5d7bfa",
+      "title": "Add a task complete button or toggle for quick action",
+      "status": "Completed",
+      "priority": "Critical",
+      "startDate": "",
+      "dueDate": "",
+      "completed": true,
+      "parentId": "bbc007c7-e4b6-4f24-af93-0258ad8f8dbc",
+      "collapsed": false,
+      "subtasks": []
+    }
+  ]
+}
