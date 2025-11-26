@@ -54,4 +54,8 @@ Project roadmap. All version goals are subject to change.
 
 ## Documentation
 
-Read the documentation: [https://arctykdev.github.io/arctyk-projects-docs/projects/obsidian/obsidian-project-planner/](Obisdian Project Planner Docs)
+**Read the documentation:** [Obsidian Project Planner Docs](https://arctykdev.github.io/arctyk-projects-docs/projects/obsidian/obsidian-project-planner)
+
+## Roadmap
+
+Available soon.
