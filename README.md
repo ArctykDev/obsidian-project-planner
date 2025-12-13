@@ -1,5 +1,6 @@
 # Obsidian Project Planner
 
+![Obsidian](https://img.shields.io/badge/Obsidian-Plugin-7C3AED?logo=obsidian&logoColor=white)
 ![Release](https://img.shields.io/github/v/release/reactivewebstudio/obsidian-project-planner?color=blue)
 ![Build](https://img.shields.io/github/actions/workflow/status/reactivewebstudio/obsidian-project-planner/build.yml?branch=dev)
 ![License](https://img.shields.io/badge/license-MIT-green)
