@@ -17,13 +17,45 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.planner-grid-header h2 {
-  font-weight: 600;
-  margin: 0;
+.planner-project-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.planner-project-select {
+  padding: 6px 12px;
+  background: var(--background-primary);
   color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 180px;
+}
+
+.planner-project-select:hover {
+  border-color: var(--interactive-accent);
+  background: var(--background-secondary);
+}
+
+.planner-project-select:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.15);
+}
+
+.planner-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .planner-add-btn {
@@ -39,6 +71,44 @@
 
 .planner-add-btn:hover {
   background: var(--interactive-accent-hover);
+}
+
+.planner-settings-btn {
+  padding: 6px 10px;
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.planner-columns-btn {
+  padding: 6px 12px;
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.planner-columns-btn:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.planner-settings-btn:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
 }
 
 /* ========================================================================= */
@@ -157,6 +227,41 @@
 .planner-detail-wrapper {
   padding: 20px;
   font-size: 14px;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.planner-detail-header {
+  margin-bottom: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.planner-complete-btn {
+  padding: 8px 16px;
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  font-size: 14px;
+}
+
+.planner-complete-btn:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.planner-complete-btn-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+  font-weight: 600;
 }
 
 .planner-detail-wrapper h2 {
@@ -209,19 +314,81 @@
 
 .planner-filter-bar {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
-  padding: 8px 0 16px 0;
+  padding: 0 0 18px 0;
+  margin-bottom: 4px;
 }
 
-.planner-filter,
-.planner-search {
-  padding: 4px 8px;
-  font-size: 14px;
+.planner-filter {
+  padding: 6px 12px;
+  font-size: 13px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 120px;
+}
+
+.planner-filter:hover {
+  border-color: var(--interactive-accent);
+  background: var(--background-secondary);
+}
+
+.planner-filter:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
 }
 
 .planner-search {
-  width: 200px;
+  padding: 6px 12px;
+  font-size: 13px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  flex: 1;
+  max-width: 300px;
+}
+
+.planner-search:hover {
+  border-color: var(--interactive-accent);
+}
+
+.planner-search:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.15);
+}
+
+.planner-clear-filter {
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  display: none;
+  transition: all 0.15s ease;
+  min-width: 38px;
+  text-align: center;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.planner-clear-filter:hover {
+  background: rgba(255, 100, 100, 0.1);
+  color: var(--text-error);
+  border-color: var(--text-error);
+}
+
+.planner-clear-filter:active {
+  background: rgba(255, 100, 100, 0.15);
+  transform: scale(0.98);
 }
 
 /* ========================================================================= */
@@ -341,11 +508,39 @@
   cursor: grab;
   opacity: 0.7;
   user-select: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 2px;
+  transition: opacity 0.2s ease;
+}
+
+.planner-drag-handle:hover {
+  opacity: 1;
 }
 
 .planner-drag-handle:active {
   cursor: grabbing;
   opacity: 1;
+}
+
+/* Ghost element being dragged */
+.planner-row-ghost {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--background-secondary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--interactive-accent);
+}
+
+/* Drop indicator line */
+.planner-drop-indicator {
+  display: none;
+  height: 2px;
+  background-color: var(--interactive-accent);
+  z-index: 9999;
 }
 
 .planner-num-cell {
@@ -401,4 +596,622 @@
   height: 100%;
   cursor: col-resize;
   z-index: 10;
+}
+/* ========================================================================= */
+/* CHECKLIST / SUBTASK ITEMS (Task Details)                                 */
+/* ========================================================================= */
+
+.planner-subtask-list {
+  margin-bottom: 12px;
+}
+
+.planner-subtask-empty {
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.planner-subtask-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  margin-bottom: 6px;
+  border-radius: 6px;
+  background: var(--background-secondary);
+  transition: background 0.15s ease;
+}
+
+.planner-subtask-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.planner-subtask-row.planner-subtask-dragging {
+  opacity: 0.5;
+}
+
+.planner-subtask-drag-handle {
+  cursor: grab;
+  color: var(--text-muted);
+  user-select: none;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.planner-subtask-drag-handle:active {
+  cursor: grabbing;
+}
+
+.planner-subtask-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.planner-subtask-title {
+  flex: 1;
+  cursor: pointer;
+  word-break: break-word;
+  color: var(--text-normal);
+  user-select: none;
+}
+
+.planner-subtask-title:hover {
+  text-decoration: underline;
+}
+
+.planner-subtask-completed {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.planner-subtask-input {
+  flex: 1;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--interactive-accent);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 14px;
+}
+
+.planner-subtask-delete {
+  padding: 2px 6px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.planner-subtask-delete:hover {
+  background: rgba(255, 0, 0, 0.1);
+  color: #e81123;
+  border-color: #e81123;
+}
+
+.planner-subtask-add {
+  padding: 6px 12px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.15s ease;
+  margin-bottom: 12px;
+}
+
+.planner-subtask-add:hover {
+  background: var(--interactive-accent-hover);
+}
+
+/* Ghost element during drag */
+.planner-subtask-ghost {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--background-secondary);
+}
+
+/* Drop indicator line */
+.planner-subtask-drop-indicator {
+  display: none;
+}
+/* ========================================================================= */
+/* MARKDOWN EDITOR FOR DESCRIPTION                                          */
+/* ========================================================================= */
+
+.planner-markdown-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.planner-markdown-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.planner-markdown-toggle {
+  padding: 4px 10px;
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s ease;
+  font-weight: 500;
+}
+
+.planner-markdown-toggle:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.planner-markdown-preview {
+  padding: 10px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  line-height: 1.6;
+  min-height: 80px;
+}
+
+.planner-markdown-preview.empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.planner-markdown-empty {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Markdown rendered content styling */
+.planner-markdown-preview h1,
+.planner-markdown-preview h2,
+.planner-markdown-preview h3,
+.planner-markdown-preview h4,
+.planner-markdown-preview h5,
+.planner-markdown-preview h6 {
+  margin: 8px 0 4px 0;
+  font-weight: 600;
+}
+
+.planner-markdown-preview h1 {
+  font-size: 18px;
+}
+
+.planner-markdown-preview h2 {
+  font-size: 16px;
+}
+
+.planner-markdown-preview h3 {
+  font-size: 14px;
+}
+
+.planner-markdown-preview p {
+  margin: 6px 0;
+}
+
+.planner-markdown-preview ul,
+.planner-markdown-preview ol {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.planner-markdown-preview li {
+  margin: 2px 0;
+}
+
+.planner-markdown-preview code {
+  background: var(--background-primary);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--text-accent);
+}
+
+.planner-markdown-preview pre {
+  background: var(--background-primary);
+  padding: 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 6px 0;
+}
+
+.planner-markdown-preview blockquote {
+  border-left: 3px solid var(--interactive-accent);
+  margin: 6px 0;
+  padding-left: 10px;
+  color: var(--text-muted);
+}
+
+.planner-markdown-preview a {
+  color: var(--interactive-accent);
+  text-decoration: none;
+}
+
+.planner-markdown-preview a:hover {
+  text-decoration: underline;
+}
+
+.planner-markdown-preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.planner-markdown-edit {
+  display: none;
+}
+
+.planner-markdown-textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 10px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 13px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.planner-markdown-textarea:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+/* ========================================================================= */
+/* TAGS / LABELS                                                             */
+/* ========================================================================= */
+
+/* Tag preview badge in settings */
+.planner-tag-preview,
+.planner-status-preview,
+.planner-priority-preview {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 4px;
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 8px;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Tags in TaskDetailView */
+.planner-tag-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.planner-assigned-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 32px;
+  align-items: center;
+}
+
+.planner-no-tags {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.planner-tag-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: all 0.15s ease;
+}
+
+.planner-tag-badge:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.planner-tag-remove {
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1;
+  opacity: 0.8;
+  transition: opacity 0.15s ease;
+  margin-left: 2px;
+}
+
+.planner-tag-remove:hover {
+  opacity: 1;
+}
+
+.planner-add-tag {
+  margin-top: 4px;
+}
+
+.planner-tag-select {
+  padding: 6px 12px;
+  font-size: 13px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 200px;
+}
+
+.planner-tag-select:hover {
+  border-color: var(--interactive-accent);
+}
+
+.planner-tag-select:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.15);
+}
+
+.planner-no-tags-hint {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+  padding: 8px 0;
+}
+
+/* Tags in GridView */
+.planner-tags-cell {
+  padding: 4px 8px !important;
+}
+
+.planner-tags-cell-interactive:hover {
+  background: var(--background-modifier-hover);
+}
+
+.planner-tags-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.planner-tag-badge-small {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 3px;
+  color: white;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+.planner-tag-badge-grid {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px 3px 8px;
+  transition: all 0.15s ease;
+}
+
+.planner-tag-badge-grid:hover {
+  filter: brightness(1.1);
+}
+
+.planner-tag-remove-grid {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
+  opacity: 0.7;
+  padding: 0 2px;
+  transition: opacity 0.15s ease;
+}
+
+.planner-tag-remove-grid:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+.planner-empty-cell {
+  color: var(--text-muted);
+  font-style: italic;
+}
+/* ========================================================================= */
+/* DEPENDENCIES                                                              */
+/* ========================================================================= */
+
+.planner-dependency-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.planner-assigned-dependencies {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.planner-no-dependencies {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.planner-dependency-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.planner-dependency-type {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--background-modifier-border);
+  padding: 3px 8px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.planner-dependency-task {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-normal);
+}
+
+.planner-dependency-remove {
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--text-muted);
+  line-height: 1;
+  padding: 0 4px;
+  transition: all 0.15s ease;
+}
+
+.planner-dependency-remove:hover {
+  color: var(--text-error);
+  transform: scale(1.2);
+}
+
+.planner-add-dependency {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.planner-dependency-task-select,
+.planner-dependency-type-select {
+  flex: 1;
+  padding: 6px 10px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.planner-dependency-task-select:hover,
+.planner-dependency-type-select:hover {
+  border-color: var(--interactive-accent);
+}
+
+.planner-dependency-add-btn {
+  padding: 6px 16px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.planner-dependency-add-btn:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.planner-no-dependencies-hint {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+  padding: 8px 0;
+}
+
+/* Dependency indicator in grid */
+.planner-dependency-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--interactive-accent);
+  font-size: 14px;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+  cursor: pointer;
+}
+
+.planner-dependency-indicator:hover {
+  opacity: 1;
+}
+
+.planner-dependency-warning {
+  color: var(--text-warning);
+  animation: pulse-warning 2s ease-in-out infinite;
+}
+
+@keyframes pulse-warning {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.planner-deps-cell {
+  text-align: center;
+  padding: 4px !important;
+}
+/* Dependents indicator in grid (tasks blocked by this task) */
+.planner-dependents-cell {
+  text-align: center;
+  padding: 4px !important;
+}
+
+.planner-dependent-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--text-warning);
+  font-size: 14px;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+  cursor: pointer;
+}
+
+.planner-dependent-indicator:hover {
+  opacity: 1;
 }

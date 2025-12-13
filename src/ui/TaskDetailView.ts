@@ -1,14 +1,8 @@
-import { ItemView, WorkspaceLeaf } from "obsidian";
+import { ItemView, WorkspaceLeaf, MarkdownRenderer } from "obsidian";
 import type ProjectPlannerPlugin from "../main";
 import type { PlannerTask } from "../types";
 
 export const VIEW_TYPE_TASK_DETAIL = "project-planner-task-detail";
-
-// Strongly typed priorities
-const PRIORITIES = ["Low", "Medium", "High", "Critical"] as const;
-
-// Strongly typed statuses
-const STATUSES = ["Not Started", "In Progress", "Blocked", "Completed"] as const;
 
 export class TaskDetailView extends ItemView {
   private plugin: ProjectPlannerPlugin;
@@ -27,9 +21,24 @@ export class TaskDetailView extends ItemView {
     return "Task Details";
   }
 
+  // ---------------------------------------------------------------------------
+  // Canonical task retrieval
+  // ---------------------------------------------------------------------------
+
+  private getCanonicalTask(id: string): PlannerTask | null {
+    const leaf = this.app.workspace.getLeavesOfType("project-planner-view")[0];
+    if (!leaf) return null;
+
+    const grid: any = leaf.view;
+    if (!grid || !grid.taskStore) return null;
+
+    return grid.taskStore.getAll().find((t: PlannerTask) => t.id === id) ?? null;
+  }
+
   // Called when GridView selects a task
   setTask(task: PlannerTask) {
-    this.task = task;
+    const canonical = this.getCanonicalTask(task.id);
+    this.task = canonical ?? task;
     this.render();
   }
 
@@ -58,6 +67,24 @@ export class TaskDetailView extends ItemView {
     const task = this.task;
 
     //
+    // COMPLETE BUTTON — top action
+    //
+    const headerContainer = container.createDiv("planner-detail-header");
+    const completeBtn = headerContainer.createEl("button", {
+      cls: "planner-complete-btn",
+      text: task.status === "Completed" ? "✓ Completed" : "Mark as Complete",
+    });
+
+    completeBtn.onclick = async () => {
+      const newStatus = task.status === "Completed" ? "Not Started" : "Completed";
+      await this.update({ status: newStatus });
+    };
+
+    if (task.status === "Completed") {
+      completeBtn.classList.add("planner-complete-btn-active");
+    }
+
+    //
     // TITLE — editable
     //
     container.createEl("h2", { text: "Task Title" });
@@ -69,7 +96,12 @@ export class TaskDetailView extends ItemView {
     // STATUS — dropdown
     //
     container.createEl("h3", { text: "Status" });
-    this.createEditableSelect(container, task.status, STATUSES, async (val) => {
+    const pluginAny = this.plugin as any;
+    const settings = pluginAny.settings || {};
+    const availableStatuses = settings.availableStatuses || [];
+    const statusNames = availableStatuses.map((s: any) => s.name);
+
+    this.createEditableSelect(container, task.status, statusNames, async (val) => {
       await this.update({ status: val });
     });
 
@@ -77,14 +109,24 @@ export class TaskDetailView extends ItemView {
     // PRIORITY — dropdown
     //
     container.createEl("h3", { text: "Priority" });
+    const availablePriorities = settings.availablePriorities || [];
+    const priorityNames = availablePriorities.map((p: any) => p.name);
+    const defaultPriority = availablePriorities[0]?.name || "Medium";
+
     this.createEditableSelect(
       container,
-      task.priority || "Medium",
-      PRIORITIES,
+      task.priority || defaultPriority,
+      priorityNames,
       async (val) => {
         await this.update({ priority: val });
       }
     );
+
+    //
+    // TAGS — multi-select with color badges
+    //
+    container.createEl("h3", { text: "Tags" });
+    this.renderTagSelector(container, task);
 
     //
     // START DATE / TIME
@@ -103,16 +145,22 @@ export class TaskDetailView extends ItemView {
     });
 
     //
-    // DESCRIPTION
+    // DESCRIPTION (with Markdown support)
     //
     container.createEl("h3", { text: "Description" });
-    this.createEditableTextarea(
+    this.createEditableMarkdown(
       container,
       task.description || "",
       async (val) => {
         await this.update({ description: val });
       }
     );
+
+    //
+    // DEPENDENCIES
+    //
+    container.createEl("h3", { text: "Dependencies" });
+    this.renderDependencies(container, task);
 
     //
     // CHECKLIST / SUBTASKS
@@ -128,8 +176,8 @@ export class TaskDetailView extends ItemView {
         cls: "planner-subtask-empty",
       });
     } else {
-      for (const sub of subtasks) {
-        this.renderSubtaskRow(checklistWrapper, sub.id);
+      for (let i = 0; i < subtasks.length; i++) {
+        this.renderSubtaskRow(checklistWrapper, subtasks[i].id, i);
       }
     }
 
@@ -155,8 +203,11 @@ export class TaskDetailView extends ItemView {
     };
   }
 
-  // Render a single subtask row by id (uses latest task state)
-  private renderSubtaskRow(parent: HTMLElement, subtaskId: string) {
+  // ---------------------------------------------------------------------------
+  // Subtasks
+  // ---------------------------------------------------------------------------
+
+  private renderSubtaskRow(parent: HTMLElement, subtaskId: string, index: number) {
     if (!this.task) return;
 
     const subtasks = this.task.subtasks ?? [];
@@ -164,6 +215,117 @@ export class TaskDetailView extends ItemView {
     if (!sub) return;
 
     const row = parent.createDiv("planner-subtask-row");
+    row.dataset.subtaskId = sub.id;
+
+    // Drag handle
+    const dragHandle = row.createEl("span", {
+      cls: "planner-subtask-drag-handle",
+      text: "⋮⋮",
+    });
+
+    dragHandle.onpointerdown = (evt: PointerEvent) => {
+      evt.preventDefault();
+      evt.stopPropagation();
+
+      const rowRect = row.getBoundingClientRect();
+
+      // Create ghost element
+      const ghost = document.createElement("div");
+      ghost.className = "planner-subtask-ghost";
+      ghost.style.position = "fixed";
+      ghost.style.left = `${rowRect.left}px`;
+      ghost.style.top = `${rowRect.top}px`;
+      ghost.style.width = `${rowRect.width}px`;
+      ghost.style.pointerEvents = "none";
+      ghost.style.zIndex = "9998";
+      ghost.style.opacity = "0.9";
+      ghost.style.background = getComputedStyle(row).backgroundColor || "var(--background-primary)";
+      ghost.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.25)";
+      ghost.style.borderRadius = "6px";
+
+      const inner = row.cloneNode(true) as HTMLElement;
+      ghost.appendChild(inner);
+
+      // Create drop indicator
+      const indicator = document.createElement("div");
+      indicator.className = "planner-subtask-drop-indicator";
+      indicator.style.position = "fixed";
+      indicator.style.height = "2px";
+      indicator.style.backgroundColor = "var(--interactive-accent)";
+      indicator.style.pointerEvents = "none";
+      indicator.style.zIndex = "9999";
+      indicator.style.left = `${rowRect.left}px`;
+      indicator.style.width = `${rowRect.width}px`;
+      indicator.style.display = "none";
+
+      document.body.appendChild(ghost);
+      document.body.appendChild(indicator);
+
+      let dragTargetId: string | null = null;
+      let dragInsertAfter = false;
+
+      row.classList.add("planner-subtask-dragging");
+      document.body.style.userSelect = "none";
+      (document.body.style as any).webkitUserSelect = "none";
+      document.body.style.cursor = "grabbing";
+
+      const offsetY = evt.clientY - rowRect.top;
+
+      const onMove = (moveEvt: PointerEvent) => {
+        moveEvt.preventDefault();
+
+        const y = moveEvt.clientY - offsetY;
+        ghost.style.top = `${y}px`;
+
+        const targetEl = document.elementFromPoint(
+          moveEvt.clientX,
+          moveEvt.clientY
+        ) as HTMLElement | null;
+
+        const targetRow = targetEl?.closest(".planner-subtask-row") as HTMLElement | null;
+
+        if (!targetRow || !targetRow.dataset.subtaskId) {
+          indicator.style.display = "none";
+          dragTargetId = null;
+          return;
+        }
+
+        const targetRect = targetRow.getBoundingClientRect();
+        const before = moveEvt.clientY < targetRect.top + targetRect.height / 2;
+
+        indicator.style.display = "block";
+        indicator.style.left = `${targetRect.left}px`;
+        indicator.style.width = `${targetRect.width}px`;
+        indicator.style.top = before
+          ? `${targetRect.top}px`
+          : `${targetRect.bottom}px`;
+
+        dragTargetId = targetRow.dataset.subtaskId || null;
+        dragInsertAfter = !before;
+      };
+
+      const onUp = async (upEvt: PointerEvent) => {
+        upEvt.preventDefault();
+
+        window.removeEventListener("pointermove", onMove, true);
+        window.removeEventListener("pointerup", onUp, true);
+
+        ghost.remove();
+        indicator.remove();
+
+        row.classList.remove("planner-subtask-dragging");
+        document.body.style.userSelect = "";
+        (document.body.style as any).webkitUserSelect = "";
+        document.body.style.cursor = "";
+
+        if (dragTargetId && dragTargetId !== sub.id) {
+          await this.handleSubtaskDrop(sub.id, dragTargetId, dragInsertAfter);
+        }
+      };
+
+      window.addEventListener("pointermove", onMove, true);
+      window.addEventListener("pointerup", onUp, true);
+    };
 
     // Checkbox
     const checkbox = row.createEl("input", {
@@ -191,7 +353,6 @@ export class TaskDetailView extends ItemView {
     }
 
     titleSpan.onclick = () => {
-      // Inline editor
       const input = row.createEl("input", {
         attr: { type: "text" },
         cls: "planner-subtask-input",
@@ -215,7 +376,7 @@ export class TaskDetailView extends ItemView {
       input.onblur = () => void commit();
       input.onkeydown = (e) => {
         if (e.key === "Enter") void commit();
-        if (e.key === "Escape") this.render(); // revert
+        if (e.key === "Escape") this.render();
       };
     };
 
@@ -233,19 +394,51 @@ export class TaskDetailView extends ItemView {
     };
   }
 
+  // Handle subtask drag and drop reordering
+  private async handleSubtaskDrop(
+    dragId: string,
+    targetId: string,
+    insertAfter: boolean
+  ) {
+    if (!this.task) return;
+
+    const subtasks = this.task.subtasks ?? [];
+    const dragIndex = subtasks.findIndex((s) => s.id === dragId);
+    const targetIndex = subtasks.findIndex((s) => s.id === targetId);
+
+    if (dragIndex === -1 || targetIndex === -1) return;
+
+    // Remove from current position
+    const [dragItem] = subtasks.splice(dragIndex, 1);
+
+    // Insert at new position
+    let newIndex = subtasks.findIndex((s) => s.id === targetId);
+    if (insertAfter) {
+      newIndex += 1;
+    }
+
+    subtasks.splice(newIndex, 0, dragItem);
+
+    await this.update({ subtasks });
+  }
+
   // ---------------------------------------------------------------------------
-  // Update Helper – delegates to plugin.updateTask(...)
+  // Update Helper – canonical safe
   // ---------------------------------------------------------------------------
 
   private async update(fields: Partial<PlannerTask>) {
     if (!this.task) return;
 
+    // Update canonical TaskStore via plugin.updateTask()
     await this.plugin.updateTask(this.task.id, fields);
 
-    // Keep local copy in sync
-    this.task = { ...this.task, ...fields };
+    // Fetch fresh canonical task from TaskStore after update
+    const updated = this.getCanonicalTask(this.task.id);
+    if (updated) {
+      this.task = updated;
+    }
 
-    // Re-render panel
+    // Re-render panel with fresh data
     this.render();
   }
 
@@ -289,6 +482,90 @@ export class TaskDetailView extends ItemView {
     };
   }
 
+  private createEditableMarkdown(
+    container: HTMLElement,
+    value: string,
+    onSave: (val: string) => Promise<void>
+  ) {
+    let isEditing = false;
+
+    const wrapper = container.createDiv("planner-markdown-wrapper");
+
+    const toolbar = wrapper.createDiv("planner-markdown-toolbar");
+    const toggleBtn = toolbar.createEl("button", {
+      cls: "planner-markdown-toggle",
+      text: isEditing ? "Preview" : "Edit",
+    });
+
+    const previewContainer = wrapper.createDiv("planner-markdown-preview");
+    const editContainer = wrapper.createDiv("planner-markdown-edit");
+
+    // Setup preview
+    const renderPreview = async () => {
+      previewContainer.empty();
+      if (value.trim()) {
+        await MarkdownRenderer.render(
+          this.app,
+          value,
+          previewContainer,
+          "",
+          this.plugin
+        );
+      } else {
+        previewContainer.createEl("p", {
+          text: "No description",
+          cls: "planner-markdown-empty",
+        });
+      }
+    };
+
+    // Setup editor
+    const setupEditor = () => {
+      editContainer.empty();
+      const textarea = editContainer.createEl("textarea", {
+        cls: "planner-markdown-textarea",
+      });
+      textarea.value = value;
+      textarea.focus();
+
+      const saveEdit = async () => {
+        const newValue = textarea.value;
+        value = newValue;
+        await onSave(newValue);
+      };
+
+      textarea.onblur = () => {
+        void saveEdit();
+      };
+
+      textarea.onkeydown = (e) => {
+        if (e.key === "Enter" && e.ctrlKey) {
+          void saveEdit();
+        }
+      };
+    };
+
+    // Setup toggle behavior
+    toggleBtn.onclick = async () => {
+      isEditing = !isEditing;
+      toggleBtn.setText(isEditing ? "Preview" : "Edit");
+
+      if (isEditing) {
+        previewContainer.style.display = "none";
+        editContainer.style.display = "block";
+        setupEditor();
+      } else {
+        editContainer.style.display = "none";
+        previewContainer.style.display = "block";
+        await renderPreview();
+      }
+    };
+
+    // Initial state: show preview
+    editContainer.style.display = "none";
+    void renderPreview();
+  }
+
   private createEditableSelect<T extends string>(
     container: HTMLElement,
     value: T,
@@ -330,11 +607,235 @@ export class TaskDetailView extends ItemView {
   }
 
   // ---------------------------------------------------------------------------
+  // Dependencies
+  // ---------------------------------------------------------------------------
+
+  private renderDependencies(container: HTMLElement, task: PlannerTask) {
+    const dependencies = task.dependencies || [];
+    const allTasks = this.getAllTasks();
+
+    const depContainer = container.createDiv("planner-dependency-container");
+
+    // Display existing dependencies
+    const assignedDepsDiv = depContainer.createDiv("planner-assigned-dependencies");
+    if (dependencies.length === 0) {
+      assignedDepsDiv.createEl("span", {
+        text: "No dependencies",
+        cls: "planner-no-dependencies"
+      });
+    } else {
+      dependencies.forEach((dep, index) => {
+        const predecessor = allTasks.find(t => t.id === dep.predecessorId);
+        if (predecessor) {
+          const depRow = assignedDepsDiv.createDiv({
+            cls: "planner-dependency-row"
+          });
+
+          // Dependency type label
+          const typeLabels = {
+            FS: "Finish-to-Start",
+            SS: "Start-to-Start",
+            FF: "Finish-to-Finish",
+            SF: "Start-to-Finish"
+          };
+
+          const typeSpan = depRow.createEl("span", {
+            cls: "planner-dependency-type",
+            text: typeLabels[dep.type]
+          });
+
+          // Task title
+          const titleSpan = depRow.createEl("span", {
+            cls: "planner-dependency-task",
+            text: predecessor.title
+          });
+
+          // Remove button
+          const removeBtn = depRow.createEl("span", {
+            cls: "planner-dependency-remove",
+            text: "×"
+          });
+          removeBtn.onclick = async () => {
+            const newDeps = dependencies.filter((_, i) => i !== index);
+            await this.update({ dependencies: newDeps });
+          };
+        }
+      });
+    }
+
+    // Add dependency controls
+    const addDepDiv = depContainer.createDiv("planner-add-dependency");
+
+    // Filter out: this task, its children, and tasks already added as dependencies
+    const availableTasks = allTasks.filter(t => {
+      if (t.id === task.id) return false; // Can't depend on itself
+      if (t.parentId === task.id) return false; // Can't depend on child
+      if (dependencies.some(d => d.predecessorId === t.id)) return false; // Already added
+      return true;
+    });
+
+    if (availableTasks.length > 0) {
+      // Task selector
+      const taskSelect = addDepDiv.createEl("select", {
+        cls: "planner-dependency-task-select"
+      });
+      taskSelect.createEl("option", { text: "Select task...", value: "" });
+      availableTasks.forEach(t => {
+        const indent = t.parentId ? "  └ " : "";
+        taskSelect.createEl("option", {
+          text: indent + t.title,
+          value: t.id
+        });
+      });
+
+      // Dependency type selector
+      const typeSelect = addDepDiv.createEl("select", {
+        cls: "planner-dependency-type-select"
+      });
+      typeSelect.createEl("option", { text: "Finish-to-Start", value: "FS" });
+      typeSelect.createEl("option", { text: "Start-to-Start", value: "SS" });
+      typeSelect.createEl("option", { text: "Finish-to-Finish", value: "FF" });
+      typeSelect.createEl("option", { text: "Start-to-Finish", value: "SF" });
+
+      // Add button
+      const addBtn = addDepDiv.createEl("button", {
+        cls: "planner-dependency-add-btn",
+        text: "Add"
+      });
+
+      addBtn.onclick = async () => {
+        if (taskSelect.value) {
+          const newDep = {
+            predecessorId: taskSelect.value,
+            type: typeSelect.value as any
+          };
+
+          // Check for circular dependencies
+          if (this.wouldCreateCircularDependency(task.id, newDep.predecessorId)) {
+            // Show error (simple alert for now)
+            alert("Cannot add dependency: This would create a circular dependency chain.");
+            return;
+          }
+
+          const newDeps = [...dependencies, newDep];
+          await this.update({ dependencies: newDeps });
+        }
+      };
+    } else {
+      addDepDiv.createEl("div", {
+        text: "No available tasks to add as dependencies.",
+        cls: "planner-no-dependencies-hint"
+      });
+    }
+  }
+
+  private getAllTasks(): PlannerTask[] {
+    const leaf = this.app.workspace.getLeavesOfType("project-planner-view")[0];
+    if (!leaf) return [];
+
+    const grid: any = leaf.view;
+    if (!grid || !grid.taskStore) return [];
+
+    return grid.taskStore.getAll();
+  }
+
+  private wouldCreateCircularDependency(taskId: string, predecessorId: string): boolean {
+    const allTasks = this.getAllTasks();
+    const visited = new Set<string>();
+
+    // Walk the dependency chain from predecessor
+    const checkChain = (currentId: string): boolean => {
+      if (currentId === taskId) return true; // Circular!
+      if (visited.has(currentId)) return false;
+      visited.add(currentId);
+
+      const current = allTasks.find(t => t.id === currentId);
+      if (!current || !current.dependencies) return false;
+
+      for (const dep of current.dependencies) {
+        if (checkChain(dep.predecessorId)) return true;
+      }
+
+      return false;
+    };
+
+    return checkChain(predecessorId);
+  }
+
+  // Tags
+  // ---------------------------------------------------------------------------
+
+  private renderTagSelector(container: HTMLElement, task: PlannerTask) {
+    const pluginAny = this.plugin as any;
+    const settings = pluginAny.settings || {};
+    const availableTags = settings.availableTags || [];
+    const taskTags = task.tags || [];
+
+    const tagContainer = container.createDiv("planner-tag-container");
+
+    // Display assigned tags as badges
+    const assignedTagsDiv = tagContainer.createDiv("planner-assigned-tags");
+    if (taskTags.length === 0) {
+      assignedTagsDiv.createEl("span", {
+        text: "No tags assigned",
+        cls: "planner-no-tags"
+      });
+    } else {
+      taskTags.forEach((tagId) => {
+        const tag = availableTags.find((t: any) => t.id === tagId);
+        if (tag) {
+          const badge = assignedTagsDiv.createDiv({
+            cls: "planner-tag-badge",
+            text: tag.name
+          });
+          badge.style.backgroundColor = tag.color;
+
+          // Add remove button
+          const removeBtn = badge.createEl("span", {
+            cls: "planner-tag-remove",
+            text: "×"
+          });
+          removeBtn.onclick = async () => {
+            const newTags = taskTags.filter(id => id !== tagId);
+            await this.update({ tags: newTags });
+          };
+        }
+      });
+    }
+
+    // Add tag dropdown
+    if (availableTags.length > 0) {
+      const addTagDiv = tagContainer.createDiv("planner-add-tag");
+      const select = addTagDiv.createEl("select", {
+        cls: "planner-tag-select"
+      });
+
+      select.createEl("option", { text: "Add tag...", value: "" });
+
+      availableTags.forEach((tag: any) => {
+        if (!taskTags.includes(tag.id)) {
+          select.createEl("option", { text: tag.name, value: tag.id });
+        }
+      });
+
+      select.onchange = async () => {
+        if (select.value) {
+          const newTags = [...taskTags, select.value];
+          await this.update({ tags: newTags });
+        }
+      };
+    } else {
+      tagContainer.createEl("div", {
+        text: "No tags available. Create tags in plugin settings.",
+        cls: "planner-no-tags-hint"
+      });
+    }
+  }
+
   // Helpers
   // ---------------------------------------------------------------------------
 
   private createSubtaskId(): string {
-    // Browser crypto if available, fallback to timestamp/random
     if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
       return crypto.randomUUID();
     }

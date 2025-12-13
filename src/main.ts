@@ -14,6 +14,14 @@ import type { PlannerTask } from "./types";
 // Internal plugin view type
 const VIEW_TYPE_PLANNER = "project-planner-view";
 
+// Shape of the persisted data file
+interface ProjectPlannerData {
+  settings?: ProjectPlannerSettings;
+  tasks?: PlannerTask[]; // legacy single-project
+  tasksByProject?: Record<string, PlannerTask[]>;
+  [key: string]: unknown; // allow future expansion
+}
+
 export default class ProjectPlannerPlugin extends Plugin {
   settings!: ProjectPlannerSettings;
 
@@ -109,38 +117,62 @@ export default class ProjectPlannerPlugin extends Plugin {
   }
 
   // ---------------------------------------------------------------------------
-  // Settings
+  // Settings (non-destructive merge, supports migration)
   // ---------------------------------------------------------------------------
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const raw = ((await this.loadData()) || {}) as ProjectPlannerData;
+
+    // Load settings if nested, otherwise fall back to legacy root
+    const storedSettings =
+      raw.settings ??
+      ((raw as unknown) as ProjectPlannerSettings); // legacy root-level settings
+
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, storedSettings);
 
     // Ensure we have at least one project
     if (!this.settings.projects || this.settings.projects.length === 0) {
       const defaultProjectId = crypto.randomUUID();
-      this.settings.projects = [
-        { id: defaultProjectId, name: "My Project" },
-      ];
+      this.settings.projects = [{ id: defaultProjectId, name: "My Project" }];
       this.settings.activeProjectId = defaultProjectId;
     }
 
-    // If activeProjectId is missing or invalid, pick the first project
+    // Ensure activeProjectId is valid
     if (
       !this.settings.activeProjectId ||
-      !this.settings.projects.some((p) => p.id === this.settings.activeProjectId)
+      !this.settings.projects.some(
+        (p) => p.id === this.settings!.activeProjectId
+      )
     ) {
       this.settings.activeProjectId = this.settings.projects[0].id;
     }
 
+    // Ensure default statuses exist
+    if (!this.settings.availableStatuses || this.settings.availableStatuses.length === 0) {
+      this.settings.availableStatuses = DEFAULT_SETTINGS.availableStatuses;
+    }
+
+    // Ensure default priorities exist
+    if (!this.settings.availablePriorities || this.settings.availablePriorities.length === 0) {
+      this.settings.availablePriorities = DEFAULT_SETTINGS.availablePriorities;
+    }
+
+    // Save settings nested properly
     await this.saveSettings();
   }
 
   async saveSettings() {
-    await this.saveData(this.settings);
+    const raw = ((await this.loadData()) || {}) as ProjectPlannerData;
+
+    // Save ONLY under .settings — Preserve ALL other keys (tasksByProject, etc.)
+    raw.settings = this.settings;
+
+    await this.saveData(raw);
   }
 
   setActiveProject(projectId: string) {
     const found = this.settings.projects.find((p) => p.id === projectId);
     if (!found) return;
+
     this.settings.activeProjectId = projectId;
     void this.saveSettings();
   }

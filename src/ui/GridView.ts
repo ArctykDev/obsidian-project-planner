@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Menu } from "obsidian";
+import { ItemView, WorkspaceLeaf, Menu, setIcon } from "obsidian";
 import type ProjectPlannerPlugin from "../main";
 import type { PlannerTask, TaskStatus } from "../types";
 import { TaskStore } from "../stores/taskStore";
@@ -13,21 +13,7 @@ type SortKey =
   | "StartDate"
   | "DueDate";
 
-// Strongly typed priorities
-const PRIORITIES: NonNullable<PlannerTask["priority"]>[] = [
-  "Low",
-  "Medium",
-  "High",
-  "Critical",
-];
-
-// Strongly typed statuses
-const STATUSES: TaskStatus[] = [
-  "Not Started",
-  "In Progress",
-  "Blocked",
-  "Completed",
-];
+const NON_HIDEABLE_COLUMNS = new Set(["drag", "number", "check"]);
 
 interface VisibleRow {
   task: PlannerTask;
@@ -43,13 +29,14 @@ export class GridView extends ItemView {
     status: "All",
     priority: "All",
     search: "",
-    sortKey: "Manual" as SortKey, // default to Manual so drag/drop order is used
+    sortKey: "Manual" as SortKey, // locked to Manual - drag/drop order only
     sortDirection: "asc" as "asc" | "desc",
   };
 
   private visibleRows: VisibleRow[] = [];
   private currentDragId: string | null = null;
   private numberingMap: Map<string, number> = new Map();
+  private tableElement: HTMLTableElement | null = null;
 
   // manual-dnd state
   private dragTargetTaskId: string | null = null;
@@ -58,6 +45,7 @@ export class GridView extends ItemView {
   // Column sizing + advanced sorting
   private columnWidths: Record<string, number> = {};
   private secondarySortKeys: SortKey[] = [];
+  private columnVisibility: Record<string, boolean> = {};
 
   constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
     super(leaf);
@@ -107,17 +95,11 @@ export class GridView extends ItemView {
     // Header
     // -----------------------------------------------------------------------
     const header = wrapper.createDiv("planner-grid-header");
-    header.createEl("h2", { text: "Project Planner — Grid View" });
 
     // -----------------------------------------------------------------------
     // Project switcher
     // -----------------------------------------------------------------------
     const projectContainer = header.createDiv("planner-project-switcher");
-
-    projectContainer.createSpan({
-      text: "Project:",
-      cls: "planner-project-label",
-    });
 
     const projectSelect = projectContainer.createEl("select", {
       cls: "planner-project-select",
@@ -165,7 +147,9 @@ export class GridView extends ItemView {
       };
     }
 
-    const addBtn = header.createEl("button", {
+    const headerActions = header.createDiv("planner-header-actions");
+
+    const addBtn = headerActions.createEl("button", {
       cls: "planner-add-btn",
       text: "Add Task",
     });
@@ -173,6 +157,41 @@ export class GridView extends ItemView {
     addBtn.onclick = async () => {
       await this.taskStore.addTask("New Task");
       this.render();
+    };
+
+    const columnsBtn = headerActions.createEl("button", {
+      cls: "planner-columns-btn",
+      title: "Show / hide columns",
+      text: "Columns",
+    });
+
+    columnsBtn.onclick = (evt) => {
+      const menu = new Menu();
+
+      this.getColumnDefinitions()
+        .filter((c) => c.hideable)
+        .forEach((col) => {
+          const visible = this.isColumnVisible(col.key);
+          menu.addItem((item) => {
+            item.setTitle(col.label);
+            item.setIcon(visible ? "check-small" : "circle-small");
+            item.onClick(() => this.toggleColumnVisibility(col.key));
+          });
+        });
+
+      menu.showAtMouseEvent(evt as MouseEvent);
+    };
+
+    const settingsBtn = headerActions.createEl("button", {
+      cls: "planner-settings-btn",
+      title: "Open plugin settings",
+    });
+    setIcon(settingsBtn, "settings");
+
+    settingsBtn.onclick = () => {
+      // Open plugin settings
+      (this.app as any).setting.open();
+      (this.app as any).setting.openTabById(this.plugin.manifest.id);
     };
 
     // -----------------------------------------------------------------------
@@ -183,7 +202,10 @@ export class GridView extends ItemView {
     const statusFilter = filterBar.createEl("select", {
       cls: "planner-filter",
     });
-    ["All", ...STATUSES].forEach((s) =>
+    const statusOptions = settings.availableStatuses || [];
+    const statusNames = statusOptions.map((s: any) => s.name);
+
+    ["All", ...statusNames].forEach((s) =>
       statusFilter.createEl("option", { text: s })
     );
     statusFilter.value = this.currentFilters.status;
@@ -191,7 +213,10 @@ export class GridView extends ItemView {
     const priorityFilter = filterBar.createEl("select", {
       cls: "planner-filter",
     });
-    ["All", ...PRIORITIES].forEach((p) =>
+    const priorityOptions = settings.availablePriorities || [];
+    const priorityNames = priorityOptions.map((p: any) => p.name);
+
+    ["All", ...priorityNames].forEach((p) =>
       priorityFilter.createEl("option", { text: p })
     );
     priorityFilter.value = this.currentFilters.priority;
@@ -202,46 +227,64 @@ export class GridView extends ItemView {
     });
     searchInput.value = this.currentFilters.search;
 
-    const sortContainer = filterBar.createDiv("planner-sort-container");
-    const sortSelect = sortContainer.createEl("select", {
-      cls: "planner-filter",
+    // Clear filters button
+    const clearFilterBtn = filterBar.createEl("button", {
+      cls: "planner-clear-filter",
+      title: "Clear all filters",
     });
-    ["Manual", "Title", "Priority", "Status", "StartDate", "DueDate"].forEach(
-      (k) => sortSelect.createEl("option", { text: k })
-    );
-    sortSelect.value = this.currentFilters.sortKey;
+    clearFilterBtn.innerHTML = "✕";
 
-    const sortDirBtn = sortContainer.createEl("button", {
-      cls: "planner-sort-btn",
-      text: this.currentFilters.sortDirection === "asc" ? "Asc" : "Desc",
-    });
+    const updateClearButtonVisibility = () => {
+      const hasFilters =
+        this.currentFilters.status !== "All" ||
+        this.currentFilters.priority !== "All" ||
+        this.currentFilters.search.trim() !== "";
+      clearFilterBtn.style.display = hasFilters ? "block" : "none";
+    };
 
-    sortDirBtn.onclick = () => {
-      this.currentFilters.sortDirection =
-        this.currentFilters.sortDirection === "asc" ? "desc" : "asc";
+    clearFilterBtn.onclick = () => {
+      statusFilter.value = "All";
+      priorityFilter.value = "All";
+      searchInput.value = "";
+      this.currentFilters = {
+        status: "All",
+        priority: "All",
+        search: "",
+        sortKey: "Manual", // always use manual order for drag and drop
+        sortDirection: "asc",
+      };
       this.secondarySortKeys = [];
       this.saveGridViewSettings();
+      updateClearButtonVisibility();
       this.render();
     };
 
-    const applyFilters = () => {
+    const applyFilters = (isSearchInput = false) => {
       this.currentFilters = {
         status: statusFilter.value,
         priority: priorityFilter.value,
         search: searchInput.value.toLowerCase(),
-        sortKey: sortSelect.value as SortKey,
+        sortKey: "Manual", // always use manual order for drag and drop
         sortDirection: this.currentFilters.sortDirection,
       };
       this.secondarySortKeys = [];
       this.saveGridViewSettings();
-      this.render();
+      updateClearButtonVisibility();
+
+      // For search input, only re-render the table body, not the whole view
+      if (isSearchInput) {
+        this.renderTableBody();
+      } else {
+        this.render();
+      }
     };
 
-    statusFilter.onchange =
-      priorityFilter.onchange =
-      sortSelect.onchange =
-      searchInput.oninput =
-      () => applyFilters();
+    statusFilter.onchange = () => applyFilters(false);
+    priorityFilter.onchange = () => applyFilters(false);
+    searchInput.oninput = () => applyFilters(true);
+
+    // Initial visibility check
+    updateClearButtonVisibility();
 
     // -----------------------------------------------------------------------
     // Build visible hierarchy (with filters + sort)
@@ -254,7 +297,8 @@ export class GridView extends ItemView {
       let match = true;
 
       if (f.status !== "All" && t.status !== f.status) match = false;
-      if (f.priority !== "All" && (t.priority || "Medium") !== f.priority)
+      const defaultPriority = settings.availablePriorities?.[0]?.name || "Medium";
+      if (f.priority !== "All" && (t.priority || defaultPriority) !== f.priority)
         match = false;
       if (f.search.trim() !== "" && !t.title.toLowerCase().includes(f.search))
         match = false;
@@ -262,63 +306,8 @@ export class GridView extends ItemView {
       matchesFilter.set(t.id, match);
     }
 
-    const getSortValueForKey = (t: PlannerTask, key: SortKey) => {
-      switch (key) {
-        case "Title":
-          return t.title.toLowerCase();
-        case "Priority":
-          return PRIORITIES.indexOf(t.priority || "Medium");
-        case "Status":
-          return STATUSES.indexOf(t.status);
-        case "StartDate":
-          return t.startDate ? new Date(t.startDate).getTime() : 0;
-        case "DueDate":
-          return t.dueDate ? new Date(t.dueDate).getTime() : 0;
-        case "Manual":
-        default:
-          return 0;
-      }
-    };
-
-    const compareByKey = (
-      a: PlannerTask,
-      b: PlannerTask,
-      key: SortKey,
-      direction: "asc" | "desc"
-    ) => {
-      if (key === "Manual") return 0;
-      const factor = direction === "asc" ? 1 : -1;
-      const A = getSortValueForKey(a, key);
-      const B = getSortValueForKey(b, key);
-      if (A === B) return 0;
-      return A! > B! ? factor : -factor;
-    };
-
-    const compareTasks = (a: PlannerTask, b: PlannerTask) => {
-      const primaryKey = f.sortKey;
-      const primaryDir = f.sortDirection;
-
-      // Primary key
-      if (primaryKey !== "Manual") {
-        const res = compareByKey(a, b, primaryKey, primaryDir);
-        if (res !== 0) return res;
-      }
-
-      // Secondary keys (always ascending)
-      for (const key of this.secondarySortKeys) {
-        if (key === primaryKey || key === "Manual") continue;
-        const res = compareByKey(a, b, key, "asc");
-        if (res !== 0) return res;
-      }
-
-      return 0;
-    };
-
-    // Roots: either keep manual order or apply sort
-    const roots =
-      f.sortKey === "Manual"
-        ? all.filter((t) => !t.parentId)
-        : all.filter((t) => !t.parentId).sort(compareTasks);
+    // Roots: keep manual order only (no sorting)
+    const roots = all.filter((t) => !t.parentId);
 
     const visibleRows: VisibleRow[] = [];
 
@@ -342,11 +331,6 @@ export class GridView extends ItemView {
       if (!root.collapsed) {
         const toRender = rootMatches ? children : matchingChildren;
 
-        // Only sort children when not in Manual mode
-        if (f.sortKey !== "Manual") {
-          toRender.sort(compareTasks);
-        }
-
         for (const child of toRender) {
           visibleRows.push({
             task: child,
@@ -366,36 +350,15 @@ export class GridView extends ItemView {
       cls: "planner-grid-table",
     });
 
+    this.tableElement = table;
+
     const headerRow = table.createEl("tr");
 
-    // Column definitions (allows sorting, resizing)
-    const columns: {
-      key: string;
-      label: string;
-      sortable: boolean;
-      sortKey?: SortKey;
-    }[] = [
-        { key: "drag", label: "", sortable: false },
-        { key: "number", label: "#", sortable: false },
-        { key: "check", label: "", sortable: false },
-        { key: "title", label: "Title", sortable: true, sortKey: "Title" },
-        { key: "status", label: "Status", sortable: true, sortKey: "Status" },
-        {
-          key: "priority",
-          label: "Priority",
-          sortable: true,
-          sortKey: "Priority",
-        },
-        {
-          key: "start",
-          label: "Start Date",
-          sortable: true,
-          sortKey: "StartDate",
-        },
-        { key: "due", label: "Due Date", sortable: true, sortKey: "DueDate" },
-      ];
+    const columns = this.getColumnDefinitions();
+    const visibleColumns = columns.filter((c) => this.isColumnVisible(c.key));
 
-    columns.forEach((col, colIndex) => {
+    let visibleIndex = 0;
+    visibleColumns.forEach((col) => {
       const th = headerRow.createEl("th");
       th.style.position = "relative";
 
@@ -404,60 +367,13 @@ export class GridView extends ItemView {
         th.style.width = `${this.columnWidths[col.key]}px`;
       }
 
-      // Label + sort indicator
+      // Label
       const labelSpan = th.createSpan({ text: col.label });
-      if (col.sortable && col.sortKey) {
-        const indicator = th.createSpan({
-          cls: "planner-sort-indicator",
-          text: "",
-        });
-        indicator.style.marginLeft = "4px";
-      }
-
-      // Sorting behavior (click / shift+click)
-      if (col.sortable && col.sortKey) {
-        th.addClass("planner-sortable");
-        th.onclick = (evt) => {
-          evt.stopPropagation();
-          const clickedKey = col.sortKey as SortKey;
-
-          if (evt.shiftKey) {
-            // Multi-column sort: shift+click adds/reorders secondary keys
-            if (this.currentFilters.sortKey === clickedKey) {
-              // Toggle primary direction
-              this.currentFilters.sortDirection =
-                this.currentFilters.sortDirection === "asc" ? "desc" : "asc";
-            } else {
-              const idx = this.secondarySortKeys.indexOf(clickedKey);
-              if (idx === -1) {
-                this.secondarySortKeys.push(clickedKey);
-              } else {
-                this.secondarySortKeys.splice(idx, 1);
-                this.secondarySortKeys.push(clickedKey);
-              }
-            }
-          } else {
-            // Normal sort: set primary, clear secondary
-            if (this.currentFilters.sortKey === clickedKey) {
-              this.currentFilters.sortDirection =
-                this.currentFilters.sortDirection === "asc" ? "desc" : "asc";
-            } else {
-              this.currentFilters.sortKey = clickedKey;
-              this.currentFilters.sortDirection = "asc";
-            }
-            this.secondarySortKeys = [];
-          }
-
-          this.saveGridViewSettings();
-          this.render();
-        };
-      }
 
       // Column resizing + double-click auto-fit
-      this.attachColumnResizer(th, col.key, table, colIndex);
+      this.attachColumnResizer(th, col.key, table, visibleIndex);
+      visibleIndex++;
     });
-
-    this.updateSortIndicators(headerRow, columns);
 
     // -------------------------------------------------------
     // Generate Planner-style numbering (1, 2, 3, ...)
@@ -473,6 +389,104 @@ export class GridView extends ItemView {
 
     visibleRows.forEach((r, i) =>
       this.renderTaskRow(table, r.task, r.isChild, r.hasChildren, i)
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Re-render only table body (for search filtering)
+  // ---------------------------------------------------------------------------
+
+  private renderTableBody() {
+    if (!this.tableElement) {
+      // Fallback to full render if table doesn't exist
+      this.render();
+      return;
+    }
+
+    const pluginAny = this.plugin as any;
+    const settings = pluginAny.settings || {};
+
+    // -----------------------------------------------------------------------
+    // Build visible hierarchy (with filters)
+    // -----------------------------------------------------------------------
+    const all = this.taskStore.getAll();
+    const matchesFilter = new Map<string, boolean>();
+    const f = this.currentFilters;
+
+    for (const t of all) {
+      let match = true;
+
+      if (f.status !== "All" && t.status !== f.status) match = false;
+      const defaultPriority = settings.availablePriorities?.[0]?.name || "Medium";
+      if (f.priority !== "All" && (t.priority || defaultPriority) !== f.priority)
+        match = false;
+      if (f.search.trim() !== "" && !t.title.toLowerCase().includes(f.search))
+        match = false;
+
+      matchesFilter.set(t.id, match);
+    }
+
+    // Roots: keep manual order only
+    const roots = all.filter((t) => !t.parentId);
+
+    const visibleRows: VisibleRow[] = [];
+
+    for (const root of roots) {
+      const children = all.filter((t) => t.parentId === root.id);
+      const rootMatches = matchesFilter.get(root.id) ?? true;
+      const matchingChildren = children.filter(
+        (c) => matchesFilter.get(c.id) ?? true
+      );
+
+      const hasChildren = children.length > 0;
+
+      if (!rootMatches && matchingChildren.length === 0) continue;
+
+      visibleRows.push({
+        task: root,
+        isChild: false,
+        hasChildren,
+      });
+
+      if (!root.collapsed) {
+        const toRender = rootMatches ? children : matchingChildren;
+
+        for (const child of toRender) {
+          visibleRows.push({
+            task: child,
+            isChild: true,
+            hasChildren: false,
+          });
+        }
+      }
+    }
+
+    this.visibleRows = visibleRows;
+
+    // -------------------------------------------------------
+    // Generate Planner-style numbering
+    // -------------------------------------------------------
+    const numberingMap = new Map<string, number>();
+    let counter = 1;
+
+    for (const row of visibleRows) {
+      numberingMap.set(row.task.id, counter++);
+    }
+
+    this.numberingMap = numberingMap;
+
+    // Remove all existing rows except the header
+    const rows = Array.from(this.tableElement.querySelectorAll('tr'));
+    rows.forEach((row, index) => {
+      // Keep the first row (header)
+      if (index > 0) {
+        row.remove();
+      }
+    });
+
+    // Add new rows
+    visibleRows.forEach((r, i) =>
+      this.renderTaskRow(this.tableElement!, r.task, r.isChild, r.hasChildren, i)
     );
   }
 
@@ -505,264 +519,360 @@ export class GridView extends ItemView {
     // ---------------------------------------------------------------------
     // Drag handle cell — FIRST column
     // ---------------------------------------------------------------------
-    const dragCell = row.createEl("td", { cls: "planner-drag-cell" });
+    if (this.isColumnVisible("drag")) {
+      const dragCell = row.createEl("td", { cls: "planner-drag-cell" });
 
-    const dragHandle = dragCell.createSpan({
-      cls: "planner-drag-handle",
-      text: "⋮⋮",
-    });
+      const dragHandle = dragCell.createSpan({
+        cls: "planner-drag-handle",
+        text: "⋮⋮",
+      });
 
-    dragHandle.onpointerdown = (evt: PointerEvent) => {
-      evt.preventDefault();
-      evt.stopPropagation();
+      dragHandle.onpointerdown = (evt: PointerEvent) => {
+        evt.preventDefault();
+        evt.stopPropagation();
 
-      const rowRect = row.getBoundingClientRect();
+        const rowRect = row.getBoundingClientRect();
 
-      // Create ghost row
-      const ghost = document.createElement("div");
-      ghost.className = "planner-row-ghost";
-      ghost.style.position = "fixed";
-      ghost.style.left = `${rowRect.left}px`;
-      ghost.style.top = `${rowRect.top}px`;
-      ghost.style.width = `${rowRect.width}px`;
-      ghost.style.pointerEvents = "none";
-      ghost.style.zIndex = "9998";
-      ghost.style.opacity = "0.9";
-      ghost.style.background =
-        getComputedStyle(row).backgroundColor || "var(--background-primary)";
-      ghost.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.25)";
+        // Create ghost row
+        const ghost = document.createElement("div");
+        ghost.className = "planner-row-ghost";
+        ghost.style.position = "fixed";
+        ghost.style.left = `${rowRect.left}px`;
+        ghost.style.top = `${rowRect.top}px`;
+        ghost.style.width = `${rowRect.width}px`;
+        ghost.style.pointerEvents = "none";
+        ghost.style.zIndex = "9998";
+        ghost.style.opacity = "0.9";
+        ghost.style.background =
+          getComputedStyle(row).backgroundColor || "var(--background-primary)";
+        ghost.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.25)";
 
-      const inner = row.cloneNode(true) as HTMLElement;
-      inner.classList.remove("planner-row-dragging");
-      ghost.appendChild(inner);
+        const inner = row.cloneNode(true) as HTMLElement;
+        inner.classList.remove("planner-row-dragging");
+        ghost.appendChild(inner);
 
-      // Create drop indicator line
-      const indicator = document.createElement("div");
-      indicator.className = "planner-drop-indicator";
-      indicator.style.position = "fixed";
-      indicator.style.height = "2px";
-      indicator.style.backgroundColor = "var(--interactive-accent)";
-      indicator.style.pointerEvents = "none";
-      indicator.style.zIndex = "9999";
-      indicator.style.left = `${rowRect.left}px`;
-      indicator.style.width = `${rowRect.width}px`;
-      indicator.style.display = "none";
+        // Create drop indicator line
+        const indicator = document.createElement("div");
+        indicator.className = "planner-drop-indicator";
+        indicator.style.position = "fixed";
+        indicator.style.height = "2px";
+        indicator.style.backgroundColor = "var(--interactive-accent)";
+        indicator.style.pointerEvents = "none";
+        indicator.style.zIndex = "9999";
+        indicator.style.left = `${rowRect.left}px`;
+        indicator.style.width = `${rowRect.width}px`;
+        indicator.style.display = "none";
 
-      document.body.appendChild(ghost);
-      document.body.appendChild(indicator);
+        document.body.appendChild(ghost);
+        document.body.appendChild(indicator);
 
-      this.currentDragId = task.id;
-      this.dragTargetTaskId = null;
-      this.dragInsertAfter = false;
-
-      row.classList.add("planner-row-dragging");
-      document.body.style.userSelect = "none";
-      (document.body.style as any).webkitUserSelect = "none";
-      document.body.style.cursor = "grabbing";
-
-      const offsetY = evt.clientY - rowRect.top;
-
-      const onMove = (moveEvt: PointerEvent) => {
-        moveEvt.preventDefault();
-
-        const y = moveEvt.clientY - offsetY;
-        ghost.style.top = `${y}px`;
-
-        const targetEl = document.elementFromPoint(
-          moveEvt.clientX,
-          moveEvt.clientY
-        ) as HTMLElement | null;
-
-        const targetRow = targetEl?.closest("tr.planner-row") as
-          | HTMLTableRowElement
-          | null;
-
-        if (!targetRow || !targetRow.dataset.taskId) {
-          indicator.style.display = "none";
-          this.dragTargetTaskId = null;
-          return;
-        }
-
-        const targetRect = targetRow.getBoundingClientRect();
-        const before =
-          moveEvt.clientY < targetRect.top + targetRect.height / 2;
-
-        indicator.style.display = "block";
-        indicator.style.left = `${targetRect.left}px`;
-        indicator.style.width = `${targetRect.width}px`;
-        indicator.style.top = before
-          ? `${targetRect.top}px`
-          : `${targetRect.bottom}px`;
-
-        this.dragTargetTaskId = targetRow.dataset.taskId;
-        this.dragInsertAfter = !before;
-      };
-
-      const onUp = async (upEvt: PointerEvent) => {
-        upEvt.preventDefault();
-
-        window.removeEventListener("pointermove", onMove, true);
-        window.removeEventListener("pointerup", onUp, true);
-
-        ghost.remove();
-        indicator.remove();
-
-        row.classList.remove("planner-row-dragging");
-        document.body.style.userSelect = "";
-        (document.body.style as any).webkitUserSelect = "";
-        document.body.style.cursor = "";
-
-        const dragId = this.currentDragId;
-        const targetId = this.dragTargetTaskId;
-        const insertAfter = this.dragInsertAfter;
-
-        this.currentDragId = null;
+        this.currentDragId = task.id;
         this.dragTargetTaskId = null;
         this.dragInsertAfter = false;
 
-        if (dragId && targetId && dragId !== targetId) {
-          await this.handleDrop(dragId, targetId, insertAfter);
-        }
-      };
+        row.classList.add("planner-row-dragging");
+        document.body.style.userSelect = "none";
+        (document.body.style as any).webkitUserSelect = "none";
+        document.body.style.cursor = "grabbing";
 
-      window.addEventListener("pointermove", onMove, true);
-      window.addEventListener("pointerup", onUp, true);
-    };
+        const offsetY = evt.clientY - rowRect.top;
+
+        const onMove = (moveEvt: PointerEvent) => {
+          moveEvt.preventDefault();
+
+          const y = moveEvt.clientY - offsetY;
+          ghost.style.top = `${y}px`;
+
+          const targetEl = document.elementFromPoint(
+            moveEvt.clientX,
+            moveEvt.clientY
+          ) as HTMLElement | null;
+
+          const targetRow = targetEl?.closest("tr.planner-row") as
+            | HTMLTableRowElement
+            | null;
+
+          if (!targetRow || !targetRow.dataset.taskId) {
+            indicator.style.display = "none";
+            this.dragTargetTaskId = null;
+            return;
+          }
+
+          const targetRect = targetRow.getBoundingClientRect();
+          const before =
+            moveEvt.clientY < targetRect.top + targetRect.height / 2;
+
+          indicator.style.display = "block";
+          indicator.style.left = `${targetRect.left}px`;
+          indicator.style.width = `${targetRect.width}px`;
+          indicator.style.top = before
+            ? `${targetRect.top}px`
+            : `${targetRect.bottom}px`;
+
+          this.dragTargetTaskId = targetRow.dataset.taskId;
+          this.dragInsertAfter = !before;
+        };
+
+        const onUp = async (upEvt: PointerEvent) => {
+          upEvt.preventDefault();
+
+          window.removeEventListener("pointermove", onMove, true);
+          window.removeEventListener("pointerup", onUp, true);
+
+          ghost.remove();
+          indicator.remove();
+
+          row.classList.remove("planner-row-dragging");
+          document.body.style.userSelect = "";
+          (document.body.style as any).webkitUserSelect = "";
+          document.body.style.cursor = "";
+
+          const dragId = this.currentDragId;
+          const targetId = this.dragTargetTaskId;
+          const insertAfter = this.dragInsertAfter;
+
+          this.currentDragId = null;
+          this.dragTargetTaskId = null;
+          this.dragInsertAfter = false;
+
+          if (dragId && targetId && dragId !== targetId) {
+            await this.handleDrop(dragId, targetId, insertAfter);
+          }
+        };
+
+        window.addEventListener("pointermove", onMove, true);
+        window.addEventListener("pointerup", onUp, true);
+      };
+    }
 
     // Number cell (Planner style)
-    const numberCell = row.createEl("td", { cls: "planner-num-cell" });
-    numberCell.setText(String(this.numberingMap.get(task.id) || ""));
+    if (this.isColumnVisible("number")) {
+      const numberCell = row.createEl("td", { cls: "planner-num-cell" });
+      numberCell.setText(String(this.numberingMap.get(task.id) || ""));
+    }
 
     // ---------------------------------------------------------------------
     // Checkbox cell
     // ---------------------------------------------------------------------
-    const completeCell = row.createEl("td", { cls: "planner-complete-cell" });
+    if (this.isColumnVisible("check")) {
+      const completeCell = row.createEl("td", { cls: "planner-complete-cell" });
 
-    const checkbox = completeCell.createEl("input", {
-      attr: { type: "checkbox" },
-    });
-    checkbox.checked = !!task.completed;
-
-    checkbox.onchange = async (ev) => {
-      ev.stopPropagation();
-      const isDone = checkbox.checked;
-      await this.taskStore.updateTask(task.id, {
-        completed: isDone,
-        status: isDone ? "Completed" : "Not Started",
+      const checkbox = completeCell.createEl("input", {
+        attr: { type: "checkbox" },
       });
-      this.render();
-    };
+      checkbox.checked = !!task.completed;
+
+      checkbox.onchange = async (ev) => {
+        ev.stopPropagation();
+        const isDone = checkbox.checked;
+        await this.taskStore.updateTask(task.id, {
+          completed: isDone,
+          status: isDone ? "Completed" : "Not Started",
+        });
+        this.render();
+      };
+    }
 
     // ---------------------------------------------------------------------
     // Title cell: caret + title + menu
     // ---------------------------------------------------------------------
-    const titleCell = row.createEl("td", {
-      cls: isChild ? "planner-title-cell subtask" : "planner-title-cell",
-    });
-
-    // Caret for parent tasks
-    if (!isChild && hasChildren) {
-      const caret = titleCell.createSpan({
-        cls: "planner-expand-toggle",
-        text: task.collapsed ? "▸" : "▾",
+    if (this.isColumnVisible("title")) {
+      const titleCell = row.createEl("td", {
+        cls: isChild ? "planner-title-cell subtask" : "planner-title-cell",
       });
-      caret.onclick = async (evt) => {
-        evt.stopPropagation();
-        await this.taskStore.toggleCollapsed(task.id);
-        this.render();
-      };
-    } else {
-      titleCell.createSpan({
-        cls: "planner-expand-spacer",
-        text: "",
-      });
-    }
 
-    // Title text (editable)
-    const titleInner = titleCell.createDiv({ cls: "planner-title-inner" });
-    const titleSpan = this.createEditableTextSpan(
-      titleInner,
-      task.title,
-      async (value) => {
-        await this.taskStore.updateTask(task.id, { title: value });
-        this.render();
+      // Caret for parent tasks
+      if (!isChild && hasChildren) {
+        const caret = titleCell.createSpan({
+          cls: "planner-expand-toggle",
+          text: task.collapsed ? "▸" : "▾",
+        });
+        caret.onclick = async (evt) => {
+          evt.stopPropagation();
+          await this.taskStore.toggleCollapsed(task.id);
+          this.render();
+        };
+      } else {
+        titleCell.createSpan({
+          cls: "planner-expand-spacer",
+          text: "",
+        });
       }
-    );
 
-    // Bold only if this is a parent that has children
-    if (!isChild && hasChildren) {
-      titleSpan.classList.add("planner-parent-bold");
+      // Title text (editable)
+      const titleInner = titleCell.createDiv({ cls: "planner-title-inner" });
+      const titleSpan = this.createEditableTextSpan(
+        titleInner,
+        task.title,
+        async (value) => {
+          await this.taskStore.updateTask(task.id, { title: value });
+          this.render();
+        }
+      );
+
+      // Bold only if this is a parent that has children
+      if (!isChild && hasChildren) {
+        titleSpan.classList.add("planner-parent-bold");
+      }
+      if (task.completed) {
+        titleSpan.classList.add("planner-task-completed");
+      }
+
+      // 3-dots menu (hover-visible via CSS)
+      const titleMenuBtn = titleCell.createEl("button", {
+        cls: "planner-task-menu",
+        text: "⋯",
+      });
+
+      titleMenuBtn.onclick = (evt) => {
+        evt.stopPropagation();
+        this.buildInlineMenu(task, evt);
+      };
     }
-    if (task.completed) {
-      titleSpan.classList.add("planner-task-completed");
-    }
-
-    // 3-dots menu (hover-visible via CSS)
-    const titleMenuBtn = titleCell.createEl("button", {
-      cls: "planner-task-menu",
-      text: "⋯",
-    });
-
-    titleMenuBtn.onclick = (evt) => {
-      evt.stopPropagation();
-      this.buildInlineMenu(task, evt);
-    };
 
     // ---------------------------------------------------------------------
     // Status
     // ---------------------------------------------------------------------
-    const statusCell = row.createEl("td");
-    this.createEditableSelectCell(
-      statusCell,
-      task.status,
-      STATUSES,
-      async (value) => {
-        await this.taskStore.updateTask(task.id, { status: value });
-        this.render();
-      },
-      (val, target) => this.createPill("status", val, target)
-    );
+    if (this.isColumnVisible("status")) {
+      const statusCell = row.createEl("td");
+      const pluginAny = this.plugin as any;
+      const settings = pluginAny.settings || {};
+      const availableStatuses = settings.availableStatuses || [];
+      const statusNames = availableStatuses.map((s: any) => s.name);
+
+      this.createEditableSelectCell(
+        statusCell,
+        task.status,
+        statusNames,
+        async (value) => {
+          // Update directly via TaskStore for GridView
+          await this.taskStore.updateTask(task.id, { status: value });
+
+          // Re-render using the updated in-memory list from TaskStore
+          this.render();
+        },
+        (val, target) => this.createStatusPill(val, target)
+      );
+    }
 
     // ---------------------------------------------------------------------
     // Priority
     // ---------------------------------------------------------------------
-    const priorityCell = row.createEl("td");
-    this.createEditableSelectCell(
-      priorityCell,
-      task.priority || "Medium",
-      PRIORITIES,
-      async (value) => {
-        await this.taskStore.updateTask(task.id, { priority: value });
-        this.render();
-      },
-      (val, target) => this.createPill("priority", val, target)
-    );
+    if (this.isColumnVisible("priority")) {
+      const priorityCell = row.createEl("td");
+      const pluginAny = this.plugin as any;
+      const settings = pluginAny.settings || {};
+      const availablePriorities = settings.availablePriorities || [];
+      const priorityNames = availablePriorities.map((p: any) => p.name);
+      const defaultPriority = availablePriorities[0]?.name || "Medium";
+
+      this.createEditableSelectCell(
+        priorityCell,
+        task.priority || defaultPriority,
+        priorityNames,
+        async (value) => {
+          await this.taskStore.updateTask(task.id, { priority: value });
+          this.render();
+        },
+        (val, target) => this.createPriorityPill(val, target)
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Tags
+    // ---------------------------------------------------------------------
+    if (this.isColumnVisible("tags")) {
+      const tagsCell = row.createEl("td", { cls: "planner-tags-cell" });
+      this.renderTaskTags(tagsCell, task);
+    }
 
     // ---------------------------------------------------------------------
     // Start Date
     // ---------------------------------------------------------------------
-    const startCell = row.createEl("td");
-    this.createEditableDateOnlyCell(
-      startCell,
-      task.startDate || "",
-      async (value) => {
-        await this.taskStore.updateTask(task.id, { startDate: value });
-        this.render();
+    if (this.isColumnVisible("start")) {
+      const startCell = row.createEl("td");
+      this.createEditableDateOnlyCell(
+        startCell,
+        task.startDate || "",
+        async (value) => {
+          await this.taskStore.updateTask(task.id, { startDate: value });
+          this.render();
+        }
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Dependencies
+    // ---------------------------------------------------------------------
+    if (this.isColumnVisible("dependencies")) {
+      const depsCell = row.createEl("td", { cls: "planner-deps-cell" });
+      const dependencies = task.dependencies || [];
+
+      if (dependencies.length > 0) {
+        const violations = this.checkDependencyViolations(task);
+        const hasViolations = violations.length > 0;
+
+        const indicator = depsCell.createEl("span", {
+          cls: hasViolations
+            ? "planner-dependency-indicator planner-dependency-warning"
+            : "planner-dependency-indicator",
+          text: hasViolations ? "⚠️" : "🔗",
+          attr: {
+            title: hasViolations
+              ? `${violations.length} violation(s):\n${violations.join("\n")}`
+              : `${dependencies.length} dependency/ies`
+          }
+        });
+
+        indicator.onclick = () => {
+          // Open task detail panel
+          (this.plugin as any).openTaskDetail(task);
+        };
       }
-    );
+    }
+
+    // ---------------------------------------------------------------------
+    // Dependents (tasks that depend on this task)
+    // ---------------------------------------------------------------------
+    if (this.isColumnVisible("dependents")) {
+      const dependentsCell = row.createEl("td", { cls: "planner-dependents-cell" });
+      
+      // Find all tasks that have this task as a predecessor
+      const allTasks = this.taskStore.getAll();
+      const dependentTasks = allTasks.filter(t => 
+        t.dependencies?.some(dep => dep.predecessorId === task.id)
+      );
+
+      if (dependentTasks.length > 0) {
+        const indicator = dependentsCell.createEl("span", {
+          cls: "planner-dependent-indicator",
+          text: "🔒",
+          attr: {
+            title: `Blocking ${dependentTasks.length} task(s):\n${dependentTasks.map(t => t.title).join("\n")}`
+          }
+        });
+
+        indicator.onclick = () => {
+          // Open task detail panel
+          (this.plugin as any).openTaskDetail(task);
+        };
+      }
+    }
 
     // ---------------------------------------------------------------------
     // Due Date
     // ---------------------------------------------------------------------
-    const dueCell = row.createEl("td");
-    this.createEditableDateOnlyCell(
-      dueCell,
-      task.dueDate || "",
-      async (value) => {
-        await this.taskStore.updateTask(task.id, { dueDate: value });
-        this.render();
-      }
-    );
+    if (this.isColumnVisible("due")) {
+      const dueCell = row.createEl("td");
+      this.createEditableDateOnlyCell(
+        dueCell,
+        task.dueDate || "",
+        async (value) => {
+          await this.taskStore.updateTask(task.id, { dueDate: value });
+          this.render();
+        }
+      );
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -1083,15 +1193,107 @@ export class GridView extends ItemView {
     return pill;
   }
 
+  private createStatusPill(value: string, container: HTMLElement) {
+    const pill = container.createEl("span", {
+      cls: "status-pill",
+      text: value
+    });
+
+    // Find the status color
+    const pluginAny = this.plugin as any;
+    const settings = pluginAny.settings || {};
+    const availableStatuses = settings.availableStatuses || [];
+    const status = availableStatuses.find((s: any) => s.name === value);
+
+    if (status) {
+      pill.style.backgroundColor = status.color;
+    }
+
+    return pill;
+  }
+
+  private createPriorityPill(value: string, container: HTMLElement) {
+    const pill = container.createEl("span", {
+      cls: "priority-pill",
+      text: value
+    });
+
+    // Find the priority color
+    const pluginAny = this.plugin as any;
+    const settings = pluginAny.settings || {};
+    const availablePriorities = settings.availablePriorities || [];
+    const priority = availablePriorities.find((p: any) => p.name === value);
+
+    if (priority) {
+      pill.style.backgroundColor = priority.color;
+    }
+
+    return pill;
+  }
+
   // ---------------------------------------------------------------------------
-  // Inline editing helpers
+  // Dependency validation helpers
   // ---------------------------------------------------------------------------
+
+  private checkDependencyViolations(task: PlannerTask): string[] {
+    const violations: string[] = [];
+    if (!task.dependencies || task.dependencies.length === 0) return violations;
+
+    const allTasks = this.taskStore.getAll();
+
+    for (const dep of task.dependencies) {
+      const predecessor = allTasks.find(t => t.id === dep.predecessorId);
+      if (!predecessor) {
+        violations.push(`Predecessor task not found`);
+        continue;
+      }
+
+      const taskStartDate = task.startDate ? new Date(task.startDate) : null;
+      const taskDueDate = task.dueDate ? new Date(task.dueDate) : null;
+      const predStartDate = predecessor.startDate ? new Date(predecessor.startDate) : null;
+      const predDueDate = predecessor.dueDate ? new Date(predecessor.dueDate) : null;
+
+      switch (dep.type) {
+        case "FS": // Finish-to-Start: Task can't start until predecessor finishes
+          if (taskStartDate && predDueDate && taskStartDate < predDueDate) {
+            violations.push(`FS: Cannot start before "${predecessor.title}" finishes`);
+          }
+          if (!predecessor.completed && task.completed) {
+            violations.push(`FS: "${predecessor.title}" must be completed first`);
+          }
+          break;
+
+        case "SS": // Start-to-Start: Task can't start until predecessor starts
+          if (taskStartDate && predStartDate && taskStartDate < predStartDate) {
+            violations.push(`SS: Cannot start before "${predecessor.title}" starts`);
+          }
+          break;
+
+        case "FF": // Finish-to-Finish: Task can't finish until predecessor finishes
+          if (taskDueDate && predDueDate && taskDueDate < predDueDate) {
+            violations.push(`FF: Cannot finish before "${predecessor.title}" finishes`);
+          }
+          if (task.completed && !predecessor.completed) {
+            violations.push(`FF: "${predecessor.title}" must be completed first`);
+          }
+          break;
+
+        case "SF": // Start-to-Finish: Task can't finish until predecessor starts (rare)
+          if (taskDueDate && predStartDate && taskDueDate < predStartDate) {
+            violations.push(`SF: Cannot finish before "${predecessor.title}" starts`);
+          }
+          break;
+      }
+    }
+
+    return violations;
+  }
 
   private createEditableTextSpan(
     container: HTMLElement,
     value: string,
     onSave: (value: string) => Promise<void> | void
-  ): HTMLSpanElement {
+  ): HTMLElement {
     const span = container.createEl("span", { text: value });
     span.classList.add("planner-editable");
 
@@ -1099,7 +1301,6 @@ export class GridView extends ItemView {
       const input = container.createEl("input", {
         attr: { type: "text" },
       });
-
       input.value = value;
       input.classList.add("planner-input");
       span.replaceWith(input);
@@ -1164,9 +1365,10 @@ export class GridView extends ItemView {
       select.focus();
 
       const save = async () => {
-        current = select.value as T;
-        await onSave(current);
-        setupDisplay();
+        const newValue = select.value as T;
+        await onSave(newValue);
+        // Don't call setupDisplay() here - let onSave (which calls this.render()) 
+        // completely rebuild the grid with fresh data from the store
       };
 
       select.onblur = () => void save();
@@ -1291,6 +1493,40 @@ export class GridView extends ItemView {
         }
       };
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Column visibility
+  // ---------------------------------------------------------------------------
+
+  private getColumnDefinitions() {
+    return [
+      { key: "drag", label: "", hideable: false },
+      { key: "number", label: "#", hideable: false },
+      { key: "check", label: "", hideable: false },
+      { key: "title", label: "Title", hideable: true },
+      { key: "status", label: "Status", hideable: true },
+      { key: "priority", label: "Priority", hideable: true },
+      { key: "tags", label: "Tags", hideable: true },
+      { key: "dependencies", label: "Deps", hideable: true },
+      { key: "dependents", label: "Blocks", hideable: true },
+      { key: "start", label: "Start Date", hideable: true },
+      { key: "due", label: "Due Date", hideable: true },
+    ];
+  }
+
+  private isColumnVisible(key: string): boolean {
+    if (NON_HIDEABLE_COLUMNS.has(key)) return true;
+    const stored = this.columnVisibility[key];
+    return stored !== false;
+  }
+
+  private toggleColumnVisibility(key: string) {
+    if (NON_HIDEABLE_COLUMNS.has(key)) return;
+    const current = this.columnVisibility[key];
+    this.columnVisibility[key] = current === false ? true : false;
+    this.saveGridViewSettings();
+    this.render();
   }
 
   // ---------------------------------------------------------------------------
@@ -1423,9 +1659,21 @@ export class GridView extends ItemView {
       this.columnWidths = { ...settings.gridViewColumnWidths };
     }
 
-    if (settings.gridViewSortKey) {
-      this.currentFilters.sortKey = settings.gridViewSortKey as SortKey;
+    if (settings.gridViewVisibleColumns) {
+      this.columnVisibility = { ...settings.gridViewVisibleColumns };
     }
+
+    // Ensure non-hideable columns stay visible and defaults exist for new columns
+    this.getColumnDefinitions().forEach((col) => {
+      if (!col.hideable || NON_HIDEABLE_COLUMNS.has(col.key)) {
+        this.columnVisibility[col.key] = true;
+      } else if (this.columnVisibility[col.key] === undefined) {
+        this.columnVisibility[col.key] = true;
+      }
+    });
+
+    // Always use Manual sort for drag and drop - ignore saved sortKey
+    this.currentFilters.sortKey = "Manual";
 
     if (settings.gridViewSortDirection) {
       this.currentFilters.sortDirection =
@@ -1440,9 +1688,98 @@ export class GridView extends ItemView {
     settings.gridViewColumnWidths = { ...this.columnWidths };
     settings.gridViewSortKey = this.currentFilters.sortKey;
     settings.gridViewSortDirection = this.currentFilters.sortDirection;
+    settings.gridViewVisibleColumns = { ...this.columnVisibility };
 
     if (typeof pluginAny.saveSettings === "function") {
       void pluginAny.saveSettings();
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tags rendering
+  // ---------------------------------------------------------------------------
+
+  private renderTaskTags(cell: HTMLElement, task: PlannerTask) {
+    const pluginAny = this.plugin as any;
+    const settings = pluginAny.settings || {};
+    const availableTags = settings.availableTags || [];
+    const taskTags = task.tags || [];
+
+    // Make cell clickable to open tag selector
+    cell.classList.add("planner-tags-cell-interactive");
+    cell.style.cursor = "pointer";
+
+    const tagsContainer = cell.createDiv("planner-tags-badges");
+
+    // Display existing tags with remove buttons
+    if (taskTags.length > 0) {
+      taskTags.forEach((tagId: string) => {
+        const tag = availableTags.find((t: any) => t.id === tagId);
+        if (tag) {
+          const badge = tagsContainer.createDiv({
+            cls: "planner-tag-badge-small planner-tag-badge-grid",
+            text: tag.name
+          });
+          badge.style.backgroundColor = tag.color;
+
+          // Add remove button
+          const removeBtn = badge.createEl("span", {
+            cls: "planner-tag-remove-grid",
+            text: "×"
+          });
+          removeBtn.onclick = async (e) => {
+            e.stopPropagation();
+            const newTags = taskTags.filter(id => id !== tagId);
+            await this.taskStore.updateTask(task.id, { tags: newTags });
+            this.render();
+          };
+        }
+      });
+    } else {
+      tagsContainer.createEl("span", {
+        text: "—",
+        cls: "planner-empty-cell"
+      });
+    }
+
+    // Click on cell to add tags
+    cell.onclick = (e) => {
+      e.stopPropagation();
+
+      // Find unassigned tags
+      const unassignedTags = availableTags.filter((t: any) =>
+        !taskTags.includes(t.id)
+      );
+
+      if (unassignedTags.length === 0) {
+        return; // All tags already assigned
+      }
+
+      // Create menu
+      const menu = new Menu();
+
+      unassignedTags.forEach((tag: any) => {
+        menu.addItem((item) => {
+          const itemEl = item.setTitle(tag.name);
+
+          // Add color indicator to menu item
+          const iconEl = (itemEl as any).iconEl;
+          if (iconEl) {
+            iconEl.style.backgroundColor = tag.color;
+            iconEl.style.borderRadius = "3px";
+            iconEl.style.width = "12px";
+            iconEl.style.height = "12px";
+          }
+
+          item.onClick(async () => {
+            const newTags = [...taskTags, tag.id];
+            await this.taskStore.updateTask(task.id, { tags: newTags });
+            this.render();
+          });
+        });
+      });
+
+      menu.showAtMouseEvent(e as MouseEvent);
+    };
   }
 }
