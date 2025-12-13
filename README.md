@@ -34,6 +34,7 @@ Project roadmap. All version goals are subject to change.
 
 - ~~Add **Complete** checkbox to top of panel - v0.6.0~~
 - ~~Drag and drop checklists to task details - v0.5.0~~
+- ~~Task dependencies - v0.5.0~~
 
 ### Board View
 
@@ -58,5 +59,3 @@ Project roadmap. All version goals are subject to change.
 ## Documentation
 
 **Read the documentation:** [Obsidian Project Planner Docs](https://reactivewebstudio.ca/docs/obsidian-project-planner)
-
-## Roadmap
