@@ -4,7 +4,9 @@
 ![Build](https://img.shields.io/github/actions/workflow/status/reactivewebstudio/obsidian-project-planner/build.yml?branch=main)
 ![License](https://img.shields.io/github/license/YOUR_GITHUB_USERNAME/obsidian-project-planner?color=green)
 
-A project planner for [Obsidian](https://obidian.md) based on **Microsoft Premium Planner**.
+A full-featured project planner for [Obsidian](https://obidian.md) based on [Microsoft Premium Planner](https://support.microsoft.com/en-us/planner).
+
+---
 
 ## Features
 

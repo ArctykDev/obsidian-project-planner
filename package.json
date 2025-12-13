@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "A Microsoft Planner–style project management plugin for Obsidian with grid, board, and timeline views.",
   "main": "main.js",
+  "type": "module",
   "scripts": {
     "dev": "rollup -c -w",
     "build": "rollup -c",
