@@ -1,8 +1,8 @@
 # Obsidian Project Planner
 
-![Release](https://img.shields.io/github/v/release/reactivewebstudio/obsidian-project-planner?color=green)
-![Build](https://img.shields.io/github/actions/workflow/status/reactivewebstudio/obsidian-project-planner/build.yml?branch=main)
-![License](https://img.shields.io/github/license/reactivewebstudio/obsidian-project-planner?color=green)
+![Release](https://img.shields.io/github/v/release/reactivewebstudio/obsidian-project-planner?color=blue)
+![Build](https://img.shields.io/github/actions/workflow/status/reactivewebstudio/obsidian-project-planner/build.yml?branch=dev)
+![License](https://img.shields.io/badge/license-MIT-green)
 
 A full-featured project planner for [Obsidian](https://obidian.md) based on [Microsoft Premium Planner](https://support.microsoft.com/en-us/planner).
 
