@@ -1,14 +1,10 @@
 # Obsidian Project Planner
 
-![Release](https://img.shields.io/badge/release-v0.1.0-green)
-![Build](https://img.shields.io/badge/build-passing-green)
-![License](https://img.shields.io/badge/license-MIT-green)
+![Release](https://img.shields.io/github/v/release/YOUR_GITHUB_USERNAME/obsidian-project-planner?color=green)
+![Build](https://img.shields.io/github/actions/workflow/status/reactivewebstudio/obsidian-project-planner/build.yml?branch=main)
+![License](https://img.shields.io/github/license/YOUR_GITHUB_USERNAME/obsidian-project-planner?color=green)
 
-A project planner for **ObsidianMD** based on **Microsoft Premium Planner**.
-
-## Current Version
-
-- Version 0.4.0
+A project planner for [Obsidian](https://obidian.md) based on **Microsoft Premium Planner**.
 
 ## Features
 
