@@ -1,0 +1,58 @@
+name: Code Quality
+
+on:
+    push:
+        branches: [main, dev]
+    pull_request:
+        branches: [main, dev]
+
+jobs:
+    lint:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20.x"
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Check TypeScript compilation
+              run: npx tsc --noEmit
+
+            - name: Check for build warnings
+              run: npm run build 2>&1 | tee build.log && ! grep -i "error" build.log
+
+    size-check:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20.x"
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build plugin
+              run: npm run build
+
+            - name: Check bundle size
+              run: |
+                  SIZE=$(stat -f%z main.js 2>/dev/null || stat -c%s main.js)
+                  echo "Bundle size: $SIZE bytes"
+                  if [ $SIZE -gt 2000000 ]; then
+                    echo "Warning: Bundle size exceeds 2MB"
+                    exit 1
+                  fi

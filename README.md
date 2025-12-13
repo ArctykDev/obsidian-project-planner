@@ -1,5 +1,9 @@
 # Obsidian Project Planner
 
+![Release](https://img.shields.io/badge/release-v0.1.0-green)
+![Build](https://img.shields.io/badge/build-passing-green)
+![License](https://img.shields.io/badge/license-MIT-green)
+
 A project planner for **ObsidianMD** based on **Microsoft Premium Planner**.
 
 ## Current Version

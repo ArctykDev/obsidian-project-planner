@@ -832,34 +832,6 @@ export class GridView extends ItemView {
     }
 
     // ---------------------------------------------------------------------
-    // Dependents (tasks that depend on this task)
-    // ---------------------------------------------------------------------
-    if (this.isColumnVisible("dependents")) {
-      const dependentsCell = row.createEl("td", { cls: "planner-dependents-cell" });
-      
-      // Find all tasks that have this task as a predecessor
-      const allTasks = this.taskStore.getAll();
-      const dependentTasks = allTasks.filter(t => 
-        t.dependencies?.some(dep => dep.predecessorId === task.id)
-      );
-
-      if (dependentTasks.length > 0) {
-        const indicator = dependentsCell.createEl("span", {
-          cls: "planner-dependent-indicator",
-          text: "🔒",
-          attr: {
-            title: `Blocking ${dependentTasks.length} task(s):\n${dependentTasks.map(t => t.title).join("\n")}`
-          }
-        });
-
-        indicator.onclick = () => {
-          // Open task detail panel
-          (this.plugin as any).openTaskDetail(task);
-        };
-      }
-    }
-
-    // ---------------------------------------------------------------------
     // Due Date
     // ---------------------------------------------------------------------
     if (this.isColumnVisible("due")) {
@@ -1509,7 +1481,6 @@ export class GridView extends ItemView {
       { key: "priority", label: "Priority", hideable: true },
       { key: "tags", label: "Tags", hideable: true },
       { key: "dependencies", label: "Deps", hideable: true },
-      { key: "dependents", label: "Blocks", hideable: true },
       { key: "start", label: "Start Date", hideable: true },
       { key: "due", label: "Due Date", hideable: true },
     ];

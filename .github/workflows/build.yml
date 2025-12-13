@@ -1,0 +1,57 @@
+name: Build
+
+on:
+    push:
+        branches: [main, dev]
+    pull_request:
+        branches: [main, dev]
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        strategy:
+            matrix:
+                node-version: [18.x, 20.x]
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ matrix.node-version }}
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build plugin
+              run: npm run build
+
+            - name: Check build artifacts
+              run: |
+                  if [ ! -f main.js ]; then
+                    echo "Error: main.js not generated"
+                    exit 1
+                  fi
+                  if [ ! -f manifest.json ]; then
+                    echo "Error: manifest.json not found"
+                    exit 1
+                  fi
+                  if [ ! -f styles.css ]; then
+                    echo "Error: styles.css not found"
+                    exit 1
+                  fi
+                  echo "All required files present"
+
+            - name: Upload build artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: plugin-build-node-${{ matrix.node-version }}
+                  path: |
+                      main.js
+                      manifest.json
+                      styles.css
+                  retention-days: 7
