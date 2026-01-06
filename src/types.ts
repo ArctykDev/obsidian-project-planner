@@ -31,6 +31,14 @@ export interface TaskDependency {
   type: DependencyType;   // FS = Finish-to-Start, SS = Start-to-Start, FF = Finish-to-Finish, SF = Start-to-Finish
 }
 
+// Task link/attachment definition (similar to Microsoft Planner)
+export interface TaskLink {
+  id: string;
+  title: string;
+  url: string;
+  type: "obsidian" | "external"; // Obsidian internal link or external URL
+}
+
 // Checklist item in the Task Details panel
 export interface PlannerSubtask {
   id: string;
@@ -51,6 +59,7 @@ export interface PlannerTask {
   // Existing fields
   status: string; // status name (not ID)
   priority?: string; // priority name (not ID)
+  bucketId?: string; // Board view bucket assignment (independent of status)
   startDate?: string;
   dueDate?: string;
   description?: string;
@@ -60,6 +69,9 @@ export interface PlannerTask {
 
   // Task dependencies (project management)
   dependencies?: TaskDependency[];
+
+  // Links/Attachments (Microsoft Planner style)
+  links?: TaskLink[];
 
   // Existing checklist in Task Details (NOT the grid children)
   subtasks?: PlannerSubtask[];

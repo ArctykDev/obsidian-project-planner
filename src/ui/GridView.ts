@@ -2,6 +2,7 @@ import { ItemView, WorkspaceLeaf, Menu, setIcon } from "obsidian";
 import type ProjectPlannerPlugin from "../main";
 import type { PlannerTask, TaskStatus } from "../types";
 import { TaskStore } from "../stores/taskStore";
+import { renderPlannerHeader } from "./Header";
 
 export const GRID_VIEW_ICON = "layout-grid";
 
@@ -24,6 +25,7 @@ interface VisibleRow {
 export class GridView extends ItemView {
   private plugin: ProjectPlannerPlugin;
   private taskStore: TaskStore;
+  private unsubscribe: (() => void) | null = null;
 
   private currentFilters = {
     status: "All",
@@ -50,7 +52,7 @@ export class GridView extends ItemView {
   constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
     super(leaf);
     this.plugin = plugin;
-    this.taskStore = new TaskStore(plugin);
+    this.taskStore = plugin.taskStore;
   }
 
   // Allow plugin / detail view to update tasks
@@ -61,12 +63,17 @@ export class GridView extends ItemView {
 
   async onOpen() {
     this.loadGridViewSettings();
-    await this.taskStore.load();
+    await this.taskStore.ensureLoaded();
+    this.unsubscribe = this.taskStore.subscribe(() => this.render());
     this.render();
   }
 
   async onClose() {
     this.containerEl.empty();
+    if (this.unsubscribe) {
+      this.unsubscribe();
+      this.unsubscribe = null;
+    }
   }
 
   getViewType() {
@@ -94,105 +101,39 @@ export class GridView extends ItemView {
     // -----------------------------------------------------------------------
     // Header
     // -----------------------------------------------------------------------
-    const header = wrapper.createDiv("planner-grid-header");
-
-    // -----------------------------------------------------------------------
-    // Project switcher
-    // -----------------------------------------------------------------------
-    const projectContainer = header.createDiv("planner-project-switcher");
-
-    const projectSelect = projectContainer.createEl("select", {
-      cls: "planner-project-select",
-    });
-
     const pluginAny = this.plugin as any;
     const settings = pluginAny.settings || {};
     const projects = (settings.projects as { id: string; name: string }[]) || [];
     let activeProjectId = settings.activeProjectId as string | undefined;
 
-    if (!activeProjectId && projects.length > 0) {
-      activeProjectId = projects[0].id;
-      settings.activeProjectId = activeProjectId;
-      pluginAny.settings = settings;
-      if (typeof pluginAny.saveSettings === "function") {
-        void pluginAny.saveSettings();
-      }
-    }
-
-    if (projects.length === 0) {
-      projectSelect.createEl("option", {
-        text: "No projects",
-      });
-      projectSelect.disabled = true;
-    } else {
-      for (const p of projects) {
-        const opt = projectSelect.createEl("option", {
-          text: p.name,
-          value: p.id,
-        });
-        if (p.id === activeProjectId) {
-          opt.selected = true;
-        }
-      }
-
-      projectSelect.onchange = async () => {
-        const newId = projectSelect.value;
-        settings.activeProjectId = newId;
-        pluginAny.settings = settings;
-        if (typeof pluginAny.saveSettings === "function") {
-          await pluginAny.saveSettings();
-        }
+    const { actionsEl: headerActions } = renderPlannerHeader(wrapper, this.plugin, {
+      active: "grid",
+      onProjectChange: async () => {
         await this.taskStore.load();
         this.render();
-      };
-    }
-
-    const headerActions = header.createDiv("planner-header-actions");
-
-    const addBtn = headerActions.createEl("button", {
-      cls: "planner-add-btn",
-      text: "Add Task",
-    });
-
-    addBtn.onclick = async () => {
-      await this.taskStore.addTask("New Task");
-      this.render();
-    };
-
-    const columnsBtn = headerActions.createEl("button", {
-      cls: "planner-columns-btn",
-      title: "Show / hide columns",
-      text: "Columns",
-    });
-
-    columnsBtn.onclick = (evt) => {
-      const menu = new Menu();
-
-      this.getColumnDefinitions()
-        .filter((c) => c.hideable)
-        .forEach((col) => {
-          const visible = this.isColumnVisible(col.key);
-          menu.addItem((item) => {
-            item.setTitle(col.label);
-            item.setIcon(visible ? "check-small" : "circle-small");
-            item.onClick(() => this.toggleColumnVisibility(col.key));
-          });
+      },
+      buildExtraActions: (actionsEl) => {
+        const columnsBtn = actionsEl.createEl("button", {
+          cls: "planner-columns-btn",
+          title: "Show / hide columns",
+          text: "Columns",
         });
-
-      menu.showAtMouseEvent(evt as MouseEvent);
-    };
-
-    const settingsBtn = headerActions.createEl("button", {
-      cls: "planner-settings-btn",
-      title: "Open plugin settings",
+        columnsBtn.onclick = (evt) => {
+          const menu = new Menu();
+          this.getColumnDefinitions()
+            .filter((c) => c.hideable)
+            .forEach((col) => {
+              const visible = this.isColumnVisible(col.key);
+              menu.addItem((item) => {
+                item.setTitle(col.label);
+                item.setIcon(visible ? "check-small" : "circle-small");
+                item.onClick(() => this.toggleColumnVisibility(col.key));
+              });
+            });
+          menu.showAtMouseEvent(evt as MouseEvent);
+        };
+      }
     });
-    setIcon(settingsBtn, "settings");
-
-    settingsBtn.onclick = () => {
-      // Open plugin settings
-      (this.app as any).setting.open();
-      (this.app as any).setting.openTabById(this.plugin.manifest.id);
-    };
 
     // -----------------------------------------------------------------------
     // Filtering + Sorting

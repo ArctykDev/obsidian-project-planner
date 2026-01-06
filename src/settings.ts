@@ -2,9 +2,17 @@ import { App, PluginSettingTab, Setting } from "obsidian";
 import type ProjectPlannerPlugin from "./main";
 import type { PlannerTag, PlannerStatus, PlannerPriority } from "./types";
 
+export interface BoardBucket {
+  id: string;
+  name: string;
+}
+
 export interface PlannerProject {
   id: string;
   name: string;
+  buckets?: BoardBucket[]; // Board view buckets (independent of statuses)
+  unassignedBucketName?: string; // Custom name for unassigned bucket
+  completedSectionsCollapsed?: { [bucketId: string]: boolean }; // Track collapsed state per bucket
 }
 
 export interface ProjectPlannerSettings {
@@ -12,6 +20,8 @@ export interface ProjectPlannerSettings {
   activeProjectId: string;
   defaultView: "grid" | "board" | "gantt";
   showCompleted: boolean;
+  openLinksInNewTab: boolean;
+  openViewsInNewTab: boolean;
   availableTags: PlannerTag[];
   availableStatuses: PlannerStatus[];
   availablePriorities: PlannerPriority[];
@@ -22,6 +32,8 @@ export const DEFAULT_SETTINGS: ProjectPlannerSettings = {
   activeProjectId: "",
   defaultView: "grid",
   showCompleted: true,
+  openLinksInNewTab: false,
+  openViewsInNewTab: false,
   availableTags: [],
   availableStatuses: [
     { id: "not-started", name: "Not Started", color: "#6c757d" },
@@ -128,6 +140,59 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+
+    new Setting(containerEl)
+      .setName("Open Views in New Tab")
+      .setDesc("When switching between views (Grid, Board, Timeline, Dashboard, Graph), open them in a new tab instead of replacing the current view.")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.openViewsInNewTab)
+          .onChange(async (value) => {
+            this.plugin.settings.openViewsInNewTab = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // -----------------------------------------------------------------------
+    // Actions Section
+    // -----------------------------------------------------------------------
+    containerEl.createEl("h2", { text: "Actions" });
+
+    new Setting(containerEl)
+      .setName("Open Dependency Graph")
+      .setDesc("Visualize task dependencies in an interactive graph view")
+      .addButton((btn) => {
+        btn
+          .setButtonText("Open Graph")
+          .setCta()
+          .onClick(async () => {
+            await this.plugin.openDependencyGraph();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("Create/Update Project Hub")
+      .setDesc("Generate a comprehensive markdown overview of the current project with task links")
+      .addButton((btn) => {
+        btn
+          .setButtonText("Create Hub")
+          .setCta()
+          .onClick(async () => {
+            await this.plugin.createProjectHub();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("Create Task Notes")
+      .setDesc("Generate individual markdown notes for all tasks with backlinks")
+      .addButton((btn) => {
+        btn
+          .setButtonText("Create Notes")
+          .setCta()
+          .onClick(async () => {
+            await this.plugin.createTaskNotes();
+          });
+      });
 
     // -----------------------------------------------------------------------
     // Tags / Labels Section

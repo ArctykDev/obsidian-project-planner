@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, MarkdownRenderer } from "obsidian";
+import { ItemView, WorkspaceLeaf, MarkdownRenderer, setIcon } from "obsidian";
 import type ProjectPlannerPlugin from "../main";
 import type { PlannerTask } from "../types";
 
@@ -26,13 +26,27 @@ export class TaskDetailView extends ItemView {
   // ---------------------------------------------------------------------------
 
   private getCanonicalTask(id: string): PlannerTask | null {
-    const leaf = this.app.workspace.getLeavesOfType("project-planner-view")[0];
-    if (!leaf) return null;
+    // Check GridView first
+    const gridLeaf = this.app.workspace.getLeavesOfType("project-planner-view")[0];
+    if (gridLeaf) {
+      const grid: any = gridLeaf.view;
+      if (grid && grid.taskStore) {
+        const task = grid.taskStore.getAll().find((t: PlannerTask) => t.id === id);
+        if (task) return task;
+      }
+    }
 
-    const grid: any = leaf.view;
-    if (!grid || !grid.taskStore) return null;
+    // Check BoardView if not found in GridView
+    const boardLeaf = this.app.workspace.getLeavesOfType("project-planner-board-view")[0];
+    if (boardLeaf) {
+      const board: any = boardLeaf.view;
+      if (board && board.taskStore) {
+        const task = board.taskStore.getAll().find((t: PlannerTask) => t.id === id);
+        if (task) return task;
+      }
+    }
 
-    return grid.taskStore.getAll().find((t: PlannerTask) => t.id === id) ?? null;
+    return null;
   }
 
   // Called when GridView selects a task
@@ -84,6 +98,46 @@ export class TaskDetailView extends ItemView {
       completeBtn.classList.add("planner-complete-btn-active");
     }
 
+    // COPY LINK button
+    const copyLinkBtn = headerContainer.createEl("button", {
+      cls: "planner-copy-link-btn",
+      text: "🔗 Copy Link",
+    });
+
+    copyLinkBtn.onclick = async () => {
+      const pluginAny = this.plugin as any;
+      const projectId = pluginAny.settings?.activeProjectId || "";
+      const uri = `obsidian://open-planner-task?id=${encodeURIComponent(task.id)}&project=${encodeURIComponent(projectId)}`;
+
+      await navigator.clipboard.writeText(uri);
+
+      // Visual feedback
+      copyLinkBtn.textContent = "✓ Copied!";
+      setTimeout(() => {
+        copyLinkBtn.textContent = "🔗 Copy Link";
+      }, 2000);
+    };
+
+    // CLOSE PANEL button
+    const closeBtn = headerContainer.createEl("button", {
+      cls: "planner-copy-link-btn",
+      title: "Close Task Details"
+    });
+
+    try {
+      setIcon(closeBtn, "x");
+    } catch (_) {
+      closeBtn.textContent = "✕";
+    }
+
+    closeBtn.onclick = () => {
+      try {
+        this.leaf?.detach();
+      } catch (e) {
+        console.warn("Task Detail close failed", e);
+      }
+    };
+
     //
     // TITLE — editable
     //
@@ -129,17 +183,17 @@ export class TaskDetailView extends ItemView {
     this.renderTagSelector(container, task);
 
     //
-    // START DATE / TIME
+    // START DATE
     //
-    container.createEl("h3", { text: "Start Date / Time" });
+    container.createEl("h3", { text: "Start Date" });
     this.createEditableDateTime(container, task.startDate, async (val) => {
       await this.update({ startDate: val });
     });
 
     //
-    // DUE DATE / TIME
+    // DUE DATE
     //
-    container.createEl("h3", { text: "Due Date / Time" });
+    container.createEl("h3", { text: "Due Date" });
     this.createEditableDateTime(container, task.dueDate, async (val) => {
       await this.update({ dueDate: val });
     });
@@ -161,6 +215,12 @@ export class TaskDetailView extends ItemView {
     //
     container.createEl("h3", { text: "Dependencies" });
     this.renderDependencies(container, task);
+
+    //
+    // LINKS / ATTACHMENTS
+    //
+    container.createEl("h3", { text: "Links & Attachments" });
+    this.renderLinks(container, task);
 
     //
     // CHECKLIST / SUBTASKS
@@ -592,12 +652,12 @@ export class TaskDetailView extends ItemView {
     onSave: (val: string) => Promise<void>
   ) {
     const input = container.createEl("input", {
-      attr: { type: "datetime-local" },
+      attr: { type: "date" },
       cls: "planner-detail-date",
     });
 
     if (value) {
-      input.value = new Date(value).toISOString().slice(0, 16);
+      input.value = new Date(value).toISOString().slice(0, 10);
     }
 
     input.onchange = () => {
@@ -760,6 +820,141 @@ export class TaskDetailView extends ItemView {
     };
 
     return checkChain(predecessorId);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Links / Attachments
+  // ---------------------------------------------------------------------------
+
+  private renderLinks(container: HTMLElement, task: PlannerTask) {
+    const links = task.links || [];
+
+    const linkContainer = container.createDiv("planner-link-container");
+
+    // Display existing links
+    const assignedLinksDiv = linkContainer.createDiv("planner-assigned-links");
+    if (links.length === 0) {
+      assignedLinksDiv.createEl("span", {
+        text: "No links or attachments",
+        cls: "planner-no-links"
+      });
+    } else {
+      links.forEach((link, index) => {
+        const linkRow = assignedLinksDiv.createDiv({
+          cls: "planner-link-row"
+        });
+
+        // Link icon based on type
+        const iconSpan = linkRow.createEl("span", {
+          cls: "planner-link-icon",
+          text: link.type === "obsidian" ? "📝" : "🔗"
+        });
+
+        // Link title (clickable)
+        const linkEl = linkRow.createEl("a", {
+          cls: "planner-link-title",
+          text: link.title
+        });
+
+        if (link.type === "obsidian") {
+          // Obsidian internal link
+          linkEl.onclick = (e) => {
+            e.preventDefault();
+            this.app.workspace.openLinkText(link.url, "", false);
+          };
+        } else {
+          // External link
+          linkEl.href = link.url;
+          linkEl.setAttribute("target", "_blank");
+          linkEl.setAttribute("rel", "noopener noreferrer");
+        }
+
+        // Remove button
+        const removeBtn = linkRow.createEl("span", {
+          cls: "planner-link-remove",
+          text: "×"
+        });
+        removeBtn.onclick = async () => {
+          const newLinks = links.filter((_, i) => i !== index);
+          await this.update({ links: newLinks });
+        };
+      });
+    }
+
+    // Add link controls
+    const addLinkDiv = linkContainer.createDiv("planner-add-link");
+
+    // Link title input
+    const titleInput = addLinkDiv.createEl("input", {
+      cls: "planner-link-title-input",
+      attr: {
+        type: "text",
+        placeholder: "Link title"
+      }
+    });
+
+    // Link URL input
+    const urlInput = addLinkDiv.createEl("input", {
+      cls: "planner-link-url-input",
+      attr: {
+        type: "text",
+        placeholder: "URL or [[Obsidian Link]]"
+      }
+    });
+
+    // Add button
+    const addBtn = addLinkDiv.createEl("button", {
+      cls: "planner-link-add-btn",
+      text: "Add Link"
+    });
+
+    addBtn.onclick = async () => {
+      const title = titleInput.value.trim();
+      const url = urlInput.value.trim();
+
+      if (!title || !url) {
+        return;
+      }
+
+      // Determine link type
+      let linkType: "obsidian" | "external" = "external";
+      let cleanUrl = url;
+
+      // Check if it's an Obsidian internal link ([[Page]] or [[Page|Alias]])
+      const obsidianLinkMatch = url.match(/^\[\[([^\]|]+)(?:\|[^\]]+)?\]\]$/);
+      if (obsidianLinkMatch) {
+        linkType = "obsidian";
+        cleanUrl = obsidianLinkMatch[1]; // Extract the page name
+      }
+
+      const newLink = {
+        id: this.createLinkId(),
+        title,
+        url: cleanUrl,
+        type: linkType
+      };
+
+      const newLinks = [...links, newLink];
+      await this.update({ links: newLinks });
+
+      // Clear inputs
+      titleInput.value = "";
+      urlInput.value = "";
+    };
+
+    // Add hint text
+    const hintDiv = linkContainer.createDiv("planner-link-hint");
+    hintDiv.createEl("small", {
+      text: "Tip: Use [[Page Name]] for Obsidian links or http(s):// for external links",
+      cls: "planner-link-hint-text"
+    });
+  }
+
+  private createLinkId(): string {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+      return crypto.randomUUID();
+    }
+    return `link-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 
   // Tags

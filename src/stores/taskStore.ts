@@ -13,6 +13,8 @@ export class TaskStore {
 
   private tasks: PlannerTask[] = [];
   private tasksByProject: Record<string, PlannerTask[]> = {};
+  private listeners: Set<() => void> = new Set();
+  private loaded = false;
 
   constructor(plugin: ProjectPlannerPlugin) {
     this.plugin = plugin;
@@ -60,6 +62,8 @@ export class TaskStore {
 
     // Set the working tasks reference
     this.tasks = this.tasksByProject[projectId];
+    this.loaded = true;
+    this.emit();
   }
 
   // ---------------------------------------------------------------------------
@@ -78,6 +82,7 @@ export class TaskStore {
     raw.tasksByProject = this.tasksByProject;
 
     await this.plugin.saveData(raw);
+    this.emit();
   }
 
   // ---------------------------------------------------------------------------
@@ -86,6 +91,29 @@ export class TaskStore {
 
   getAll(): PlannerTask[] {
     return this.tasks;
+  }
+
+  isLoaded(): boolean {
+    return this.loaded;
+  }
+
+  async ensureLoaded(): Promise<void> {
+    if (!this.loaded) {
+      await this.load();
+    }
+  }
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private emit() {
+    for (const l of this.listeners) {
+      try { l(); } catch { }
+    }
   }
 
   async addTask(title: string): Promise<PlannerTask> {
