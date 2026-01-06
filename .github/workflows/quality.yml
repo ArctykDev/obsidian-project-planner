@@ -1,5 +1,8 @@
 name: Code Quality
 
+permissions:
+    contents: read
+
 on:
     push:
         branches: [main, dev]
