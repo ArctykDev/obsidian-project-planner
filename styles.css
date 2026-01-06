@@ -1,0 +1,2410 @@
+/* ========================================================================= */
+/* MICROSOFT PLANNER — GRID VIEW STYLING                                    */
+/* ========================================================================= */
+
+.planner-grid-wrapper {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 8px;
+  box-sizing: border-box;
+  padding: 12px 18px 24px 18px;
+  font-size: 14px;
+  color: var(--text-normal);
+}
+
+.planner-grid-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.planner-project-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.planner-project-select {
+  padding: 6px 12px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 180px;
+}
+
+.planner-project-select:hover {
+  border-color: var(--interactive-accent);
+  background: var(--background-secondary);
+}
+
+.planner-project-select:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.15);
+}
+
+.planner-view-switcher {
+  display: flex;
+  gap: 4px;
+  background: var(--background-modifier-border);
+  padding: 4px;
+  border-radius: 8px;
+  align-items: center;
+}
+
+.planner-view-btn {
+  padding: 6px 16px;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.planner-view-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.planner-view-btn-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+
+.planner-view-btn-active:hover {
+  background: var(--interactive-accent-hover);
+  color: var(--text-on-accent);
+}
+
+.planner-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.planner-add-btn {
+  padding: 6px 14px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: var(--input-shadow);
+  transition: background 0.15s ease;
+}
+
+.planner-add-btn:hover {
+  background: var(--interactive-accent-hover);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.planner-settings-btn {
+  padding: 6px 10px;
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.planner-columns-btn {
+  padding: 6px 12px;
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.planner-columns-btn:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.planner-hub-btn {
+  padding: 6px 12px;
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.planner-hub-btn:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.planner-settings-btn:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+/* ========================================================================= */
+/* TABLE LAYOUT                                                              */
+/* ========================================================================= */
+
+.planner-grid-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.planner-grid-table th {
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 4px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.planner-grid-table td {
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  vertical-align: middle;
+}
+
+.planner-grid-table tr:hover td {
+  background-color: var(--background-modifier-hover);
+}
+
+/* ========================================================================= */
+/* INLINE EDITING                                                            */
+/* ========================================================================= */
+
+.planner-editable {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  border-bottom: 1px dashed transparent;
+  transition: all 0.15s ease;
+}
+
+.planner-editable:hover {
+  background-color: var(--background-modifier-hover);
+  border-bottom: 1px dashed var(--interactive-accent);
+  color: var(--text-accent);
+}
+
+.planner-input,
+.planner-select,
+.planner-date {
+  width: 100%;
+  padding: 4px 6px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  box-shadow: var(--input-shadow);
+}
+
+.planner-input:focus,
+.planner-select:focus,
+.planner-date:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+
+/* ========================================================================= */
+/* PRIORITY & STATUS PILLS                                                   */
+/* ========================================================================= */
+
+.priority-pill,
+.status-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 12px;
+  color: white;
+  text-align: center;
+}
+
+.priority-low {
+  background-color: #6c757d;
+}
+.priority-medium {
+  background-color: #0a84ff;
+}
+.priority-high {
+  background-color: #ff8c00;
+}
+.priority-critical {
+  background-color: #d70022;
+}
+
+.status-not-started {
+  background-color: #6c757d;
+}
+.status-in-progress {
+  background-color: #0a84ff;
+}
+.status-blocked {
+  background-color: #d70022;
+}
+.status-completed {
+  background-color: #2f9e44;
+}
+
+/* ========================================================================= */
+/* DETAIL PANEL                                                              */
+/* ========================================================================= */
+
+.planner-detail-wrapper {
+  padding: 20px;
+  font-size: 14px;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.planner-detail-header {
+  margin-bottom: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.planner-complete-btn {
+  padding: 8px 16px;
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  font-size: 14px;
+}
+
+.planner-complete-btn:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.planner-complete-btn-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+  font-weight: 600;
+}
+
+.planner-copy-link-btn {
+  padding: 8px 16px;
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  font-size: 14px;
+}
+
+.planner-copy-link-btn:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.planner-detail-wrapper h2 {
+  margin-top: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.planner-detail-input,
+.planner-detail-select,
+.planner-detail-date,
+.planner-detail-textarea {
+  width: 100%;
+  padding: 6px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+}
+
+.planner-detail-textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* ========================================================================= */
+/* COMPLETED TASKS                                                           */
+/* ========================================================================= */
+
+.planner-task-completed {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* Checkbox column */
+.planner-complete-cell {
+  width: 32px;
+  text-align: center;
+}
+
+.planner-complete-cell input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* ========================================================================= */
+/* FILTER BAR                                                                */
+/* ========================================================================= */
+
+.planner-filter-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 0 0 18px 0;
+  margin-bottom: 4px;
+}
+
+.planner-filter {
+  padding: 6px 12px;
+  font-size: 13px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 120px;
+}
+
+.planner-filter:hover {
+  border-color: var(--interactive-accent);
+  background: var(--background-secondary);
+}
+
+.planner-filter:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+
+.planner-search {
+  padding: 6px 12px;
+  font-size: 13px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  flex: 1;
+  max-width: 300px;
+}
+
+.planner-search:hover {
+  border-color: var(--interactive-accent);
+}
+
+.planner-search:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.15);
+}
+
+.planner-clear-filter {
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  display: none;
+  transition: all 0.15s ease;
+  min-width: 38px;
+  text-align: center;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.planner-clear-filter:hover {
+  background: rgba(255, 100, 100, 0.1);
+  color: var(--text-error);
+  border-color: var(--text-error);
+}
+
+.planner-clear-filter:active {
+  background: rgba(255, 100, 100, 0.15);
+  transform: scale(0.98);
+}
+
+/* ========================================================================= */
+/* HIERARCHY: SUBTASKS & PARENT TASKS                                        */
+/* ========================================================================= */
+
+/* Title cell */
+.planner-title-cell {
+  position: relative;
+  padding-left: 4px;
+}
+
+/* Bold parent task titles (MS Planner Premium style) */
+.planner-parent-bold {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+/* Subtask indent */
+.planner-title-cell.subtask {
+  padding-left: 28px;
+}
+
+.planner-expand-toggle,
+.planner-expand-spacer {
+  display: inline-block;
+  width: 14px;
+  margin-right: 4px;
+  cursor: pointer;
+  opacity: 0.8;
+  font-size: 20px;
+}
+
+.planner-expand-toggle:hover {
+  opacity: 1;
+}
+
+.planner-title-inner {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Hover highlight for parent tasks (MS Planner Premium style) */
+.planner-row-parent:hover td {
+  background-color: var(--background-modifier-hover);
+}
+
+/* ========================================================================= */
+/* THREE-DOTS TASK MENU (⋯)                                                  */
+/* ========================================================================= */
+
+.planner-task-menu {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 2px 6px;
+  font-size: 16px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+}
+
+.planner-title-cell:hover .planner-task-menu {
+  opacity: 1;
+}
+
+.planner-task-menu:hover {
+  background: var(--background-modifier-hover);
+  border-radius: 4px;
+}
+
+/* Prevent overflow */
+.actions-cell {
+  width: 40px;
+  position: relative;
+}
+
+/* Row being dragged */
+.planner-row-dragging {
+  opacity: 0.35;
+  background-color: var(--background-modifier-hover);
+  border: 1px dashed var(--interactive-accent);
+}
+
+/* Drop target row */
+.planner-row-drop-target {
+  background-color: var(--background-modifier-active-hover);
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: -2px;
+}
+
+/* Thin insertion line shown above target row */
+.planner-row-drop-target::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--interactive-accent);
+  border-radius: 2px;
+}
+.planner-row {
+  transition: background-color 0.15s ease, opacity 0.15s ease, outline 0.1s ease;
+}
+
+.planner-drag-cell {
+  width: 24px;
+  padding-right: 4px;
+}
+
+.planner-drag-handle {
+  cursor: grab;
+  opacity: 0.7;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 2px;
+  transition: opacity 0.2s ease;
+}
+
+.planner-drag-handle:hover {
+  opacity: 1;
+}
+
+.planner-drag-handle:active {
+  cursor: grabbing;
+  opacity: 1;
+}
+
+/* Ghost element being dragged */
+.planner-row-ghost {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--background-secondary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--interactive-accent);
+}
+
+/* Drop indicator line */
+.planner-drop-indicator {
+  display: none;
+  height: 2px;
+  background-color: var(--interactive-accent);
+  z-index: 9999;
+}
+
+.planner-num-cell {
+  width: 32px;
+  padding-right: 6px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Base pill shape */
+.planner-date-pill {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* Neutral upcoming date */
+.planner-date-pill-neutral {
+  background: var(--background-secondary);
+  color: var(--text-normal);
+}
+
+/* Overdue (Planner red) */
+.planner-date-pill-overdue {
+  background: rgba(255, 0, 0, 0.1);
+  color: #e81123;
+  border: 1px solid #e81123;
+}
+
+/* Today (Planner blue) */
+.planner-date-pill-today {
+  background: rgba(0, 120, 215, 0.15);
+  color: #0078d4;
+  border: 1px solid #0078d4;
+}
+
+/* Makes TH usable for sorting */
+.planner-sortable {
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+}
+
+/* Resize handle */
+.planner-col-resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+}
+/* ========================================================================= */
+/* CHECKLIST / SUBTASK ITEMS (Task Details)                                 */
+/* ========================================================================= */
+
+.planner-subtask-list {
+  margin-bottom: 12px;
+}
+
+.planner-subtask-empty {
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.planner-subtask-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  margin-bottom: 6px;
+  border-radius: 6px;
+  background: var(--background-secondary);
+  transition: background 0.15s ease;
+}
+
+.planner-subtask-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.planner-subtask-row.planner-subtask-dragging {
+  opacity: 0.5;
+}
+
+.planner-subtask-drag-handle {
+  cursor: grab;
+  color: var(--text-muted);
+  user-select: none;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.planner-subtask-drag-handle:active {
+  cursor: grabbing;
+}
+
+.planner-subtask-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.planner-subtask-title {
+  flex: 1;
+  cursor: pointer;
+  word-break: break-word;
+  color: var(--text-normal);
+  user-select: none;
+}
+
+.planner-subtask-title:hover {
+  text-decoration: underline;
+}
+
+.planner-subtask-completed {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.planner-subtask-input {
+  flex: 1;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--interactive-accent);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 14px;
+}
+
+.planner-subtask-delete {
+  padding: 2px 6px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.planner-subtask-delete:hover {
+  background: rgba(255, 0, 0, 0.1);
+  color: #e81123;
+  border-color: #e81123;
+}
+
+.planner-subtask-add {
+  padding: 6px 12px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.15s ease;
+  margin-bottom: 12px;
+}
+
+.planner-subtask-add:hover {
+  background: var(--interactive-accent-hover);
+}
+
+/* Ghost element during drag */
+.planner-subtask-ghost {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--background-secondary);
+}
+
+/* Drop indicator line */
+.planner-subtask-drop-indicator {
+  display: none;
+}
+/* ========================================================================= */
+/* MARKDOWN EDITOR FOR DESCRIPTION                                          */
+/* ========================================================================= */
+
+.planner-markdown-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.planner-markdown-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.planner-markdown-toggle {
+  padding: 4px 10px;
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s ease;
+  font-weight: 500;
+}
+
+.planner-markdown-toggle:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.planner-markdown-preview {
+  padding: 10px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  line-height: 1.6;
+  min-height: 80px;
+}
+
+.planner-markdown-preview.empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.planner-markdown-empty {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Markdown rendered content styling */
+.planner-markdown-preview h1,
+.planner-markdown-preview h2,
+.planner-markdown-preview h3,
+.planner-markdown-preview h4,
+.planner-markdown-preview h5,
+.planner-markdown-preview h6 {
+  margin: 8px 0 4px 0;
+  font-weight: 600;
+}
+
+.planner-markdown-preview h1 {
+  font-size: 18px;
+}
+
+.planner-markdown-preview h2 {
+  font-size: 16px;
+}
+
+.planner-markdown-preview h3 {
+  font-size: 14px;
+}
+
+.planner-markdown-preview p {
+  margin: 6px 0;
+}
+
+.planner-markdown-preview ul,
+.planner-markdown-preview ol {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.planner-markdown-preview li {
+  margin: 2px 0;
+}
+
+.planner-markdown-preview code {
+  background: var(--background-primary);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--text-accent);
+}
+
+.planner-markdown-preview pre {
+  background: var(--background-primary);
+  padding: 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 6px 0;
+}
+
+.planner-markdown-preview blockquote {
+  border-left: 3px solid var(--interactive-accent);
+  margin: 6px 0;
+  padding-left: 10px;
+  color: var(--text-muted);
+}
+
+.planner-markdown-preview a {
+  color: var(--interactive-accent);
+  text-decoration: none;
+}
+
+.planner-markdown-preview a:hover {
+  text-decoration: underline;
+}
+
+.planner-markdown-preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.planner-markdown-edit {
+  display: none;
+}
+
+.planner-markdown-textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 10px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 13px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.planner-markdown-textarea:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+/* ========================================================================= */
+/* TAGS / LABELS                                                             */
+/* ========================================================================= */
+
+/* Tag preview badge in settings */
+.planner-tag-preview,
+.planner-status-preview,
+.planner-priority-preview {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 4px;
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 8px;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Tags in TaskDetailView */
+.planner-tag-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.planner-assigned-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 32px;
+  align-items: center;
+}
+
+.planner-no-tags {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.planner-tag-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: all 0.15s ease;
+}
+
+.planner-tag-badge:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.planner-tag-remove {
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1;
+  opacity: 0.8;
+  transition: opacity 0.15s ease;
+  margin-left: 2px;
+}
+
+.planner-tag-remove:hover {
+  opacity: 1;
+}
+
+.planner-add-tag {
+  margin-top: 4px;
+}
+
+.planner-tag-select {
+  padding: 6px 12px;
+  font-size: 13px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 200px;
+}
+
+.planner-tag-select:hover {
+  border-color: var(--interactive-accent);
+}
+
+.planner-tag-select:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.15);
+}
+
+.planner-no-tags-hint {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+  padding: 8px 0;
+}
+
+/* Tags in GridView */
+.planner-tags-cell {
+  padding: 4px 8px !important;
+}
+
+.planner-tags-cell-interactive:hover {
+  background: var(--background-modifier-hover);
+}
+
+.planner-tags-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.planner-tag-badge-small {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 3px;
+  color: white;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+.planner-tag-badge-grid {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px 3px 8px;
+  transition: all 0.15s ease;
+}
+
+.planner-tag-badge-grid:hover {
+  filter: brightness(1.1);
+}
+
+.planner-tag-remove-grid {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
+  opacity: 0.7;
+  padding: 0 2px;
+  transition: opacity 0.15s ease;
+}
+
+.planner-tag-remove-grid:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+.planner-empty-cell {
+  color: var(--text-muted);
+  font-style: italic;
+}
+/* ========================================================================= */
+/* DEPENDENCIES                                                              */
+/* ========================================================================= */
+
+.planner-dependency-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.planner-assigned-dependencies {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.planner-no-dependencies {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.planner-dependency-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.planner-dependency-type {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--background-modifier-border);
+  padding: 3px 8px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.planner-dependency-task {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-normal);
+}
+
+.planner-dependency-remove {
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--text-muted);
+  line-height: 1;
+  padding: 0 4px;
+  transition: all 0.15s ease;
+}
+
+.planner-dependency-remove:hover {
+  color: var(--text-error);
+  transform: scale(1.2);
+}
+
+.planner-add-dependency {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.planner-dependency-task-select,
+.planner-dependency-type-select {
+  flex: 1;
+  padding: 6px 10px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.planner-dependency-task-select:hover,
+.planner-dependency-type-select:hover {
+  border-color: var(--interactive-accent);
+}
+
+.planner-dependency-add-btn {
+  padding: 6px 16px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.planner-dependency-add-btn:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.planner-no-dependencies-hint {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+  padding: 8px 0;
+}
+
+/* Dependency indicator in grid */
+.planner-dependency-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--interactive-accent);
+  font-size: 14px;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+  cursor: pointer;
+}
+
+.planner-dependency-indicator:hover {
+  opacity: 1;
+}
+
+.planner-dependency-warning {
+  color: var(--text-warning);
+  animation: pulse-warning 2s ease-in-out infinite;
+}
+
+@keyframes pulse-warning {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.planner-deps-cell {
+  text-align: center;
+  padding: 4px !important;
+}
+/* Dependents indicator in grid (tasks blocked by this task) */
+.planner-dependents-cell {
+  text-align: center;
+  padding: 4px !important;
+}
+
+.planner-dependent-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--text-warning);
+  font-size: 14px;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+  cursor: pointer;
+}
+
+.planner-dependent-indicator:hover {
+  opacity: 1;
+}
+
+/* ========================================================================= */
+/* LINKS / ATTACHMENTS (Microsoft Planner style)                            */
+/* ========================================================================= */
+
+.planner-link-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.planner-assigned-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.planner-no-links {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.planner-link-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  transition: background 0.15s ease;
+}
+
+.planner-link-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.planner-link-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.planner-link-title {
+  flex: 1;
+  font-size: 13px;
+  color: var(--interactive-accent);
+  text-decoration: none;
+  cursor: pointer;
+  word-break: break-word;
+}
+
+.planner-link-title:hover {
+  text-decoration: underline;
+}
+
+.planner-link-remove {
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--text-muted);
+  line-height: 1;
+  padding: 0 4px;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.planner-link-remove:hover {
+  color: var(--text-error);
+  transform: scale(1.2);
+}
+
+.planner-add-link {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.planner-link-title-input,
+.planner-link-url-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  font-size: 13px;
+  transition: border-color 0.15s ease;
+}
+
+.planner-link-title-input:focus,
+.planner-link-url-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.15);
+}
+
+.planner-link-title-input::placeholder,
+.planner-link-url-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.planner-link-add-btn {
+  padding: 8px 16px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  align-self: flex-start;
+}
+
+.planner-link-add-btn:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.planner-link-hint {
+  margin-top: 4px;
+}
+
+.planner-link-hint-text {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* ========================================================================= */
+/* DEPENDENCY GRAPH VIEW                                                     */
+/* ========================================================================= */
+
+.planner-graph-wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--background-primary);
+  padding: 12px 18px 12px 18px;
+  box-sizing: border-box;
+}
+
+.planner-graph-controls-bar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 0;
+  justify-content: center;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 12px;
+}
+
+.planner-graph-btn {
+  padding: 6px 12px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s ease;
+}
+
+.planner-graph-btn:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.planner-graph-canvas-container {
+  flex: 1;
+  position: relative;
+  background: var(--background-secondary);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.planner-graph-canvas {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+.planner-graph-canvas:active {
+  cursor: grabbing;
+}
+
+/* ========================================================================= */
+/* BOARD VIEW (MICROSOFT PLANNER KANBAN STYLE)                              */
+/* ========================================================================= */
+
+.planner-board-wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--background-primary);
+  overflow: hidden;
+  padding: 12px 18px 0 18px;
+  box-sizing: border-box;
+}
+
+/* Board toolbar: filters */
+.planner-board-toolbar {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 0;
+}
+
+.planner-board-filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: 1;
+}
+
+.planner-board-container {
+  flex: 1;
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  align-items: flex-start;
+}
+
+/* ========================================================================= */
+/* BOARD COLUMNS (BUCKETS)                                                  */
+/* ========================================================================= */
+
+.planner-board-column {
+  min-width: 320px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  background: var(--background-secondary);
+  border-radius: 8px;
+  height: calc(100vh - 180px);
+}
+
+.planner-board-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 12px 16px;
+  border-bottom: 2px solid var(--background-modifier-border);
+}
+
+.planner-board-column-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-normal);
+  flex: 1;
+}
+
+.planner-board-column-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--background-modifier-border);
+  padding: 4px 10px;
+  border-radius: 12px;
+  min-width: 28px;
+  text-align: center;
+}
+
+.planner-board-column-content {
+  flex: 1;
+  padding: 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.planner-board-column-dragover {
+  background: var(--background-modifier-hover);
+  outline: 2px dashed var(--interactive-accent);
+  outline-offset: -2px;
+}
+
+/* Bucket/Column dragging states */
+.planner-board-column-dragging {
+  opacity: 0.4;
+}
+
+.planner-board-column-dragover-bucket {
+  outline: 3px solid var(--interactive-accent);
+  outline-offset: 2px;
+  transform: scale(1.02);
+  transition: transform 0.15s ease;
+}
+
+.planner-board-column-header[draggable="true"] {
+  cursor: grab;
+}
+
+.planner-board-column-header[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* Unassigned bucket styling */
+.planner-board-column-unassigned {
+  background: var(--background-primary);
+  border: 2px dashed var(--background-modifier-border);
+}
+
+.planner-board-column-unassigned .planner-board-column-header {
+  background: var(--background-primary-alt);
+  border-bottom: 2px dashed var(--background-modifier-border);
+}
+
+.planner-board-column-unassigned .planner-board-column-title {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Add Bucket Column */
+.planner-board-add-bucket {
+  min-width: 280px;
+  max-width: 280px;
+  background: transparent;
+  border: 2px dashed var(--background-modifier-border);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.planner-board-add-bucket:hover {
+  border-color: var(--interactive-accent);
+  background: var(--background-modifier-hover);
+}
+
+.planner-board-add-bucket-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: color 0.2s ease;
+}
+
+.planner-board-add-bucket:hover .planner-board-add-bucket-btn {
+  color: var(--interactive-accent);
+}
+
+.planner-board-add-bucket-icon {
+  font-size: 32px;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.planner-board-add-bucket-label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* ========================================================================= */
+/* BOARD CARDS (TASKS)                                                      */
+/* ========================================================================= */
+
+.planner-board-card {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.planner-board-card:hover {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.planner-board-card-dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+/* Card header with checkbox and menu */
+.planner-board-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.planner-board-card-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+  accent-color: var(--interactive-accent);
+}
+
+.planner-board-card-menu {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 16px;
+  line-height: 1;
+  transition: all 0.15s ease;
+  opacity: 0;
+  flex-shrink: 0;
+}
+
+.planner-board-card:hover .planner-board-card-menu {
+  opacity: 1;
+}
+
+.planner-board-card-menu:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.planner-board-card-priority {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  font-size: 18px;
+  background: var(--background-primary);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 1;
+}
+
+.planner-board-card-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-normal);
+  margin-bottom: 8px;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+/* ========================================================================= */
+/* CARD TAGS                                                                 */
+/* ========================================================================= */
+
+.planner-board-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.planner-board-card-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  color: white;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+}
+
+/* ========================================================================= */
+/* CARD FOOTER (METADATA)                                                   */
+/* ========================================================================= */
+
+.planner-board-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.planner-board-card-date {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--background-secondary);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.planner-board-card-date-overdue {
+  background: rgba(232, 17, 35, 0.1);
+  color: #e81123;
+  border: 1px solid #e81123;
+  font-weight: 600;
+}
+
+.planner-board-card-date-today {
+  background: rgba(0, 120, 212, 0.1);
+  color: #0078d4;
+  border: 1px solid #0078d4;
+  font-weight: 600;
+}
+
+.planner-board-card-subtasks {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--background-secondary);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.planner-board-card-subtasks-complete {
+  background: rgba(47, 158, 68, 0.1);
+  color: #2f9e44;
+  border: 1px solid #2f9e44;
+  font-weight: 600;
+}
+
+.planner-board-card-icon {
+  font-size: 14px;
+  opacity: 0.7;
+  cursor: help;
+}
+
+/* ========================================================================= */
+/* ADD CARD BUTTON                                                           */
+/* ========================================================================= */
+
+.planner-board-add-card {
+  padding: 12px;
+  border: 2px dashed var(--background-modifier-border);
+  border-radius: 8px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-top: auto;
+}
+
+.planner-board-add-card:hover {
+  border-color: var(--interactive-accent);
+  color: var(--interactive-accent);
+  background: var(--background-modifier-hover);
+}
+/* ========================================================================= */
+/* COMPLETED SECTION (COLLAPSIBLE)                                          */
+/* ========================================================================= */
+
+.planner-board-completed-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px;
+  margin-top: 8px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+  user-select: none;
+}
+
+.planner-board-completed-header:hover {
+  background: var(--background-modifier-hover);
+}
+
+.planner-board-completed-toggle {
+  font-size: 10px;
+  color: var(--text-muted);
+  width: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.planner-board-completed-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.planner-board-completed-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.planner-board-completed-tasks .planner-board-card {
+  opacity: 0.7;
+  background: var(--background-secondary);
+}
+
+.planner-board-completed-tasks .planner-board-card:hover {
+  opacity: 1;
+}
+
+/* ========================================================================= */
+/* GANTT / TIMELINE VIEW                                                     */
+/* ========================================================================= */
+
+.planner-gantt-wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--background-primary);
+  padding: 12px 18px 12px 18px;
+  box-sizing: border-box;
+}
+
+.planner-gantt-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.planner-gantt-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 12px;
+  min-height: 300px;
+}
+
+.planner-gantt-left {
+  border-right: 1px solid var(--background-modifier-border);
+  padding-right: 8px;
+  overflow-y: auto;
+}
+
+.planner-gantt-row-left {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  border-bottom: 1px dashed var(--background-modifier-border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.planner-gantt-right-wrap {
+  overflow: auto;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+}
+
+.planner-gantt-right {
+  position: relative;
+}
+
+.planner-gantt-scale {
+  display: flex;
+  position: sticky;
+  top: 0;
+  background: var(--background-primary);
+  z-index: 2;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.planner-gantt-scale-day {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-right: 1px solid var(--background-modifier-border);
+}
+
+.planner-gantt-scale-month {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.planner-gantt-row {
+  position: relative;
+  border-bottom: 1px dashed var(--background-modifier-border);
+}
+
+.planner-gantt-bar {
+  position: absolute;
+  top: 4px;
+  height: 20px;
+  border-radius: 6px;
+  opacity: 0.9;
+  cursor: pointer;
+  transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
+.planner-gantt-bar:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+.planner-gantt-today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--interactive-accent);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Gantt row hover reveals menu */
+.planner-gantt-row-left .planner-task-menu {
+  opacity: 0;
+}
+
+.planner-gantt-row-left:hover .planner-task-menu {
+  opacity: 1;
+}
+
+.planner-gantt-bar-dragging {
+  opacity: 0.85;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
+}
+
+.planner-gantt-handle {
+  position: absolute;
+  top: -2px;
+  width: 8px;
+  height: 24px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: ew-resize;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  opacity: 0.9;
+}
+
+.planner-gantt-handle:hover {
+  background: var(--background-secondary);
+  border-color: var(--interactive-accent);
+}
+
+.planner-gantt-handle-left {
+  left: -6px;
+}
+
+.planner-gantt-handle-right {
+  right: -6px;
+}
+/* Gantt toolbar: filters and zoom */
+.planner-gantt-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 12px;
+}
+
+.planner-gantt-filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: 1;
+}
+
+.planner-filter-select {
+  padding: 6px 12px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.planner-filter-select:hover {
+  border-color: var(--interactive-accent);
+  background: var(--background-secondary);
+}
+
+.planner-filter-select:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.15);
+}
+
+.planner-filter-search {
+  padding: 6px 12px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  font-size: 13px;
+  flex: 1;
+  max-width: 300px;
+  transition: all 0.15s ease;
+}
+
+.planner-filter-search:hover {
+  border-color: var(--background-modifier-border-hover);
+}
+
+.planner-filter-search:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.15);
+}
+
+.planner-gantt-zoom {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.planner-zoom-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.planner-zoom-buttons {
+  display: flex;
+  gap: 4px;
+  background: var(--background-modifier-border);
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.planner-zoom-btn {
+  padding: 4px 12px;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.planner-zoom-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.planner-zoom-btn.active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+/* Gantt drag handle */
+.planner-gantt-row-left .planner-drag-handle {
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  color: var(--text-faint);
+  cursor: grab;
+  opacity: 0.6;
+  margin-right: 4px;
+}
+
+.planner-gantt-row-left .planner-drag-handle:hover {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.planner-gantt-row-left .planner-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Gantt drag ghost and drop indicator */
+.planner-gantt-drag-ghost {
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.planner-gantt-row-dragging {
+  opacity: 0.4;
+}
+/* ========================================================================= */
+/* DASHBOARD VIEW                                                            */
+/* ========================================================================= */
+
+.dashboard-wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--background-primary);
+  padding: 12px 18px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.dashboard-toolbar {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 16px;
+}
+
+.dashboard-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dashboard-toggle-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-normal);
+}
+
+.dashboard-toggle-switch {
+  cursor: pointer;
+}
+
+.dashboard-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.dashboard-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.dashboard-project-card {
+  background: var(--background-secondary);
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.dashboard-project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--background-modifier-border);
+}
+
+.dashboard-project-header h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-normal);
+}
+
+.dashboard-action-btn {
+  padding: 8px 16px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dashboard-action-btn:hover {
+  background: var(--interactive-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.dashboard-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.dashboard-kpi-card {
+  background: var(--background-primary);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-left: 4px solid var(--background-modifier-border);
+  transition: all 0.15s ease;
+}
+
+.dashboard-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-kpi-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+}
+
+.dashboard-kpi-content {
+  flex: 1;
+}
+
+.dashboard-kpi-title {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.dashboard-kpi-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-normal);
+}
+
+.dashboard-section {
+  margin-bottom: 24px;
+}
+
+.dashboard-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.dashboard-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-progress-bar {
+  flex: 1;
+  height: 24px;
+  background: var(--background-modifier-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.dashboard-progress-fill {
+  height: 100%;
+  background: var(--interactive-accent);
+  transition: width 0.3s ease;
+  border-radius: 12px;
+}
+
+.dashboard-progress-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-normal);
+  min-width: 50px;
+  text-align: right;
+}
+
+.dashboard-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 16px;
+  background: var(--background-primary);
+  border-radius: 8px;
+}
+
+.dashboard-stat-item {
+  padding: 12px;
+  text-align: center;
+  border-radius: 6px;
+  background: var(--background-secondary);
+}
+
+.dashboard-stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dashboard-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-normal);
+}

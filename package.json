@@ -1,0 +1,32 @@
+{
+  "name": "obsidian-project-planner",
+  "version": "0.6.0",
+  "description": "A Microsoft Planner–style project management plugin for Obsidian with grid, board, and timeline views.",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "rollup -c -w",
+    "build": "rollup -c",
+    "clean": "powershell -Command \"Remove-Item -Recurse -Force node_modules,dist,build,main.js,main.js.map -ErrorAction SilentlyContinue\""
+  },
+  "keywords": [
+    "obsidian",
+    "plugin",
+    "project",
+    "planner",
+    "kanban",
+    "gantt"
+  ],
+  "author": "James Hawkins",
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "obsidian": "^1.10.3",
+    "rollup": "^4.12.0",
+    "rollup-plugin-copy": "^3.5.0",
+    "tslib": "^2.6.2",
+    "typescript": "^5.4.5"
+  }
+}
