@@ -11,13 +11,16 @@ A full-featured project planner for [Obsidian](https://obidian.md) based on [Mic
 
 ## Features
 
-| Feature           | Description                                   | Version |
-| ----------------- | --------------------------------------------- | ------- |
-| Grid View         | Table view of tasks and sub tasks             | v0.5.0  |
-| Board View        | Kanban view of buckets for organizing tasks   | v1.0.0  |
-| Timeline View     | Gantt style view of all tasks and subtasks    | v2.0.0  |
-| Task Details      | A details panel for managing all task options | v0.5.0  |
-| Multiple Projects | Support for multiple projects                 | v0.5.0  |
+| Feature              | Description                                     | Version |
+| -------------------- | ----------------------------------------------- | ------- |
+| Core Task Management | Table view of tasks and sub tasks               | v0.5.0  |
+| Timeline View        | Gantt style view of all tasks and subtasks      | v0.6.0  |
+| Dashboard & KPIs     | Basic dashboard view with KPIs                  | v0.7.0  |
+| Integrations         | Integration with core Obsidian plugins          | v0.8.0  |
+| UX/UI Refinement     | Polish UX/UI, plugin settings                   | v0.9.0  |
+| Official Release     | The first official release                      | v1.0.0  |
+| Plugin Refinements   | Bug fixes, patches, basic improvemnts           | v1.0.0+ |
+| Feature Enhancements | New features, enhancements to existing features | v1.1.0  |
 
 ---
 
