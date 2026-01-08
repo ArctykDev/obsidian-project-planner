@@ -22,7 +22,7 @@
       },
       {
         "id": "bb29a79d-acfa-41cb-8ff7-5dda36ff6759",
-        "name": "Kanban",
+        "name": "Integrations",
         "buckets": [
           {
             "id": "4c2d5ab3-75b1-4bfb-9392-c3d7d38e17c6",
@@ -57,11 +57,11 @@
         ]
       }
     ],
-    "activeProjectId": "de2ed79d-b1f3-473d-a3dd-d3640cb89c54",
+    "activeProjectId": "bb29a79d-acfa-41cb-8ff7-5dda36ff6759",
     "defaultView": "grid",
     "showCompleted": true,
     "openLinksInNewTab": false,
-    "openViewsInNewTab": true,
+    "openViewsInNewTab": false,
     "availableTags": [
       {
         "id": "cfc49091-140c-4b0d-8d54-b812dbf02db5",
@@ -132,7 +132,8 @@
       "status": 135,
       "title": 561,
       "priority": 73,
-      "tags": 96
+      "tags": 96,
+      "bucket": 87
     },
     "gridViewSortKey": "Manual",
     "gridViewSortDirection": "asc",
@@ -147,7 +148,8 @@
       "start": true,
       "due": true,
       "dependencies": false,
-      "dependents": false
+      "dependents": false,
+      "bucket": true
     }
   },
   "tasksByProject": {
@@ -582,11 +584,30 @@
       {
         "id": "36ca858f-00c3-423d-9f69-181b740bc203",
         "title": "Board - Rename Unassigned to Backlog",
-        "status": "Not Started",
-        "priority": "Medium",
+        "status": "In Progress",
+        "priority": "High",
         "completed": false,
         "parentId": null,
-        "collapsed": false
+        "collapsed": false,
+        "bucketId": "4c2d5ab3-75b1-4bfb-9392-c3d7d38e17c6",
+        "tags": [
+          "064a02ab-b3ad-4ea1-9581-27b261a0be99"
+        ],
+        "startDate": "2026-01-07T00:00:00.000Z",
+        "dueDate": "2026-01-30T00:00:00.000Z",
+        "description": "This is the task description.",
+        "subtasks": [
+          {
+            "id": "09e8471b-58cc-490b-b517-430a12eb6bd5",
+            "title": "New checklist item",
+            "completed": false
+          },
+          {
+            "id": "161d8aaa-8b96-4078-b66e-75d9637a5d8f",
+            "title": "New checklist item",
+            "completed": false
+          }
+        ]
       },
       {
         "id": "0ce6c37b-d7e7-425b-b369-cabdc06ea4c7",

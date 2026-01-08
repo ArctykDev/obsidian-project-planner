@@ -720,6 +720,42 @@ export class GridView extends ItemView {
     }
 
     // ---------------------------------------------------------------------
+    // Bucket
+    // ---------------------------------------------------------------------
+    if (this.isColumnVisible("bucket")) {
+      const bucketCell = row.createEl("td");
+      const pluginAny = this.plugin as any;
+      const settings = pluginAny.settings || {};
+      const activeProject = settings.projects?.find(
+        (p: any) => p.id === settings.activeProjectId
+      );
+      const buckets = activeProject?.buckets || [];
+      const bucketNames = ["Unassigned", ...buckets.map((b: any) => b.name)];
+
+      const currentBucketId = task.bucketId;
+      const currentBucketName = currentBucketId
+        ? buckets.find((b: any) => b.id === currentBucketId)?.name || "Unassigned"
+        : "Unassigned";
+
+      this.createEditableSelectCell(
+        bucketCell,
+        currentBucketName,
+        bucketNames,
+        async (value) => {
+          if (value === "Unassigned") {
+            await this.taskStore.updateTask(task.id, { bucketId: undefined });
+          } else {
+            const selectedBucket = buckets.find((b: any) => b.name === value);
+            if (selectedBucket) {
+              await this.taskStore.updateTask(task.id, { bucketId: selectedBucket.id });
+            }
+          }
+          this.render();
+        }
+      );
+    }
+
+    // ---------------------------------------------------------------------
     // Tags
     // ---------------------------------------------------------------------
     if (this.isColumnVisible("tags")) {
@@ -1420,6 +1456,7 @@ export class GridView extends ItemView {
       { key: "title", label: "Title", hideable: true },
       { key: "status", label: "Status", hideable: true },
       { key: "priority", label: "Priority", hideable: true },
+      { key: "bucket", label: "Bucket", hideable: true },
       { key: "tags", label: "Tags", hideable: true },
       { key: "dependencies", label: "Deps", hideable: true },
       { key: "start", label: "Start Date", hideable: true },

@@ -183,6 +183,36 @@ export class TaskDetailView extends ItemView {
     this.renderTagSelector(container, task);
 
     //
+    // BUCKET — dropdown
+    //
+    container.createEl("h3", { text: "Bucket" });
+    const activeProject = settings.projects?.find(
+      (p: any) => p.id === settings.activeProjectId
+    );
+    const buckets = activeProject?.buckets || [];
+    const bucketNames = ["Unassigned", ...buckets.map((b: any) => b.name)];
+    const currentBucketId = task.bucketId;
+    const currentBucketName = currentBucketId
+      ? buckets.find((b: any) => b.id === currentBucketId)?.name || "Unassigned"
+      : "Unassigned";
+
+    this.createEditableSelect(
+      container,
+      currentBucketName,
+      bucketNames,
+      async (val) => {
+        if (val === "Unassigned") {
+          await this.update({ bucketId: undefined });
+        } else {
+          const selectedBucket = buckets.find((b: any) => b.name === val);
+          if (selectedBucket) {
+            await this.update({ bucketId: selectedBucket.id });
+          }
+        }
+      }
+    );
+
+    //
     // START DATE
     //
     container.createEl("h3", { text: "Start Date" });
