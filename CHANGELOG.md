@@ -2,6 +2,40 @@
 
 All notable changes to Obsidian Project Planner will be documented in this file.
 
+## [0.6.1] - 2026-01-07
+
+### Added
+
+- **View Tab Opening Behavior**: New `openViewsInNewTab` setting to control whether views open in the same tab or create new tabs
+  - When disabled (default): Clicking view buttons replaces content in the active tab
+  - When enabled: Each view button creates a new tab
+- **Bucket Selection in Task Details**: Added dropdown selector to assign tasks to buckets directly from the task details panel
+- **Bucket Column in Grid View**: New hideable "Bucket" column in grid view for quick bucket assignment and visibility
+
+### Fixed
+
+- **Workspace Initialization**: Fixed plugin initialization error by waiting for workspace layout to be ready before opening default view
+- **Tab Reuse Logic**: Corrected `openViewsInNewTab` setting behavior to properly reuse active leaf or create new tabs based on user preference
+
+---
+
+## [0.6.1] - 2026-01-07
+
+### Added
+
+- **View Tab Opening Behavior**: New `openViewsInNewTab` setting to control whether views open in the same tab or create new tabs
+  - When disabled (default): Clicking view buttons replaces content in the active tab
+  - When enabled: Each view button creates a new tab
+- **Bucket Selection in Task Details**: Added dropdown selector to assign tasks to buckets directly from the task details panel
+- **Bucket Column in Grid View**: New hideable "Bucket" column in grid view for quick bucket assignment and visibility
+
+### Fixed
+
+- **Workspace Initialization**: Fixed plugin initialization error by waiting for workspace layout to be ready before opening default view
+- **Tab Reuse Logic**: Corrected `openViewsInNewTab` setting behavior to properly reuse active leaf or create new tabs based on user preference
+
+---
+
 ## [0.6.0] - 2026-01-07
 
 ### Added
