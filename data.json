@@ -22,7 +22,7 @@
       },
       {
         "id": "bb29a79d-acfa-41cb-8ff7-5dda36ff6759",
-        "name": "Kanban",
+        "name": "Integrations",
         "buckets": [
           {
             "id": "4c2d5ab3-75b1-4bfb-9392-c3d7d38e17c6",
@@ -57,11 +57,11 @@
         ]
       }
     ],
-    "activeProjectId": "de2ed79d-b1f3-473d-a3dd-d3640cb89c54",
+    "activeProjectId": "bb29a79d-acfa-41cb-8ff7-5dda36ff6759",
     "defaultView": "grid",
     "showCompleted": true,
     "openLinksInNewTab": false,
-    "openViewsInNewTab": true,
+    "openViewsInNewTab": false,
     "availableTags": [
       {
         "id": "cfc49091-140c-4b0d-8d54-b812dbf02db5",

@@ -164,8 +164,10 @@ export default class ProjectPlannerPlugin extends Plugin {
     // Settings tab
     this.addSettingTab(new ProjectPlannerSettingTab(this.app, this));
 
-    // Open default view if configured
-    await this.openDefaultView();
+    // Open default view if configured - wait for workspace to be ready
+    this.app.workspace.onLayoutReady(() => {
+      void this.openDefaultView();
+    });
   }
 
   private async ensureStylesheetLoaded() {
@@ -195,12 +197,11 @@ export default class ProjectPlannerPlugin extends Plugin {
   // ---------------------------------------------------------------------------
   // Open MAIN planner view (center workspace)
   // ---------------------------------------------------------------------------
-  async activateView(): Promise<WorkspaceLeaf> {
-    // When openViewsInNewTab is FALSE, we want getLeaf(false) to reuse tab
-    // When openViewsInNewTab is TRUE, we want getLeaf(true) to create new tab
-    const openInNewTab = this.settings?.openViewsInNewTab === true;
-    console.log("[Project Planner] activateView - openViewsInNewTab:", openInNewTab, "setting value:", this.settings?.openViewsInNewTab, "passing to getLeaf:", openInNewTab);
-    const leaf = this.app.workspace.getLeaf(!openInNewTab); // Try INVERTING
+  async activateView(forceNewTab = false): Promise<WorkspaceLeaf> {
+    const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
+    const leaf = openInNewTab
+      ? this.app.workspace.getLeaf('tab')
+      : this.app.workspace.activeLeaf ?? this.app.workspace.getLeaf(true);
 
     await leaf.setViewState({
       type: VIEW_TYPE_PLANNER,
@@ -214,9 +215,11 @@ export default class ProjectPlannerPlugin extends Plugin {
   // ---------------------------------------------------------------------------
   // Open BOARD view (center workspace)
   // ---------------------------------------------------------------------------
-  async activateBoardView(): Promise<WorkspaceLeaf> {
-    const openInNewTab = this.settings?.openViewsInNewTab === true;
-    const leaf = this.app.workspace.getLeaf(!openInNewTab);
+  async activateBoardView(forceNewTab = false): Promise<WorkspaceLeaf> {
+    const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
+    const leaf = openInNewTab
+      ? this.app.workspace.getLeaf('tab')
+      : this.app.workspace.activeLeaf ?? this.app.workspace.getLeaf(true);
 
     await leaf.setViewState({
       type: VIEW_TYPE_BOARD,
@@ -229,9 +232,11 @@ export default class ProjectPlannerPlugin extends Plugin {
   // ---------------------------------------------------------------------------
   // Open DASHBOARD view (center workspace)
   // ---------------------------------------------------------------------------
-  async activateDashboardView(): Promise<WorkspaceLeaf> {
-    const openInNewTab = this.settings?.openViewsInNewTab === true;
-    const leaf = this.app.workspace.getLeaf(!openInNewTab);
+  async activateDashboardView(forceNewTab = false): Promise<WorkspaceLeaf> {
+    const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
+    const leaf = openInNewTab
+      ? this.app.workspace.getLeaf('tab')
+      : this.app.workspace.activeLeaf ?? this.app.workspace.getLeaf(true);
 
     await leaf.setViewState({
       type: VIEW_TYPE_DASHBOARD,
@@ -244,9 +249,11 @@ export default class ProjectPlannerPlugin extends Plugin {
   // ---------------------------------------------------------------------------
   // Open GANTT view (center workspace)
   // ---------------------------------------------------------------------------
-  async activateGanttView(): Promise<WorkspaceLeaf> {
-    const openInNewTab = this.settings?.openViewsInNewTab === true;
-    const leaf = this.app.workspace.getLeaf(!openInNewTab);
+  async activateGanttView(forceNewTab = false): Promise<WorkspaceLeaf> {
+    const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
+    const leaf = openInNewTab
+      ? this.app.workspace.getLeaf('tab')
+      : this.app.workspace.activeLeaf ?? this.app.workspace.getLeaf(true);
 
     await leaf.setViewState({
       type: VIEW_TYPE_GANTT,
@@ -358,7 +365,9 @@ export default class ProjectPlannerPlugin extends Plugin {
   // ---------------------------------------------------------------------------
   async openDependencyGraph() {
     const openInNewTab = this.settings?.openViewsInNewTab === true;
-    const leaf = this.app.workspace.getLeaf(!openInNewTab);
+    const leaf = openInNewTab
+      ? this.app.workspace.getLeaf('tab')
+      : this.app.workspace.activeLeaf ?? this.app.workspace.getLeaf(true);
 
     await leaf.setViewState({
       type: VIEW_TYPE_DEPENDENCY_GRAPH,
@@ -370,16 +379,17 @@ export default class ProjectPlannerPlugin extends Plugin {
 
   private async openDefaultView() {
     const choice = this.settings.defaultView;
+    // Always force new tab during plugin initialization
     switch (choice) {
       case "board":
-        await this.activateBoardView();
+        await this.activateBoardView(true);
         break;
       case "gantt":
-        await this.activateGanttView();
+        await this.activateGanttView(true);
         break;
       case "grid":
       default:
-        await this.activateView();
+        await this.activateView(true);
         break;
     }
   }
