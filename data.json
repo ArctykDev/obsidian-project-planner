@@ -7,16 +7,23 @@
         "buckets": [
           {
             "id": "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0",
-            "name": "In Progress"
+            "name": "In Progress",
+            "color": "#ffb900"
           },
           {
             "id": "e9136041-f9f7-4332-9d81-7fb4c19a97bc",
-            "name": "In Review"
+            "name": "In Review",
+            "color": "#d83b01"
+          },
+          {
+            "id": "f98a3102-a298-4a98-8d99-ed93eac60755",
+            "name": "Completed",
+            "color": "#107c10"
           }
         ],
         "completedSectionsCollapsed": {
           "unassigned": true,
-          "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0": true
+          "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0": false
         },
         "unassignedBucketName": "Backlog"
       },
@@ -57,7 +64,7 @@
         ]
       }
     ],
-    "activeProjectId": "bb29a79d-acfa-41cb-8ff7-5dda36ff6759",
+    "activeProjectId": "de2ed79d-b1f3-473d-a3dd-d3640cb89c54",
     "defaultView": "grid",
     "showCompleted": true,
     "openLinksInNewTab": false,
@@ -174,14 +181,28 @@
       {
         "id": "60f41647-b6c5-4968-97cc-095334871e5e",
         "title": "Drag and drop ordering for Tags",
-        "status": "In Progress",
+        "status": "Completed",
         "priority": "Medium",
-        "completed": false,
+        "completed": true,
         "parentId": "91f7f8a6-a676-4124-864f-8d52a1382040",
         "collapsed": false,
         "tags": [
           "cfc49091-140c-4b0d-8d54-b812dbf02db5"
-        ]
+        ],
+        "bucketId": "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0",
+        "subtasks": [
+          {
+            "id": "a6732bc6-6cc4-4d85-a393-5ed1f1ca323e",
+            "title": "New checklist item",
+            "completed": true
+          },
+          {
+            "id": "43f325b0-cb67-47f5-8fa4-72349e0c78c7",
+            "title": "New checklist item",
+            "completed": false
+          }
+        ],
+        "description": "# Markdown\n\n**bold**"
       },
       {
         "id": "b8c9afce-566c-4a41-b66a-8d60123479c3",
@@ -333,15 +354,6 @@
         ]
       },
       {
-        "id": "5b87799a-e6d3-40a8-a616-8d34064744ee",
-        "title": "Task move to different project",
-        "status": "Not Started",
-        "priority": "Medium",
-        "completed": false,
-        "parentId": null,
-        "collapsed": false
-      },
-      {
         "id": "2cb80dc3-4939-4ffc-8905-096cf0e603a7",
         "title": "Quick Action: Send task to Completed",
         "status": "Not Started",
@@ -353,16 +365,16 @@
       {
         "id": "2b5895f5-5b62-4044-be39-51e7119c2135",
         "title": "Sub tasks can't be dragged outside of parent",
-        "status": "Not Started",
+        "status": "Completed",
         "priority": "Medium",
-        "completed": false,
+        "completed": true,
         "parentId": "90b0d854-37b6-404f-923a-dc275648a7fd",
         "collapsed": false
       },
       {
         "id": "c4a0b47b-dde4-4a33-9adb-2a2cb5ddec19",
         "title": "Task Details - Add Section/Bucket",
-        "status": "Not Started",
+        "status": "In Progress",
         "priority": "High",
         "completed": false,
         "parentId": "7cefa6d9-9ff7-4c56-8e74-5f1fa96da8e9",
@@ -370,7 +382,12 @@
         "description": "Testing to see if this shows on card.",
         "startDate": "2025-12-16",
         "dueDate": "2025-12-18",
-        "bucketId": "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0"
+        "bucketId": "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0",
+        "tags": [
+          "78bf00ac-a3cc-47d6-92a3-5f4816dc4719",
+          "064a02ab-b3ad-4ea1-9581-27b261a0be99",
+          "cfc49091-140c-4b0d-8d54-b812dbf02db5"
+        ]
       },
       {
         "id": "e5327f90-13f4-4be6-afb4-8aab39b7838a",
@@ -384,11 +401,12 @@
       {
         "id": "9e809c20-a536-4b7a-8081-689e9792f256",
         "title": "Add priority to card",
-        "status": "In Progress",
+        "status": "Completed",
         "priority": "High",
-        "completed": false,
+        "completed": true,
         "parentId": "e5327f90-13f4-4be6-afb4-8aab39b7838a",
-        "collapsed": false
+        "collapsed": false,
+        "bucketId": "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0"
       },
       {
         "id": "90b0d854-37b6-404f-923a-dc275648a7fd",
@@ -397,6 +415,42 @@
         "priority": "Medium",
         "completed": false,
         "parentId": null,
+        "collapsed": false
+      },
+      {
+        "id": "a01efc3f-1cf8-490c-8864-fb65db783de2",
+        "title": "Test Parent Ticket 2",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": null,
+        "collapsed": false
+      },
+      {
+        "id": "5b96be2a-3689-4bcf-91b6-db88a908b819",
+        "title": "Test Child Task 2",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": "a01efc3f-1cf8-490c-8864-fb65db783de2",
+        "collapsed": false
+      },
+      {
+        "id": "95b5b3ac-8a30-40de-a814-15de265b5598",
+        "title": "Test Parent Ticket 1",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": "a01efc3f-1cf8-490c-8864-fb65db783de2",
+        "collapsed": false
+      },
+      {
+        "id": "5b87799a-e6d3-40a8-a616-8d34064744ee",
+        "title": "Move tasks between projects",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": "a01efc3f-1cf8-490c-8864-fb65db783de2",
         "collapsed": false
       },
       {
@@ -578,6 +632,28 @@
         "parentId": "40186745-554c-4767-9fcd-da5bbe565dad",
         "collapsed": false,
         "description": "Fix the styling on Add Task button in top menu to match the Columns and Plugin Settings button.\n\n- Fix on hover to use white text. It's currently using black."
+      },
+      {
+        "id": "11143a46-1505-449d-8267-d7063f9f57da",
+        "title": "Test Child Task 1",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": "40186745-554c-4767-9fcd-da5bbe565dad",
+        "collapsed": false
+      },
+      {
+        "id": "10edb8a9-aa71-46aa-8203-9ce3cbccfbc3",
+        "title": "Make Bucket Colour Customizable",
+        "status": "In Progress",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": null,
+        "collapsed": false,
+        "bucketId": "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0",
+        "startDate": "2026-01-12T00:00:00.000Z",
+        "dueDate": "2026-01-12T00:00:00.000Z",
+        "description": "Allow users to customize the colour of each bucket. Like Microsoft Planner."
       }
     ],
     "bb29a79d-acfa-41cb-8ff7-5dda36ff6759": [

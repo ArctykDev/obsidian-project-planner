@@ -45,8 +45,8 @@ export class DashboardView extends ItemView {
     }
 
     async onOpen() {
-        await (this.plugin as any).taskStore.ensureLoaded();
-        this.unsubscribe = (this.plugin as any).taskStore.subscribe(() => this.render());
+        await this.plugin.taskStore.ensureLoaded();
+        this.unsubscribe = this.plugin.taskStore.subscribe(() => this.render());
         this.render();
     }
 
@@ -149,7 +149,7 @@ export class DashboardView extends ItemView {
 
         const openBtn = header.createEl("button", { text: "Open Hub", cls: "dashboard-action-btn" });
         openBtn.onclick = async () => {
-            await (this.plugin as any).hubManager.openOrCreateProjectHub(stats.projectName);
+            await this.plugin.hubManager.openOrCreateProjectHub(stats.projectName);
         };
 
         // KPI Grid

@@ -140,7 +140,7 @@ export class TaskStore {
     if (partial.status !== undefined) {
       partial.completed = partial.status === "Completed";
     } else if (partial.completed !== undefined) {
-      partial.status = partial.completed ? "Completed" : "Not Started";
+      partial.status = partial.completed ? "Completed" : task.status || "Not Started";
     }
 
     Object.assign(task, partial);
@@ -148,9 +148,17 @@ export class TaskStore {
   }
 
   async deleteTask(id: string): Promise<void> {
-    this.tasks = this.tasks.filter(
-      (t) => t.id !== id && t.parentId !== id
-    );
+    // Find children of the task being deleted
+    const children = this.tasks.filter(t => t.parentId === id);
+
+    // Promote children to top-level tasks (orphan handling)
+    for (const child of children) {
+      child.parentId = null;
+    }
+
+    // Remove the task itself
+    this.tasks = this.tasks.filter(t => t.id !== id);
+
     await this.save();
   }
 

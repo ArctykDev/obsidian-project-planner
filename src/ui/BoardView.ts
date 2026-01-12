@@ -80,11 +80,10 @@ export class BoardView extends ItemView {
     }
 
     private async initializeBuckets() {
-        const pluginAny = this.plugin as any;
-        const settings = pluginAny.settings || {};
+        const settings = this.plugin.settings;
         const activeProjectId = settings.activeProjectId;
         const projects = settings.projects || [];
-        const activeProject = projects.find((p: any) => p.id === activeProjectId);
+        const activeProject = projects.find(p => p.id === activeProjectId);
 
         // Load buckets from project settings (each project has its own bucket layout)
         if (activeProject && activeProject.buckets && activeProject.buckets.length > 0) {
@@ -184,6 +183,12 @@ export class BoardView extends ItemView {
             const columnHeader = column.createDiv("planner-board-column-header");
             columnHeader.draggable = true;
             columnHeader.setAttribute("data-bucket-id", bucket.id);
+
+            // Apply bucket color if set
+            if (bucket.color) {
+                columnHeader.style.backgroundColor = bucket.color;
+                columnHeader.style.color = this.getContrastColor(bucket.color);
+            }
 
             // Setup bucket drag events
             this.setupBucketDrag(columnHeader, column, bucket);
@@ -318,7 +323,7 @@ export class BoardView extends ItemView {
             await this.plugin.openTaskDetail(task);
         };
 
-        // Priority indicator
+        // Priority indicator (icon on the side for High/Critical)
         if (task.priority && (task.priority === "High" || task.priority === "Critical")) {
             const priorityBadge = card.createDiv("planner-board-card-priority");
             if (task.priority === "Critical") {
@@ -335,21 +340,41 @@ export class BoardView extends ItemView {
             title.classList.add("planner-task-completed");
         }
 
-        // Tags
-        if (task.tags && task.tags.length > 0) {
-            const tagsContainer = card.createDiv("planner-board-card-tags");
-            const pluginAny = this.plugin as any;
-            const settings = pluginAny.settings || {};
-            const availableTags = settings.availableTags || [];
+        // Priority badge + Tags (combined row)
+        if (task.priority || (task.tags && task.tags.length > 0)) {
+            const metadataRow = card.createDiv("planner-board-card-tags");
 
-            task.tags.forEach((tagId) => {
-                const tag = availableTags.find((t: any) => t.id === tagId);
-                if (tag) {
-                    const tagBadge = tagsContainer.createDiv("planner-board-card-tag");
-                    tagBadge.textContent = tag.name;
-                    tagBadge.style.backgroundColor = tag.color;
+            // Priority badge first
+            if (task.priority) {
+                const pill = metadataRow.createEl("span", {
+                    cls: "priority-pill",
+                    text: task.priority
+                });
+
+                // Apply priority color from settings
+                const settings = this.plugin.settings;
+                const availablePriorities = settings.availablePriorities || [];
+                const priority = availablePriorities.find(p => p.name === task.priority);
+
+                if (priority) {
+                    pill.style.backgroundColor = priority.color;
                 }
-            });
+            }
+
+            // Then tags
+            if (task.tags && task.tags.length > 0) {
+                const settings = this.plugin.settings;
+                const availableTags = settings.availableTags || [];
+
+                task.tags.forEach((tagId) => {
+                    const tag = availableTags.find(t => t.id === tagId);
+                    if (tag) {
+                        const tagBadge = metadataRow.createDiv("planner-board-card-tag");
+                        tagBadge.textContent = tag.name;
+                        tagBadge.style.backgroundColor = tag.color;
+                    }
+                });
+            }
         }
 
         // Footer with metadata
@@ -682,6 +707,15 @@ export class BoardView extends ItemView {
 
         menu.addItem((item) =>
             item
+                .setTitle("Change color")
+                .setIcon("palette")
+                .onClick(() => {
+                    this.showColorPicker(bucket, header);
+                })
+        );
+
+        menu.addItem((item) =>
+            item
                 .setTitle("Add bucket to right")
                 .setIcon("plus")
                 .onClick(async () => {
@@ -726,6 +760,76 @@ export class BoardView extends ItemView {
         );
 
         menu.showAtMouseEvent(e);
+    }
+
+    private showColorPicker(bucket: BoardBucket, header: HTMLElement) {
+        const menu = new Menu();
+
+        const colors = [
+            { name: "Default", value: "" },
+            { name: "Blue", value: "#0078d4" },
+            { name: "Teal", value: "#00b7c3" },
+            { name: "Green", value: "#107c10" },
+            { name: "Yellow", value: "#ffb900" },
+            { name: "Orange", value: "#d83b01" },
+            { name: "Red", value: "#e81123" },
+            { name: "Purple", value: "#5c2d91" },
+            { name: "Pink", value: "#e3008c" },
+            { name: "Gray", value: "#69797e" }
+        ];
+
+        colors.forEach((colorOption) => {
+            menu.addItem((item) => {
+                const itemEl = item.setTitle(colorOption.name);
+
+                if (colorOption.value) {
+                    // Add color preview dot
+                    itemEl.setIcon("circle");
+                    // Style the icon with the color
+                    setTimeout(() => {
+                        const iconEl = (item as any).dom?.querySelector(".menu-item-icon");
+                        if (iconEl) {
+                            iconEl.style.color = colorOption.value;
+                        }
+                    }, 0);
+                }
+
+                itemEl.onClick(async () => {
+                    bucket.color = colorOption.value || undefined;
+                    await this.saveBuckets();
+
+                    // Update header immediately
+                    if (bucket.color) {
+                        header.style.backgroundColor = bucket.color;
+                        header.style.color = this.getContrastColor(bucket.color);
+                    } else {
+                        header.style.backgroundColor = "";
+                        header.style.color = "";
+                    }
+                });
+            });
+        });
+
+        menu.showAtMouseEvent(new MouseEvent("click", {
+            clientX: header.getBoundingClientRect().left,
+            clientY: header.getBoundingClientRect().bottom
+        }));
+    }
+
+    private getContrastColor(hexColor: string): string {
+        // Remove # if present
+        const hex = hexColor.replace("#", "");
+
+        // Convert to RGB
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+
+        // Calculate relative luminance
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+        // Return white for dark colors, dark for light colors
+        return luminance > 0.5 ? "#000000" : "#ffffff";
     }
 
     private async saveBuckets() {

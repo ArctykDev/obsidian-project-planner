@@ -1541,20 +1541,23 @@
   justify-content: space-between;
   padding: 16px 16px 12px 16px;
   border-bottom: 2px solid var(--background-modifier-border);
+  color: var(
+    --text-normal
+  ); /* Default color, will be overridden for custom bucket colors */
 }
 
 .planner-board-column-title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-normal);
+  color: inherit; /* Inherit from parent for custom bucket colors */
   flex: 1;
 }
 
 .planner-board-column-count {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-muted);
-  background: var(--background-modifier-border);
+  color: inherit; /* Inherit from parent for custom bucket colors */
+  background: rgba(0, 0, 0, 0.1);
   padding: 4px 10px;
   border-radius: 12px;
   min-width: 28px;
@@ -1757,6 +1760,11 @@
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 8px;
+}
+
+.planner-board-card-tags .priority-pill {
+  font-size: 11px;
+  padding: 3px 10px;
 }
 
 .planner-board-card-tag {

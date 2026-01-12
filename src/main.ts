@@ -472,5 +472,6 @@ export default class ProjectPlannerPlugin extends Plugin {
     this.app.workspace.detachLeavesOfType(VIEW_TYPE_TASK_DETAIL);
     this.app.workspace.detachLeavesOfType(VIEW_TYPE_DEPENDENCY_GRAPH);
     this.app.workspace.detachLeavesOfType(VIEW_TYPE_GANTT);
+    this.app.workspace.detachLeavesOfType(VIEW_TYPE_DASHBOARD);
   }
 }

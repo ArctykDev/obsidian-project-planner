@@ -5,6 +5,7 @@ import type { PlannerTag, PlannerStatus, PlannerPriority } from "./types";
 export interface BoardBucket {
   id: string;
   name: string;
+  color?: string; // Column header color (Microsoft Planner style)
 }
 
 export interface PlannerProject {

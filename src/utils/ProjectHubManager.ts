@@ -17,14 +17,14 @@ export class ProjectHubManager {
         const file = this.plugin.app.vault.getAbstractFileByPath(hubPath);
 
         const open = async () => {
-            const openInNewTab = (this.plugin as any).settings?.openLinksInNewTab ?? false;
+            const openInNewTab = this.plugin.settings?.openLinksInNewTab ?? false;
             const leaf = this.plugin.app.workspace.getLeaf(!openInNewTab);
-            if (file) {
-                await (leaf as any).openFile(file as any);
+            if (file && file instanceof this.plugin.app.vault.adapter.constructor) {
+                await leaf.openFile(file as any);
             } else {
                 const newFile = this.plugin.app.vault.getAbstractFileByPath(hubPath);
                 if (newFile) {
-                    await (leaf as any).openFile(newFile as any);
+                    await leaf.openFile(newFile as any);
                 }
             }
         };
@@ -55,7 +55,7 @@ export class ProjectHubManager {
                 return grid.taskStore.getAll();
             }
         }
-        const store = (this.plugin as any).taskStore;
+        const store = this.plugin.taskStore;
         if (store) {
             return store.getAll();
         }

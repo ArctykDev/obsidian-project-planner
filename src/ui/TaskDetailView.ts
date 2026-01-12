@@ -105,8 +105,7 @@ export class TaskDetailView extends ItemView {
     });
 
     copyLinkBtn.onclick = async () => {
-      const pluginAny = this.plugin as any;
-      const projectId = pluginAny.settings?.activeProjectId || "";
+      const projectId = this.plugin.settings?.activeProjectId || "";
       const uri = `obsidian://open-planner-task?id=${encodeURIComponent(task.id)}&project=${encodeURIComponent(projectId)}`;
 
       await navigator.clipboard.writeText(uri);
@@ -150,10 +149,9 @@ export class TaskDetailView extends ItemView {
     // STATUS — dropdown
     //
     container.createEl("h3", { text: "Status" });
-    const pluginAny = this.plugin as any;
-    const settings = pluginAny.settings || {};
+    const settings = this.plugin.settings;
     const availableStatuses = settings.availableStatuses || [];
-    const statusNames = availableStatuses.map((s: any) => s.name);
+    const statusNames = availableStatuses.map(s => s.name);
 
     this.createEditableSelect(container, task.status, statusNames, async (val) => {
       await this.update({ status: val });
@@ -164,7 +162,7 @@ export class TaskDetailView extends ItemView {
     //
     container.createEl("h3", { text: "Priority" });
     const availablePriorities = settings.availablePriorities || [];
-    const priorityNames = availablePriorities.map((p: any) => p.name);
+    const priorityNames = availablePriorities.map(p => p.name);
     const defaultPriority = availablePriorities[0]?.name || "Medium";
 
     this.createEditableSelect(
@@ -187,13 +185,13 @@ export class TaskDetailView extends ItemView {
     //
     container.createEl("h3", { text: "Bucket" });
     const activeProject = settings.projects?.find(
-      (p: any) => p.id === settings.activeProjectId
+      p => p.id === settings.activeProjectId
     );
     const buckets = activeProject?.buckets || [];
-    const bucketNames = ["Unassigned", ...buckets.map((b: any) => b.name)];
+    const bucketNames = ["Unassigned", ...buckets.map(b => b.name)];
     const currentBucketId = task.bucketId;
     const currentBucketName = currentBucketId
-      ? buckets.find((b: any) => b.id === currentBucketId)?.name || "Unassigned"
+      ? buckets.find(b => b.id === currentBucketId)?.name || "Unassigned"
       : "Unassigned";
 
     this.createEditableSelect(
@@ -204,7 +202,7 @@ export class TaskDetailView extends ItemView {
         if (val === "Unassigned") {
           await this.update({ bucketId: undefined });
         } else {
-          const selectedBucket = buckets.find((b: any) => b.name === val);
+          const selectedBucket = buckets.find(b => b.name === val);
           if (selectedBucket) {
             await this.update({ bucketId: selectedBucket.id });
           }

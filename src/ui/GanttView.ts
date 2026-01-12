@@ -43,8 +43,8 @@ export class GanttView extends ItemView {
     }
 
     async onOpen() {
-        await (this.plugin as any).taskStore.ensureLoaded();
-        this.unsubscribe = (this.plugin as any).taskStore.subscribe(() => this.render());
+        await this.plugin.taskStore.ensureLoaded();
+        this.unsubscribe = this.plugin.taskStore.subscribe(() => this.render());
         this.render();
     }
 

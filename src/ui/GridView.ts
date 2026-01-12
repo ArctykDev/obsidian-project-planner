@@ -20,6 +20,7 @@ interface VisibleRow {
   task: PlannerTask;
   isChild: boolean;
   hasChildren: boolean;
+  depth: number; // Track nesting depth for visual indentation
 }
 
 export class GridView extends ItemView {
@@ -252,34 +253,36 @@ export class GridView extends ItemView {
 
     const visibleRows: VisibleRow[] = [];
 
-    for (const root of roots) {
-      const children = all.filter((t) => t.parentId === root.id);
-      const rootMatches = matchesFilter.get(root.id) ?? true;
+    // Recursive function to build hierarchy
+    const addTaskAndChildren = (task: PlannerTask, depth: number) => {
+      const children = all.filter((t) => t.parentId === task.id);
+      const taskMatches = matchesFilter.get(task.id) ?? true;
       const matchingChildren = children.filter(
         (c) => matchesFilter.get(c.id) ?? true
       );
 
       const hasChildren = children.length > 0;
 
-      if (!rootMatches && matchingChildren.length === 0) continue;
+      if (!taskMatches && matchingChildren.length === 0) return;
 
       visibleRows.push({
-        task: root,
-        isChild: false,
+        task,
+        isChild: depth > 0,
         hasChildren,
+        depth,
       });
 
-      if (!root.collapsed) {
-        const toRender = rootMatches ? children : matchingChildren;
+      if (!task.collapsed) {
+        const toRender = taskMatches ? children : matchingChildren;
 
         for (const child of toRender) {
-          visibleRows.push({
-            task: child,
-            isChild: true,
-            hasChildren: false,
-          });
+          addTaskAndChildren(child, depth + 1);
         }
       }
+    };
+
+    for (const root of roots) {
+      addTaskAndChildren(root, 0);
     }
 
     this.visibleRows = visibleRows;
@@ -329,7 +332,7 @@ export class GridView extends ItemView {
     this.numberingMap = numberingMap;
 
     visibleRows.forEach((r, i) =>
-      this.renderTaskRow(table, r.task, r.isChild, r.hasChildren, i)
+      this.renderTaskRow(table, r.task, r.isChild, r.hasChildren, i, r.depth)
     );
   }
 
@@ -372,34 +375,36 @@ export class GridView extends ItemView {
 
     const visibleRows: VisibleRow[] = [];
 
-    for (const root of roots) {
-      const children = all.filter((t) => t.parentId === root.id);
-      const rootMatches = matchesFilter.get(root.id) ?? true;
+    // Recursive function to build hierarchy
+    const addTaskAndChildren = (task: PlannerTask, depth: number) => {
+      const children = all.filter((t) => t.parentId === task.id);
+      const taskMatches = matchesFilter.get(task.id) ?? true;
       const matchingChildren = children.filter(
         (c) => matchesFilter.get(c.id) ?? true
       );
 
       const hasChildren = children.length > 0;
 
-      if (!rootMatches && matchingChildren.length === 0) continue;
+      if (!taskMatches && matchingChildren.length === 0) return;
 
       visibleRows.push({
-        task: root,
-        isChild: false,
+        task,
+        isChild: depth > 0,
         hasChildren,
+        depth,
       });
 
-      if (!root.collapsed) {
-        const toRender = rootMatches ? children : matchingChildren;
+      if (!task.collapsed) {
+        const toRender = taskMatches ? children : matchingChildren;
 
         for (const child of toRender) {
-          visibleRows.push({
-            task: child,
-            isChild: true,
-            hasChildren: false,
-          });
+          addTaskAndChildren(child, depth + 1);
         }
       }
+    };
+
+    for (const root of roots) {
+      addTaskAndChildren(root, 0);
     }
 
     this.visibleRows = visibleRows;
@@ -427,7 +432,7 @@ export class GridView extends ItemView {
 
     // Add new rows
     visibleRows.forEach((r, i) =>
-      this.renderTaskRow(this.tableElement!, r.task, r.isChild, r.hasChildren, i)
+      this.renderTaskRow(this.tableElement!, r.task, r.isChild, r.hasChildren, i, r.depth)
     );
   }
 
@@ -440,7 +445,8 @@ export class GridView extends ItemView {
     task: PlannerTask,
     isChild: boolean,
     hasChildren: boolean,
-    index: number
+    index: number,
+    depth: number
   ) {
     const row = table.createEl("tr", {
       cls: isChild
@@ -622,8 +628,13 @@ export class GridView extends ItemView {
         cls: isChild ? "planner-title-cell subtask" : "planner-title-cell",
       });
 
+      // Add indentation based on depth (20px per level)
+      if (depth > 0) {
+        titleCell.style.paddingLeft = `${8 + (depth * 20)}px`;
+      }
+
       // Caret for parent tasks
-      if (!isChild && hasChildren) {
+      if (hasChildren) {
         const caret = titleCell.createSpan({
           cls: "planner-expand-toggle",
           text: task.collapsed ? "▸" : "▾",
@@ -651,8 +662,8 @@ export class GridView extends ItemView {
         }
       );
 
-      // Bold only if this is a parent that has children
-      if (!isChild && hasChildren) {
+      // Bold if this task has children (regardless of its own depth)
+      if (hasChildren) {
         titleSpan.classList.add("planner-parent-bold");
       }
       if (task.completed) {
@@ -1103,7 +1114,7 @@ export class GridView extends ItemView {
       return;
     }
 
-    // Child drag: move single subtask (simple global reorder based on ids)
+    // Child drag: move single subtask and update hierarchy if needed
     const fromIndex = ids.indexOf(dragId);
     if (fromIndex === -1) return;
     ids.splice(fromIndex, 1);
@@ -1116,6 +1127,29 @@ export class GridView extends ItemView {
     }
 
     ids.splice(insertIndex, 0, dragId);
+
+    // Determine new parent based on drop location
+    // Look at what task comes before the drag task in the new position
+    let newParentId: string | null = null;
+
+    if (insertIndex > 0) {
+      const taskBeforeId = ids[insertIndex - 1];
+      const taskBefore = tasks.find(t => t.id === taskBeforeId);
+
+      if (taskBefore) {
+        // If the task before has a parent, use that same parent
+        if (taskBefore.parentId) {
+          newParentId = taskBefore.parentId;
+        }
+        // Otherwise, taskBefore is a root - don't set parent (dragTask becomes root)
+      }
+    }
+    // If insertIndex is 0, dragTask becomes a root task (newParentId stays null)
+
+    // Update the task's parent if it changed
+    if (dragTask.parentId !== newParentId) {
+      await this.taskStore.updateTask(dragId, { parentId: newParentId });
+    }
 
     await this.taskStore.setOrder(ids);
     this.render();
