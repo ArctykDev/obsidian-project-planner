@@ -292,24 +292,48 @@
 .planner-detail-header {
   margin-bottom: 16px;
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  align-items: center;
 }
 
-.planner-complete-btn {
-  padding: 8px 16px;
-  background: var(--background-modifier-border);
+.planner-complete-btn,
+.planner-copy-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--background-primary);
   color: var(--text-normal);
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
   cursor: pointer;
   font-weight: 500;
   transition: all 0.15s ease;
-  font-size: 14px;
+  font-size: 13px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.planner-complete-btn:hover {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
+.planner-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+}
+
+.planner-complete-btn:hover,
+.planner-copy-link-btn:hover,
+.planner-close-btn:hover {
+  background: var(--background-modifier-hover);
   border-color: var(--interactive-accent);
 }
 
@@ -317,25 +341,33 @@
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   border-color: var(--interactive-accent);
-  font-weight: 600;
 }
 
-.planner-copy-link-btn {
-  padding: 8px 16px;
-  background: var(--background-modifier-border);
-  color: var(--text-normal);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.15s ease;
-  font-size: 14px;
+.planner-complete-btn-active:hover {
+  background: var(--interactive-accent-hover);
+  border-color: var(--interactive-accent-hover);
 }
 
-.planner-copy-link-btn:hover {
-  background: var(--interactive-accent);
+.planner-btn-success {
+  background: var(--color-green);
   color: var(--text-on-accent);
-  border-color: var(--interactive-accent);
+  border-color: var(--color-green);
+}
+
+.planner-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  width: 16px;
+  height: 16px;
+}
+
+.planner-btn-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.planner-btn-text {
+  line-height: 1;
 }
 
 .planner-detail-wrapper h2 {
@@ -392,6 +424,19 @@
   align-items: center;
   padding: 0 0 18px 0;
   margin-bottom: 4px;
+}
+
+.planner-filter-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.planner-filter-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .planner-filter {
@@ -615,6 +660,13 @@
   height: 2px;
   background-color: var(--interactive-accent);
   z-index: 9999;
+}
+
+/* Disabled cell for parent tasks */
+.planner-disabled-cell {
+  color: var(--text-muted);
+  font-style: italic;
+  opacity: 0.5;
 }
 
 .planner-num-cell {
@@ -972,6 +1024,53 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
+/* ========================================================================= */
+/* SETTINGS HEADER & VERSION                                                 */
+/* ========================================================================= */
+
+.planner-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--background-modifier-border);
+}
+
+.planner-settings-header h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.planner-settings-version {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.planner-version-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.planner-changelog-link {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.planner-changelog-link:hover {
+  color: var(--interactive-accent);
+  text-decoration: underline;
+}
+
 /* Tags in TaskDetailView */
 .planner-tag-container {
   display: flex;
@@ -1143,6 +1242,7 @@
 
 .planner-dependency-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
@@ -1160,12 +1260,16 @@
   padding: 3px 8px;
   border-radius: 3px;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .planner-dependency-task {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 13px;
   color: var(--text-normal);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .planner-dependency-remove {
@@ -1185,14 +1289,14 @@
 
 .planner-add-dependency {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  align-items: center;
   padding: 8px 0;
 }
 
 .planner-dependency-task-select,
 .planner-dependency-type-select {
-  flex: 1;
+  width: 100%;
   padding: 6px 10px;
   background: var(--background-primary);
   color: var(--text-normal);
@@ -1208,6 +1312,7 @@
 }
 
 .planner-dependency-add-btn {
+  width: 100%;
   padding: 6px 16px;
   background: var(--interactive-accent);
   color: var(--text-on-accent);
@@ -1939,14 +2044,39 @@
 .planner-gantt-layout {
   display: grid;
   grid-template-columns: 300px 1fr;
-  gap: 12px;
+  gap: 0;
   min-height: 300px;
+  position: relative;
 }
 
 .planner-gantt-left {
-  border-right: 1px solid var(--background-modifier-border);
   padding-right: 8px;
   overflow-y: auto;
+  border-right: 1px solid var(--background-modifier-border);
+}
+
+.planner-gantt-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  margin-left: -4px;
+  cursor: col-resize;
+  z-index: 10;
+  transition: background-color 0.15s ease;
+}
+
+.planner-gantt-resizer:hover {
+  background: var(--interactive-accent);
+}
+
+.planner-gantt-resizer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -2px;
+  right: -2px;
 }
 
 .planner-gantt-row-left {
@@ -1961,7 +2091,8 @@
 }
 
 .planner-gantt-right-wrap {
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;
   background: var(--background-secondary);
@@ -1972,27 +2103,53 @@
 }
 
 .planner-gantt-scale {
-  display: flex;
   position: sticky;
   top: 0;
   background: var(--background-primary);
   z-index: 2;
-  border-bottom: 1px solid var(--background-modifier-border);
+  border-bottom: 2px solid var(--background-modifier-border);
 }
 
-.planner-gantt-scale-day {
+.planner-gantt-scale-months {
+  display: flex;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-primary-alt);
+}
+
+.planner-gantt-month-header {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-normal);
+  border-right: 1px solid var(--background-modifier-border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 8px;
+}
+
+.planner-gantt-scale-days {
+  display: flex;
+  background: var(--background-primary);
+}
+
+.planner-gantt-day-cell {
   height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
   color: var(--text-muted);
-  border-right: 1px solid var(--background-modifier-border);
+  border-right: 1px solid var(--background-modifier-border-hover);
 }
 
-.planner-gantt-scale-month {
+.planner-gantt-week-marker {
   font-weight: 600;
   color: var(--text-normal);
+  border-right: 1px solid var(--background-modifier-border);
 }
 
 .planner-gantt-row {
@@ -2168,6 +2325,93 @@
   color: var(--text-on-accent);
 }
 
+/* Go to date button */
+.planner-goto-date-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  margin-left: 12px;
+}
+
+.planner-goto-date-btn:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+}
+
+.planner-goto-date-icon {
+  display: flex;
+  align-items: center;
+  width: 16px;
+  height: 16px;
+}
+
+.planner-date-picker-input {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 13px;
+}
+
+.planner-date-picker-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+
+/* Date picker modal */
+.planner-date-modal {
+  position: fixed;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  min-width: 250px;
+}
+
+.planner-date-modal-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  justify-content: flex-end;
+}
+
+.planner-date-modal button {
+  padding: 6px 16px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.planner-date-modal button:hover {
+  background: var(--background-modifier-hover);
+}
+
+.planner-date-modal button.mod-cta {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.planner-date-modal button.mod-cta:hover {
+  background: var(--interactive-accent-hover);
+}
+
 /* Gantt drag handle */
 .planner-gantt-row-left .planner-drag-handle {
   display: flex;
@@ -2186,6 +2430,32 @@
 
 .planner-gantt-row-left .planner-drag-handle:active {
   cursor: grabbing;
+}
+
+/* Gantt expand/collapse toggle for hierarchical view */
+.planner-gantt-row-left .planner-expand-toggle {
+  display: flex;
+  align-items: center;
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+  margin-left: 2px;
+  cursor: pointer;
+  opacity: 0.7;
+  color: var(--text-muted);
+  font-size: inherit;
+}
+
+.planner-gantt-row-left .planner-expand-toggle:hover {
+  opacity: 1;
+  color: var(--text-normal);
+}
+
+.planner-gantt-row-left .planner-expand-spacer {
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+  margin-left: 2px;
 }
 
 /* Gantt drag ghost and drop indicator */
@@ -2269,11 +2539,29 @@
   border-bottom: 2px solid var(--background-modifier-border);
 }
 
+.dashboard-project-title-section {
+  flex: 1;
+}
+
 .dashboard-project-header h2 {
-  margin: 0;
+  margin: 0 0 8px 0;
   font-size: 22px;
   font-weight: 700;
   color: var(--text-normal);
+}
+
+.dashboard-project-metadata {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.dashboard-project-meta-item {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .dashboard-action-btn {
@@ -2312,9 +2600,17 @@
   transition: all 0.15s ease;
 }
 
+.dashboard-kpi-card-clickable {
+  cursor: pointer;
+}
+
 .dashboard-kpi-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-kpi-card-clickable:active {
+  transform: translateY(0);
 }
 
 .dashboard-kpi-icon {
@@ -2409,6 +2705,169 @@
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.dashboard-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-normal);
+}
+
+/* Dashboard Task Modal */
+.dashboard-task-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9998;
+  backdrop-filter: blur(2px);
+}
+
+.dashboard-task-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  background: var(--background-primary);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-task-modal-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.dashboard-task-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.dashboard-task-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.dashboard-task-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.dashboard-task-modal-close:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.dashboard-task-modal-close-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.dashboard-task-modal-close-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.dashboard-task-modal-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 24px;
+}
+
+.dashboard-task-modal-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: var(--background-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dashboard-task-modal-item:hover {
+  background: var(--background-modifier-hover);
+  transform: translateX(4px);
+}
+
+.dashboard-task-modal-checkbox {
+  margin-top: 2px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.dashboard-task-modal-title {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-normal);
+  line-height: 1.4;
+}
+
+.dashboard-task-modal-completed {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.dashboard-task-modal-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.dashboard-task-modal-priority {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  color: white;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dashboard-task-modal-due {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.dashboard-task-modal-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-style: italic;
+}
 }
 
 .dashboard-stat-value {

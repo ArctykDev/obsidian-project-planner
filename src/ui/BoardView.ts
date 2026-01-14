@@ -133,7 +133,9 @@ export class BoardView extends ItemView {
         const filters = toolbar.createDiv("planner-board-filters");
 
         // Priority filter
-        const priorityFilter = filters.createEl("select", { cls: "planner-filter-select" });
+        const priorityFilterGroup = filters.createDiv("planner-filter-group");
+        priorityFilterGroup.createSpan({ cls: "planner-filter-label", text: "Priority:" });
+        const priorityFilter = priorityFilterGroup.createEl("select", { cls: "planner-filter-select" });
         ["All", "Low", "Medium", "High", "Critical"].forEach(priority => {
             const option = priorityFilter.createEl("option", { text: priority, value: priority });
             if (priority === this.currentFilters.priority) option.selected = true;
@@ -152,8 +154,40 @@ export class BoardView extends ItemView {
         searchInput.value = this.currentFilters.search;
         searchInput.oninput = () => {
             this.currentFilters.search = searchInput.value;
+            // Don't call render() here - it would recreate the input and lose focus
+            // Instead, we'll debounce or handle this differently
+            // For now, just update the filter value
+        };
+
+        // Add search on Enter or blur
+        searchInput.onkeydown = (e) => {
+            if (e.key === "Enter") {
+                this.render();
+            }
+        };
+        searchInput.onblur = () => {
             this.render();
         };
+
+        // Clear filter button (X)
+        const clearFilterBtn = toolbar.createEl("button", {
+            text: "✕",
+            cls: "planner-clear-filter"
+        });
+        clearFilterBtn.style.display = "none"; // Hidden by default
+
+        const updateClearButtonVisibility = () => {
+            const hasActiveFilters =
+                this.currentFilters.priority !== "All" ||
+                this.currentFilters.search.trim() !== "";
+            clearFilterBtn.style.display = hasActiveFilters ? "inline-block" : "none";
+        };
+
+        clearFilterBtn.onclick = () => {
+            this.render();
+        };
+
+        updateClearButtonVisibility();
 
         // Render board columns
         this.renderBoard(wrapper);

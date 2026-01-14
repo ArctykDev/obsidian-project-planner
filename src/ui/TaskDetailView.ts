@@ -85,8 +85,13 @@ export class TaskDetailView extends ItemView {
     //
     const headerContainer = container.createDiv("planner-detail-header");
     const completeBtn = headerContainer.createEl("button", {
-      cls: "planner-complete-btn",
-      text: task.status === "Completed" ? "✓ Completed" : "Mark as Complete",
+      cls: "planner-complete-btn"
+    });
+    const checkIcon = completeBtn.createSpan({ cls: "planner-btn-icon" });
+    setIcon(checkIcon, task.status === "Completed" ? "check-circle" : "circle");
+    completeBtn.createSpan({
+      cls: "planner-btn-text",
+      text: task.status === "Completed" ? "Completed" : "Mark as Complete"
     });
 
     completeBtn.onclick = async () => {
@@ -100,9 +105,11 @@ export class TaskDetailView extends ItemView {
 
     // COPY LINK button
     const copyLinkBtn = headerContainer.createEl("button", {
-      cls: "planner-copy-link-btn",
-      text: "🔗 Copy Link",
+      cls: "planner-copy-link-btn"
     });
+    const linkIcon = copyLinkBtn.createSpan({ cls: "planner-btn-icon" });
+    setIcon(linkIcon, "link");
+    copyLinkBtn.createSpan({ cls: "planner-btn-text", text: "Copy Link" });
 
     copyLinkBtn.onclick = async () => {
       const projectId = this.plugin.settings?.activeProjectId || "";
@@ -111,23 +118,27 @@ export class TaskDetailView extends ItemView {
       await navigator.clipboard.writeText(uri);
 
       // Visual feedback
-      copyLinkBtn.textContent = "✓ Copied!";
+      copyLinkBtn.classList.add("planner-btn-success");
+      linkIcon.empty();
+      setIcon(linkIcon, "check");
+      const textSpan = copyLinkBtn.querySelector(".planner-btn-text");
+      if (textSpan) textSpan.textContent = "Copied!";
+
       setTimeout(() => {
-        copyLinkBtn.textContent = "🔗 Copy Link";
+        copyLinkBtn.classList.remove("planner-btn-success");
+        linkIcon.empty();
+        setIcon(linkIcon, "link");
+        if (textSpan) textSpan.textContent = "Copy Link";
       }, 2000);
     };
 
     // CLOSE PANEL button
     const closeBtn = headerContainer.createEl("button", {
-      cls: "planner-copy-link-btn",
+      cls: "planner-close-btn",
       title: "Close Task Details"
     });
-
-    try {
-      setIcon(closeBtn, "x");
-    } catch (_) {
-      closeBtn.textContent = "✕";
-    }
+    const closeIcon = closeBtn.createSpan({ cls: "planner-btn-icon" });
+    setIcon(closeIcon, "x");
 
     closeBtn.onclick = () => {
       try {

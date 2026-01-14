@@ -13,8 +13,9 @@ import { DependencyGraphView, VIEW_TYPE_DEPENDENCY_GRAPH } from "./ui/Dependency
 import { VIEW_TYPE_GANTT, GanttView } from "./ui/GanttView";
 import { DashboardView, VIEW_TYPE_DASHBOARD } from "./ui/DashboardView";
 
-import { ProjectHubManager } from "./utils/ProjectHubManager";
 import { TaskStore } from "./stores/taskStore";
+import { TaskSync } from "./utils/TaskSync";
+import { DailyNoteTaskScanner } from "./utils/DailyNoteTaskScanner";
 
 import type { PlannerTask } from "./types";
 
@@ -31,8 +32,9 @@ interface ProjectPlannerData {
 
 export default class ProjectPlannerPlugin extends Plugin {
   settings!: ProjectPlannerSettings;
-  hubManager!: ProjectHubManager;
   taskStore!: TaskStore;
+  taskSync!: TaskSync;
+  dailyNoteScanner!: DailyNoteTaskScanner;
   private inlineStyleEl: HTMLStyleElement | null = null;
 
   async onload() {
@@ -40,15 +42,31 @@ export default class ProjectPlannerPlugin extends Plugin {
 
     await this.loadSettings();
 
+    // Migrate existing projects to add timestamps if missing
+    this.migrateProjectTimestamps();
+
     // Ensure stylesheet is present (self-heal if Obsidian didn't attach it)
     await this.ensureStylesheetLoaded();
-
-    // Initialize hub manager
-    this.hubManager = new ProjectHubManager(this);
 
     // Initialize central task store
     this.taskStore = new TaskStore(this);
     await this.taskStore.load();
+
+    // Initialize task sync system
+    this.taskSync = new TaskSync(this.app, this);
+
+    // Initialize daily note task scanner
+    this.dailyNoteScanner = new DailyNoteTaskScanner(this.app, this);
+
+    // Start sync if enabled
+    if (this.settings.enableMarkdownSync) {
+      await this.initializeTaskSync();
+    }
+
+    // Start daily note scanning if enabled
+    if (this.settings.enableDailyNoteSync) {
+      await this.initializeDailyNoteScanner();
+    }
 
     // Ribbon icons
     this.addRibbonIcon("calendar-check", "Open Project Planner", async () => {
@@ -138,20 +156,6 @@ export default class ProjectPlannerPlugin extends Plugin {
       callback: async () => await this.activateDashboardView(),
     });
 
-    // Command: Create/Update Project Hub
-    this.addCommand({
-      id: "create-project-hub",
-      name: "Create/Update Project Hub",
-      callback: async () => await this.createProjectHub(),
-    });
-
-    // Command: Create Task Notes
-    this.addCommand({
-      id: "create-task-notes",
-      name: "Create Notes for All Tasks",
-      callback: async () => await this.createTaskNotes(),
-    });
-
     // Register URI protocol handler for opening tasks directly
     this.registerObsidianProtocolHandler("open-planner-task", async (params) => {
       const taskId = params.id;
@@ -168,6 +172,26 @@ export default class ProjectPlannerPlugin extends Plugin {
     this.app.workspace.onLayoutReady(() => {
       void this.openDefaultView();
     });
+  }
+
+  private migrateProjectTimestamps() {
+    let updated = false;
+    const now = new Date().toISOString();
+
+    for (const project of this.settings.projects) {
+      if (!project.createdDate) {
+        project.createdDate = now;
+        updated = true;
+      }
+      if (!project.lastUpdatedDate) {
+        project.lastUpdatedDate = now;
+        updated = true;
+      }
+    }
+
+    if (updated) {
+      void this.saveSettings();
+    }
   }
 
   private async ensureStylesheetLoaded() {
@@ -297,6 +321,63 @@ export default class ProjectPlannerPlugin extends Plugin {
   // ---------------------------------------------------------------------------
   public async updateTask(id: string, fields: Partial<PlannerTask>) {
     await this.taskStore.updateTask(id, fields);
+
+    // Sync to markdown if enabled
+    if (this.settings.enableMarkdownSync && this.settings.autoCreateTaskNotes) {
+      const task = this.taskStore.getTaskById(id);
+      if (task) {
+        await this.taskSync.syncTaskToMarkdown(task, this.settings.activeProjectId);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Task Sync Methods
+  // ---------------------------------------------------------------------------
+  async initializeTaskSync() {
+    const activeProject = this.settings.projects.find(
+      p => p.id === this.settings.activeProjectId
+    );
+    if (!activeProject) return;
+
+    // Start watching for file changes
+    this.taskSync.watchProjectFolder(activeProject.id, activeProject.name);
+
+    // Perform initial sync if enabled
+    if (this.settings.syncOnStartup) {
+      await this.taskSync.initialSync(activeProject.id, activeProject.name);
+    }
+  }
+
+  async initializeDailyNoteScanner() {
+    if (!this.dailyNoteScanner) {
+      console.error('[DailyNoteScanner] Scanner not initialized');
+      return;
+    }
+
+    console.log('[DailyNoteScanner] Initializing daily note scanner...');
+    console.log('[DailyNoteScanner] Tag pattern:', this.settings.dailyNoteTagPattern);
+    console.log('[DailyNoteScanner] Scan folders:', this.settings.dailyNoteScanFolders);
+    console.log('[DailyNoteScanner] Default project:', this.settings.dailyNoteDefaultProject);
+    console.log('[DailyNoteScanner] Available projects:', this.settings.projects.map(p => `${p.name} (${p.id})`));
+    // Set up file watchers
+    this.dailyNoteScanner.setupWatchers();
+
+    // Perform initial scan
+    await this.dailyNoteScanner.scanAllNotes();
+  }
+
+  async syncAllTasksToMarkdown() {
+    const activeProject = this.settings.projects.find(
+      p => p.id === this.settings.activeProjectId
+    );
+    if (!activeProject) return;
+
+    const tasks = this.taskStore.getTasks();
+
+    for (const task of tasks) {
+      await this.taskSync.syncTaskToMarkdown(task, activeProject.id);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -418,20 +499,8 @@ export default class ProjectPlannerPlugin extends Plugin {
   }
 
   // ---------------------------------------------------------------------------
-  // Project Hub Management
+  // Create Task Notes
   // ---------------------------------------------------------------------------
-  async createProjectHub() {
-    await this.taskStore.ensureLoaded();
-    const tasks = this.taskStore.getAll();
-    const activeProject = this.settings.projects.find(
-      p => p.id === this.settings.activeProjectId
-    );
-
-    if (activeProject) {
-      await this.hubManager.createOrUpdateProjectHub(activeProject.name, tasks);
-    }
-  }
-
   async createTaskNotes() {
     await this.taskStore.ensureLoaded();
     const tasks = this.taskStore.getAll();
@@ -441,20 +510,55 @@ export default class ProjectPlannerPlugin extends Plugin {
 
     if (!activeProject) return;
 
-    for (const task of tasks) {
-      await this.hubManager.createTaskNote(task, activeProject.name);
+    const folderPath = `${activeProject.name}/Tasks`;
 
-      // Add backlinks for task links
-      if (task.links) {
-        for (const link of task.links) {
-          if (link.type === "obsidian") {
-            await this.hubManager.addBacklinkToNote(
-              link.url + ".md",
-              task.title,
-              activeProject.name
-            );
+    // Ensure folder exists
+    const folder = this.app.vault.getAbstractFileByPath(folderPath);
+    if (!folder) {
+      await this.app.vault.createFolder(folderPath);
+    }
+
+    for (const task of tasks) {
+      const fileName = `${folderPath}/${task.title.replace(/[\\/:*?"<>|]/g, '_')}.md`;
+      const existingFile = this.app.vault.getAbstractFileByPath(fileName);
+
+      let content = `# ${task.title}\n\n`;
+      content += `**Status**: ${task.status}\n`;
+      if (task.priority) content += `**Priority**: ${task.priority}\n`;
+      if (task.startDate) content += `**Start Date**: ${task.startDate}\n`;
+      if (task.dueDate) content += `**Due Date**: ${task.dueDate}\n`;
+      content += `\n---\n\n`;
+      if (task.description) content += `${task.description}\n\n`;
+
+      if (task.dependencies && task.dependencies.length > 0) {
+        content += `## Dependencies\n\n`;
+        task.dependencies.forEach(dep => {
+          const depTask = tasks.find(t => t.id === dep.predecessorId);
+          if (depTask) {
+            content += `- ${dep.type}: [[${depTask.title}]]\n`;
           }
-        }
+        });
+        content += `\n`;
+      }
+
+      if (task.links && task.links.length > 0) {
+        content += `## Links\n\n`;
+        task.links.forEach(link => {
+          if (link.type === "obsidian") {
+            content += `- [[${link.url}]]\n`;
+          } else {
+            content += `- [${link.url}](${link.url})\n`;
+          }
+        });
+        content += `\n`;
+      }
+
+      content += `\n---\n*Task from Project: ${activeProject.name}*\n`;
+
+      if (existingFile) {
+        await this.app.vault.modify(existingFile as any, content);
+      } else {
+        await this.app.vault.create(fileName, content);
       }
     }
   }

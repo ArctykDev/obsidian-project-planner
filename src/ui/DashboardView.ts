@@ -113,9 +113,23 @@ export class DashboardView extends ItemView {
         };
     }
 
-    private renderKPICard(container: HTMLElement, title: string, value: string | number, icon: string, color?: string) {
+    private renderKPICard(
+        container: HTMLElement,
+        title: string,
+        value: string | number,
+        icon: string,
+        color?: string,
+        onClick?: () => void
+    ) {
         const card = container.createDiv("dashboard-kpi-card");
         if (color) card.style.borderLeftColor = color;
+
+        // Make card clickable if onClick is provided
+        if (onClick) {
+            card.style.cursor = "pointer";
+            card.addClass("dashboard-kpi-card-clickable");
+            card.onclick = onClick;
+        }
 
         const iconEl = card.createDiv("dashboard-kpi-icon");
         setIcon(iconEl, icon);
@@ -140,25 +154,154 @@ export class DashboardView extends ItemView {
         label.textContent = `${percentage}%`;
     }
 
-    private renderProjectDashboard(container: HTMLElement, stats: ProjectStats) {
+    private showTaskListModal(title: string, tasks: PlannerTask[]) {
+        const modal = document.createElement("div");
+        modal.className = "dashboard-task-modal";
+
+        const overlay = document.createElement("div");
+        overlay.className = "dashboard-task-modal-overlay";
+        overlay.onclick = () => {
+            document.body.removeChild(modal);
+            document.body.removeChild(overlay);
+        };
+
+        const content = modal.createDiv("dashboard-task-modal-content");
+
+        // Header
+        const header = content.createDiv("dashboard-task-modal-header");
+        header.createEl("h3", { text: title });
+
+        const closeBtn = header.createEl("button", {
+            cls: "dashboard-task-modal-close"
+        });
+        const closeIcon = closeBtn.createSpan({ cls: "dashboard-task-modal-close-icon" });
+        setIcon(closeIcon, "x");
+
+        closeBtn.onclick = () => {
+            document.body.removeChild(modal);
+            document.body.removeChild(overlay);
+        };
+
+        // Task list
+        const taskList = content.createDiv("dashboard-task-modal-list");
+
+        if (tasks.length === 0) {
+            taskList.createDiv({ text: "No tasks found", cls: "dashboard-task-modal-empty" });
+        } else {
+            tasks.forEach(task => {
+                const taskItem = taskList.createDiv("dashboard-task-modal-item");
+
+                // Checkbox
+                const checkbox = taskItem.createEl("input", {
+                    type: "checkbox",
+                    cls: "dashboard-task-modal-checkbox"
+                });
+                checkbox.checked = task.completed;
+                checkbox.onclick = async (e) => {
+                    e.stopPropagation();
+                    const isDone = checkbox.checked;
+                    await (this.plugin as any).taskStore.updateTask(task.id, {
+                        completed: isDone,
+                        status: isDone ? "Completed" : "Not Started"
+                    });
+                };
+
+                // Task title
+                const titleEl = taskItem.createDiv({
+                    text: task.title,
+                    cls: "dashboard-task-modal-title"
+                });
+                if (task.completed) {
+                    titleEl.addClass("dashboard-task-modal-completed");
+                }
+
+                // Task metadata
+                const meta = taskItem.createDiv("dashboard-task-modal-meta");
+                if (task.priority) {
+                    const priorityPill = meta.createSpan({
+                        text: task.priority,
+                        cls: "dashboard-task-modal-priority"
+                    });
+                    priorityPill.style.background = this.getPriorityColor(task.priority);
+                }
+                if (task.dueDate) {
+                    meta.createSpan({
+                        text: `Due: ${task.dueDate}`,
+                        cls: "dashboard-task-modal-due"
+                    });
+                }
+
+                // Click to open task detail
+                taskItem.onclick = () => {
+                    document.body.removeChild(modal);
+                    document.body.removeChild(overlay);
+                    (this.plugin as any).openTaskDetail(task);
+                };
+            });
+        }
+
+        document.body.appendChild(overlay);
+        document.body.appendChild(modal);
+    }
+
+    private getPriorityColor(priority: string): string {
+        switch (priority) {
+            case "Critical": return "#d70022";
+            case "High": return "#f59e0b";
+            case "Medium": return "#0a84ff";
+            case "Low": return "#6366f1";
+            default: return "#6366f1";
+        }
+    }
+
+    private renderProjectDashboard(container: HTMLElement, stats: ProjectStats, allTasks: PlannerTask[]) {
         const projectCard = container.createDiv("dashboard-project-card");
 
         // Header
         const header = projectCard.createDiv("dashboard-project-header");
-        header.createEl("h2", { text: stats.projectName });
+        const titleSection = header.createDiv("dashboard-project-title-section");
+        titleSection.createEl("h2", { text: stats.projectName });
 
-        const openBtn = header.createEl("button", { text: "Open Hub", cls: "dashboard-action-btn" });
-        openBtn.onclick = async () => {
-            await this.plugin.hubManager.openOrCreateProjectHub(stats.projectName);
-        };
+        // Project metadata (dates)
+        const settings = (this.plugin as any).settings || {};
+        const activeProject = settings.projects?.find((p: any) => p.id === stats.projectId);
+        if (activeProject) {
+            const metadata = titleSection.createDiv("dashboard-project-metadata");
+            if (activeProject.createdDate) {
+                const createdDate = new Date(activeProject.createdDate);
+                metadata.createSpan({
+                    text: `Created: ${createdDate.toLocaleDateString()}`,
+                    cls: "dashboard-project-meta-item"
+                });
+            }
+            if (activeProject.lastUpdatedDate) {
+                const updatedDate = new Date(activeProject.lastUpdatedDate);
+                metadata.createSpan({
+                    text: `Last Updated: ${updatedDate.toLocaleDateString()}`,
+                    cls: "dashboard-project-meta-item"
+                });
+            }
+        }
 
         // KPI Grid
         const kpiGrid = projectCard.createDiv("dashboard-kpi-grid");
 
-        this.renderKPICard(kpiGrid, "Total Tasks", stats.totalTasks, "list", "#6366f1");
-        this.renderKPICard(kpiGrid, "Completed", stats.completedTasks, "check-circle", "#2f9e44");
-        this.renderKPICard(kpiGrid, "In Progress", stats.inProgressTasks, "loader", "#0a84ff");
-        this.renderKPICard(kpiGrid, "Blocked", stats.blockedTasks, "alert-circle", "#d70022");
+        this.renderKPICard(
+            kpiGrid, "Total Tasks", stats.totalTasks, "list", "#6366f1",
+            () => this.showTaskListModal("All Tasks", allTasks)
+        );
+        this.renderKPICard(
+            kpiGrid, "Completed", stats.completedTasks, "check-circle", "#2f9e44",
+            () => this.showTaskListModal("Completed Tasks", allTasks.filter(t => t.status === "Completed"))
+        );
+        this.renderKPICard(
+            kpiGrid, "In Progress", stats.inProgressTasks, "loader", "#0a84ff",
+            () => this.showTaskListModal("In Progress Tasks", allTasks.filter(t => t.status === "In Progress"))
+        );
+        this.renderKPICard(
+            kpiGrid, "Blocked", stats.blockedTasks, "alert-circle", "#d70022",
+            () => this.showTaskListModal("Blocked Tasks", allTasks.filter(t => t.status === "Blocked"))
+        );
 
         // Progress section
         const progressSection = projectCard.createDiv("dashboard-section");
@@ -168,10 +311,48 @@ export class DashboardView extends ItemView {
         // Priority & Due dates section
         const alertsGrid = projectCard.createDiv("dashboard-kpi-grid");
 
-        this.renderKPICard(alertsGrid, "Overdue", stats.overdueTasks, "alert-triangle", "#d70022");
-        this.renderKPICard(alertsGrid, "Due Today", stats.dueTodayTasks, "calendar", "#f59e0b");
-        this.renderKPICard(alertsGrid, "Due This Week", stats.dueThisWeekTasks, "calendar-days", "#0a84ff");
-        this.renderKPICard(alertsGrid, "Critical Priority", stats.criticalPriorityTasks, "flame", "#d70022");
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const today = now.getTime();
+        const weekFromNow = today + 7 * 24 * 60 * 60 * 1000;
+
+        const overdueTasks = allTasks.filter(t => {
+            if (!t.dueDate || t.status === "Completed") return false;
+            const dueDate = new Date(t.dueDate).getTime();
+            return dueDate < today;
+        });
+
+        const dueTodayTasks = allTasks.filter(t => {
+            if (!t.dueDate || t.status === "Completed") return false;
+            const dueDate = new Date(t.dueDate);
+            dueDate.setHours(0, 0, 0, 0);
+            return dueDate.getTime() === today;
+        });
+
+        const dueThisWeekTasks = allTasks.filter(t => {
+            if (!t.dueDate || t.status === "Completed") return false;
+            const dueDate = new Date(t.dueDate).getTime();
+            return dueDate >= today && dueDate <= weekFromNow;
+        });
+
+        const criticalTasks = allTasks.filter(t => t.priority === "Critical");
+
+        this.renderKPICard(
+            alertsGrid, "Overdue", stats.overdueTasks, "alert-triangle", "#d70022",
+            () => this.showTaskListModal("Overdue Tasks", overdueTasks)
+        );
+        this.renderKPICard(
+            alertsGrid, "Due Today", stats.dueTodayTasks, "calendar", "#f59e0b",
+            () => this.showTaskListModal("Due Today", dueTodayTasks)
+        );
+        this.renderKPICard(
+            alertsGrid, "Due This Week", stats.dueThisWeekTasks, "calendar-days", "#0a84ff",
+            () => this.showTaskListModal("Due This Week", dueThisWeekTasks)
+        );
+        this.renderKPICard(
+            alertsGrid, "Critical Priority", stats.criticalPriorityTasks, "flame", "#d70022",
+            () => this.showTaskListModal("Critical Priority Tasks", criticalTasks)
+        );
 
         // Additional stats
         const statsGrid = projectCard.createDiv("dashboard-stats-grid");
@@ -234,7 +415,7 @@ export class DashboardView extends ItemView {
                 // Load tasks for this project
                 const projectTasks = (this.plugin as any).taskStore.getAllForProject?.(project.id) || [];
                 const stats = this.calculateProjectStats(project.id, project.name, projectTasks);
-                this.renderProjectDashboard(content, stats);
+                this.renderProjectDashboard(content, stats, projectTasks);
             });
         } else {
             // Show active project only
@@ -246,7 +427,7 @@ export class DashboardView extends ItemView {
 
             const tasks = (this.plugin as any).taskStore.getAll();
             const stats = this.calculateProjectStats(activeProject.id, activeProject.name, tasks);
-            this.renderProjectDashboard(content, stats);
+            this.renderProjectDashboard(content, stats, tasks);
         }
     }
 }

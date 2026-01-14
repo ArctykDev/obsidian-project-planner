@@ -5,6 +5,12 @@ import { renderPlannerHeader } from "./Header";
 
 export const VIEW_TYPE_GANTT = "project-planner-gantt-view";
 
+interface VisibleTask {
+    task: PlannerTask;
+    depth: number;
+    hasChildren: boolean;
+}
+
 export class GanttView extends ItemView {
     private plugin: ProjectPlannerPlugin;
     private unsubscribe: (() => void) | null = null;
@@ -25,9 +31,18 @@ export class GanttView extends ItemView {
     // Zoom level
     private zoomLevel: "day" | "week" | "month" = "day";
 
+    // Resizable layout
+    private leftColumnWidth: number = 300; // Default 300px
+
     constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
         super(leaf);
         this.plugin = plugin;
+
+        // Load saved column width from localStorage
+        const saved = localStorage.getItem('planner-gantt-left-width');
+        if (saved) {
+            this.leftColumnWidth = parseInt(saved, 10);
+        }
     }
 
     getViewType() {
@@ -100,33 +115,49 @@ export class GanttView extends ItemView {
 
         const ids = tasks.map((t: PlannerTask) => t.id);
 
-        // Parent drag: move parent + children as block
-        if (!dragTask.parentId) {
-            const blockIds: string[] = [dragTask.id];
-            for (const t of tasks) {
-                if (t.parentId === dragTask.id) blockIds.push(t.id);
+        // Helper to get all descendants recursively
+        const getAllDescendants = (taskId: string): string[] => {
+            const descendants: string[] = [];
+            const children = tasks.filter((t: PlannerTask) => t.parentId === taskId);
+            for (const child of children) {
+                descendants.push(child.id);
+                descendants.push(...getAllDescendants(child.id));
             }
+            return descendants;
+        };
 
+        // Parent drag: move parent + all descendants as a contiguous block
+        if (!dragTask.parentId) {
+            const blockIds: string[] = [dragTask.id, ...getAllDescendants(dragTask.id)];
+
+            // If target is inside the same block, ignore
             if (blockIds.includes(targetTask.id)) return;
 
             const targetRootId = targetTask.parentId || targetTask.id;
+
+            // If dropping onto one of own descendants, ignore
             if (blockIds.includes(targetRootId)) return;
 
+            // Remove block from ids
             const firstIdx = ids.indexOf(blockIds[0]);
             if (firstIdx === -1) return;
             ids.splice(firstIdx, blockIds.length);
 
+            // Find target root index in the remaining list
             let targetRootIndex = ids.indexOf(targetRootId);
-            if (targetRootIndex === -1) targetRootIndex = ids.length;
+            if (targetRootIndex === -1) {
+                targetRootIndex = ids.length;
+            }
 
+            // If inserting after, move index to after the entire target block
             if (insertAfter && targetRootIndex < ids.length) {
+                const targetDescendants = getAllDescendants(targetRootId);
+                // Find the last descendant position
                 let endIndex = targetRootIndex;
-                for (let i = targetRootIndex + 1; i < ids.length; i++) {
-                    const t = tasks.find((task: PlannerTask) => task.id === ids[i]);
-                    if (t && t.parentId === targetRootId) {
-                        endIndex = i;
-                    } else {
-                        break;
+                for (const descId of targetDescendants) {
+                    const descIndex = ids.indexOf(descId);
+                    if (descIndex > endIndex) {
+                        endIndex = descIndex;
                     }
                 }
                 targetRootIndex = endIndex + 1;
@@ -138,10 +169,15 @@ export class GanttView extends ItemView {
             return;
         }
 
-        // Child drag: simple reorder
+        // Child drag: move subtask (and its descendants) and update hierarchy if needed
+        const blockIds: string[] = [dragTask.id, ...getAllDescendants(dragTask.id)];
+
+        // Don't allow dropping onto own descendants
+        if (blockIds.includes(targetTask.id)) return;
+
         const fromIndex = ids.indexOf(dragId);
         if (fromIndex === -1) return;
-        ids.splice(fromIndex, 1);
+        ids.splice(fromIndex, blockIds.length);
 
         let insertIndex = ids.indexOf(targetId);
         if (insertIndex === -1) {
@@ -150,8 +186,32 @@ export class GanttView extends ItemView {
             insertIndex += 1;
         }
 
-        ids.splice(insertIndex, 0, dragId);
+        ids.splice(insertIndex, 0, ...blockIds);
+
+        // Determine new parent based on drop location
+        let newParentId: string | null = null;
+
+        if (insertIndex > 0) {
+            const taskBeforeId = ids[insertIndex - 1];
+            const taskBefore = tasks.find((t: PlannerTask) => t.id === taskBeforeId);
+
+            if (taskBefore) {
+                // If the task before has a parent, use that same parent
+                if (taskBefore.parentId) {
+                    newParentId = taskBefore.parentId;
+                }
+                // Otherwise, taskBefore is a root - don't set parent (dragTask becomes root)
+            }
+        }
+        // If insertIndex is 0, dragTask becomes a root task (newParentId stays null)
+
+        // Update the task's parent if it changed
+        if (dragTask.parentId !== newParentId) {
+            await (this.plugin as any).taskStore.updateTask(dragId, { parentId: newParentId });
+        }
+
         await (this.plugin as any).taskStore.setOrder(ids);
+        this.render();
         this.render();
     }
 
@@ -336,7 +396,8 @@ export class GanttView extends ItemView {
 
     private attachInlineTitle(
         container: HTMLElement,
-        task: PlannerTask
+        task: PlannerTask,
+        hasChildren: boolean = false
     ) {
         container.style.position = "relative";
         container.style.display = "flex";
@@ -348,6 +409,11 @@ export class GanttView extends ItemView {
         titleSpan.style.overflow = "hidden";
         titleSpan.style.textOverflow = "ellipsis";
         titleSpan.style.whiteSpace = "nowrap";
+
+        // Bold if this task has children (matching Grid view)
+        if (hasChildren) {
+            titleSpan.classList.add("planner-parent-bold");
+        }
 
         const startEdit = () => {
             const input = container.createEl("input", {
@@ -405,6 +471,87 @@ export class GanttView extends ItemView {
             e.stopPropagation();
             this.showTaskMenu(e as any, task);
         };
+    }
+
+    private showDatePicker(evt: MouseEvent, btn: HTMLElement) {
+        const menu = new Menu();
+
+        // Add today option
+        menu.addItem((item) => {
+            item.setTitle("Go to today")
+                .setIcon("calendar-check")
+                .onClick(() => {
+                    this.scrollToDate(new Date());
+                });
+        });
+
+        menu.addSeparator();
+
+        // Add custom date option
+        menu.addItem((item) => {
+            item.setTitle("Choose date...")
+                .setIcon("calendar")
+                .onClick(() => {
+                    // Create modal for date selection
+                    const modal = document.createElement("div");
+                    modal.className = "planner-date-modal";
+
+                    // Position modal below the button
+                    const btnRect = btn.getBoundingClientRect();
+                    modal.style.position = "fixed";
+                    modal.style.top = `${btnRect.bottom + 8}px`;
+                    modal.style.left = `${btnRect.left}px`;
+
+                    const input = modal.createEl("input", {
+                        type: "date",
+                        cls: "planner-date-picker-input"
+                    });
+
+                    const today = new Date();
+                    input.value = today.toISOString().split('T')[0];
+
+                    const btnContainer = modal.createDiv({ cls: "planner-date-modal-buttons" });
+
+                    const goBtn = btnContainer.createEl("button", {
+                        text: "Go",
+                        cls: "mod-cta"
+                    });
+
+                    const cancelBtn = btnContainer.createEl("button", {
+                        text: "Cancel"
+                    });
+
+                    goBtn.onclick = () => {
+                        if (input.value) {
+                            this.scrollToDate(new Date(input.value));
+                        }
+                        modal.remove();
+                    };
+
+                    cancelBtn.onclick = () => {
+                        modal.remove();
+                    };
+
+                    input.onkeydown = (e) => {
+                        if (e.key === "Enter") {
+                            goBtn.click();
+                        } else if (e.key === "Escape") {
+                            cancelBtn.click();
+                        }
+                    };
+
+                    document.body.appendChild(modal);
+                    input.focus();
+                });
+        });
+
+        menu.showAtMouseEvent(evt);
+    }
+
+    private scrollToDate(targetDate: Date) {
+        // Store target date and re-render (the render will handle scrolling)
+        (this as any).scrollTargetDate = targetDate;
+        this.render();
     }
 
     private startDrag(evt: PointerEvent, row: HTMLElement, task: PlannerTask) {
@@ -532,7 +679,9 @@ export class GanttView extends ItemView {
         const filters = toolbar.createDiv("planner-gantt-filters");
 
         // Status filter
-        const statusFilter = filters.createEl("select", { cls: "planner-filter-select" });
+        const statusFilterGroup = filters.createDiv("planner-filter-group");
+        statusFilterGroup.createSpan({ cls: "planner-filter-label", text: "Status:" });
+        const statusFilter = statusFilterGroup.createEl("select", { cls: "planner-filter-select" });
         ["All", "Not Started", "In Progress", "Blocked", "Completed"].forEach(status => {
             const option = statusFilter.createEl("option", { text: status, value: status });
             if (status === this.currentFilters.status) option.selected = true;
@@ -543,7 +692,9 @@ export class GanttView extends ItemView {
         };
 
         // Priority filter
-        const priorityFilter = filters.createEl("select", { cls: "planner-filter-select" });
+        const priorityFilterGroup = filters.createDiv("planner-filter-group");
+        priorityFilterGroup.createSpan({ cls: "planner-filter-label", text: "Priority:" });
+        const priorityFilter = priorityFilterGroup.createEl("select", { cls: "planner-filter-select" });
         ["All", "Low", "Medium", "High", "Critical"].forEach(priority => {
             const option = priorityFilter.createEl("option", { text: priority, value: priority });
             if (priority === this.currentFilters.priority) option.selected = true;
@@ -562,8 +713,44 @@ export class GanttView extends ItemView {
         searchInput.value = this.currentFilters.search;
         searchInput.oninput = () => {
             this.currentFilters.search = searchInput.value;
+            // Don't call render() here - it would recreate the input and lose focus
+            // Instead, we'll debounce or handle this differently
+            // For now, just update the filter value
+        };
+
+        // Add search on Enter or blur
+        searchInput.onkeydown = (e) => {
+            if (e.key === "Enter") {
+                this.render();
+            }
+        };
+        searchInput.onblur = () => {
             this.render();
         };
+
+        // Clear filter button (X)
+        const clearFilterBtn = toolbar.createEl("button", {
+            text: "✕",
+            cls: "planner-clear-filter"
+        });
+        clearFilterBtn.style.display = "none"; // Hidden by default
+
+        const updateClearButtonVisibility = () => {
+            const hasActiveFilters =
+                this.currentFilters.status !== "All" ||
+                this.currentFilters.priority !== "All" ||
+                this.currentFilters.search.trim() !== "";
+            clearFilterBtn.style.display = hasActiveFilters ? "inline-block" : "none";
+        };
+
+        clearFilterBtn.onclick = () => {
+            this.currentFilters.status = "All";
+            this.currentFilters.priority = "All";
+            this.currentFilters.search = "";
+            this.render();
+        };
+
+        updateClearButtonVisibility();
 
         // Zoom controls
         const zoomControls = toolbar.createDiv("planner-gantt-zoom");
@@ -582,26 +769,69 @@ export class GanttView extends ItemView {
             };
         });
 
+        // Go to date button
+        const goToDateBtn = toolbar.createEl("button", {
+            text: "Go to date",
+            cls: "planner-goto-date-btn"
+        });
+        setIcon(goToDateBtn.createSpan({ cls: "planner-goto-date-icon" }), "calendar");
+        goToDateBtn.onclick = (e) => {
+            this.showDatePicker(e, goToDateBtn);
+        };
+
         // Content area
         const content = container.createDiv("planner-gantt-content");
         const allTasks: PlannerTask[] = (this.plugin as any).taskStore.getAll();
 
-        // Apply filters
-        const tasks = allTasks.filter(t => this.matchesFilters(t));
+        // Build hierarchical task list with filters
+        const matchesFilter = new Map<string, boolean>();
+        for (const t of allTasks) {
+            matchesFilter.set(t.id, this.matchesFilters(t));
+        }
 
-        if (tasks.length === 0) {
+        // Build visible task hierarchy
+        const visibleTasks: VisibleTask[] = [];
+        const roots = allTasks.filter((t) => !t.parentId);
+
+        const addTaskAndChildren = (task: PlannerTask, depth: number) => {
+            const children = allTasks.filter((t) => t.parentId === task.id);
+            const taskMatches = matchesFilter.get(task.id) ?? true;
+            const matchingChildren = children.filter(
+                (c) => matchesFilter.get(c.id) ?? true
+            );
+
+            const hasChildren = children.length > 0;
+
+            if (!taskMatches && matchingChildren.length === 0) return;
+
+            visibleTasks.push({
+                task,
+                depth,
+                hasChildren,
+            });
+
+            if (!task.collapsed) {
+                const toRender = taskMatches ? children : matchingChildren;
+
+                for (const child of toRender) {
+                    addTaskAndChildren(child, depth + 1);
+                }
+            }
+        };
+
+        for (const root of roots) {
+            addTaskAndChildren(root, 0);
+        }
+
+        if (visibleTasks.length === 0) {
             content.createEl("div", { text: "No tasks match current filters." });
             return;
         }
 
-        // Helper: leaf tasks only (exclude parents)
-        const hasChildren = (id: string) => tasks.some(t => t.parentId === id);
-        const leafTasks = tasks.filter(t => !hasChildren(t.id));
-
-        // Determine timeline range (min start/due to max start/due)
+        // Determine timeline range from all visible tasks
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const ranges = leafTasks.map((t) => this.getTaskRange(t, today.getTime()));
+        const ranges = visibleTasks.map((vt) => this.getTaskRange(vt.task, today.getTime()));
         const dates: number[] = [];
         for (const r of ranges) {
             dates.push(r.start, r.end);
@@ -617,27 +847,101 @@ export class GanttView extends ItemView {
         if (this.zoomLevel === "week") dayWidth = 8;
         else if (this.zoomLevel === "month") dayWidth = 3;
 
-        const totalDays = Math.round((maxTime - minTime) / dayMs) + 1;
-        const timelineWidth = totalDays * dayWidth;
+        // Calculate available width for timeline
+        const containerWidth = this.containerEl.clientWidth;
+        const minTimelineWidth = containerWidth - this.leftColumnWidth - 50;
+
+        // Always add substantial padding for scrollable timeline
+        // More padding at higher zoom levels to ensure scrollability
+        const paddingMultiplier = this.zoomLevel === "month" ? 90 : this.zoomLevel === "week" ? 60 : 30;
+        minTime -= paddingMultiplier * dayMs;
+        maxTime += paddingMultiplier * dayMs;
+
+        // Calculate total days and timeline width
+        let totalDays = Math.round((maxTime - minTime) / dayMs) + 1;
+        let timelineWidth = totalDays * dayWidth;
+
+        // If timeline is still narrower than viewport, extend the date range further
+        if (timelineWidth < minTimelineWidth) {
+            const additionalDays = Math.ceil((minTimelineWidth - timelineWidth) / dayWidth) + 60; // Extra 60 days for scrolling
+            const daysAfter = additionalDays;
+
+            maxTime += daysAfter * dayMs;
+
+            totalDays = Math.round((maxTime - minTime) / dayMs) + 1;
+            timelineWidth = totalDays * dayWidth;
+        }
+
+        const finalTimelineWidth = timelineWidth; // Use actual timeline width, not clamped to minimum
 
         // Layout containers: left list + right timeline
         const layout = content.createDiv("planner-gantt-layout");
+        layout.style.gridTemplateColumns = `${this.leftColumnWidth}px 1fr`;
+
         const leftCol = layout.createDiv("planner-gantt-left");
         const rightColWrap = layout.createDiv("planner-gantt-right-wrap");
         const rightCol = rightColWrap.createDiv("planner-gantt-right");
-        rightCol.style.width = `${timelineWidth}px`;
+        rightCol.style.width = `${finalTimelineWidth}px`;
 
-        // Top scale (dates)
+        // Resizer handle (positioned absolutely between columns)
+        const resizer = layout.createDiv("planner-gantt-resizer");
+        resizer.style.left = `${this.leftColumnWidth}px`;
+        this.attachResizerHandlers(resizer, layout);
+
+        // Two-tier date scale (like MS Planner)
         const scale = rightCol.createDiv("planner-gantt-scale");
+
+        // Top tier: Months/Years
+        const monthRow = scale.createDiv("planner-gantt-scale-months");
+
+        // Bottom tier: Days/Weeks based on zoom
+        const dayRow = scale.createDiv("planner-gantt-scale-days");
+
+        // Group days by month and create month headers
+        const monthGroups = new Map<string, { start: number; count: number; date: Date }>();
+
         for (let i = 0; i < totalDays; i++) {
-            const cell = scale.createDiv("planner-gantt-scale-day");
-            cell.style.width = `${dayWidth}px`;
             const date = new Date(minTime + i * dayMs);
-            if (date.getDate() === 1) {
-                cell.classList.add("planner-gantt-scale-month");
-                cell.setText(`${date.toLocaleString(undefined, { month: 'short' })}`);
-            } else if (date.getDay() === 1) {
-                cell.setText(`${date.getDate()}`);
+            const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+
+            if (!monthGroups.has(monthKey)) {
+                monthGroups.set(monthKey, { start: i, count: 1, date });
+            } else {
+                monthGroups.get(monthKey)!.count++;
+            }
+        }
+
+        // Render month headers
+        monthGroups.forEach(({ count, date }) => {
+            const monthCell = monthRow.createDiv("planner-gantt-month-header");
+            monthCell.style.width = `${count * dayWidth}px`;
+
+            const monthText = date.toLocaleString(undefined, { month: 'short', year: 'numeric' });
+            monthCell.setText(monthText);
+        });
+
+        // Render day/week cells based on zoom level
+        for (let i = 0; i < totalDays; i++) {
+            const date = new Date(minTime + i * dayMs);
+            const dayCell = dayRow.createDiv("planner-gantt-day-cell");
+            dayCell.style.width = `${dayWidth}px`;
+
+            if (this.zoomLevel === "day") {
+                // Show day number on Mondays or 1st of month
+                if (date.getDay() === 1 || date.getDate() === 1) {
+                    dayCell.setText(`${date.getDate()}`);
+                }
+            } else if (this.zoomLevel === "week") {
+                // Show week start dates (Mondays)
+                if (date.getDay() === 1) {
+                    dayCell.setText(`${date.getDate()}`);
+                    dayCell.classList.add("planner-gantt-week-marker");
+                }
+            } else if (this.zoomLevel === "month") {
+                // Show day 1 and 15 for month view
+                if (date.getDate() === 1 || date.getDate() === 15) {
+                    dayCell.setText(`${date.getDate()}`);
+                }
             }
         }
 
@@ -649,7 +953,7 @@ export class GanttView extends ItemView {
             marker.style.left = `${x}px`;
         }
 
-        // Rows: one per leaf task
+        // Rows: one per visible task (hierarchical)
         const statusColor = (status: string): string => {
             switch (status) {
                 case "Completed": return "#2f9e44";
@@ -660,7 +964,8 @@ export class GanttView extends ItemView {
             }
         };
 
-        leafTasks.forEach((t, idx) => {
+        visibleTasks.forEach((vt, idx) => {
+            const t = vt.task;
             const range = ranges[idx];
             let start = range.start;
             let end = range.end;
@@ -669,6 +974,27 @@ export class GanttView extends ItemView {
             const rowLeft = leftCol.createDiv("planner-gantt-row-left");
             rowLeft.dataset.taskId = t.id;
             if (t.completed) rowLeft.classList.add("planner-task-completed");
+
+            // Add indentation based on depth
+            const indent = vt.depth * 20;
+            rowLeft.style.paddingLeft = `${indent + 8}px`;
+
+            // Collapse/expand toggle for parent tasks
+            if (vt.hasChildren) {
+                const toggle = rowLeft.createDiv({
+                    cls: "planner-expand-toggle"
+                });
+                setIcon(toggle, t.collapsed ? "chevron-right" : "chevron-down");
+                toggle.onclick = async (e) => {
+                    e.stopPropagation();
+                    await (this.plugin as any).taskStore.updateTask(t.id, {
+                        collapsed: !t.collapsed
+                    });
+                };
+            } else {
+                // Add spacing for tasks without children to align with those that have toggle
+                const spacer = rowLeft.createDiv({ cls: "planner-expand-spacer" });
+            }
 
             // Drag handle
             const dragHandle = rowLeft.createDiv({ cls: "planner-drag-handle" });
@@ -694,7 +1020,7 @@ export class GanttView extends ItemView {
                 await (this.plugin as any).taskStore.updateTask(t.id, { status: newStatus });
             };
 
-            this.attachInlineTitle(rowLeft, t);
+            this.attachInlineTitle(rowLeft, t, vt.hasChildren);
 
             // Right bar row
             const row = rightCol.createDiv("planner-gantt-row");
@@ -719,6 +1045,71 @@ export class GanttView extends ItemView {
             bar.createDiv({ cls: "planner-gantt-handle planner-gantt-handle-right" });
 
             this.attachBarInteractions(bar, t, start, end, minTime, dayWidth);
+        });
+
+        // Handle scroll to date if requested
+        const scrollTarget = (this as any).scrollTargetDate;
+        if (scrollTarget && rightColWrap) {
+            delete (this as any).scrollTargetDate;
+
+            // Calculate scroll position
+            const targetTime = scrollTarget.getTime();
+            if (targetTime >= minTime && targetTime <= maxTime) {
+                const daysFromStart = Math.round((targetTime - minTime) / dayMs);
+                const scrollLeft = daysFromStart * dayWidth - (rightColWrap.clientWidth / 2);
+
+                // Use setTimeout to ensure DOM is fully rendered
+                setTimeout(() => {
+                    rightColWrap.scrollLeft = Math.max(0, scrollLeft);
+                }, 0);
+            }
+        }
+    }
+
+    private attachResizerHandlers(resizer: HTMLElement, layout: HTMLElement) {
+        let isResizing = false;
+        let startX = 0;
+        let startWidth = 0;
+
+        const onMouseDown = (e: MouseEvent) => {
+            isResizing = true;
+            startX = e.clientX;
+            startWidth = this.leftColumnWidth;
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
+        };
+
+        const onMouseMove = (e: MouseEvent) => {
+            if (!isResizing) return;
+
+            const delta = e.clientX - startX;
+            const newWidth = Math.max(200, Math.min(600, startWidth + delta)); // Min 200px, max 600px
+
+            this.leftColumnWidth = newWidth;
+            layout.style.gridTemplateColumns = `${newWidth}px 1fr`;
+            resizer.style.left = `${newWidth}px`;
+        };
+
+        const onMouseUp = () => {
+            if (!isResizing) return;
+
+            isResizing = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+
+            // Save to localStorage
+            localStorage.setItem('planner-gantt-left-width', this.leftColumnWidth.toString());
+        };
+
+        resizer.addEventListener('mousedown', onMouseDown);
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+
+        // Cleanup on view close
+        this.register(() => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
         });
     }
 }

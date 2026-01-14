@@ -141,7 +141,10 @@ export class GridView extends ItemView {
     // -----------------------------------------------------------------------
     const filterBar = wrapper.createDiv("planner-filter-bar");
 
-    const statusFilter = filterBar.createEl("select", {
+    // Status filter
+    const statusFilterGroup = filterBar.createDiv("planner-filter-group");
+    statusFilterGroup.createSpan({ cls: "planner-filter-label", text: "Status:" });
+    const statusFilter = statusFilterGroup.createEl("select", {
       cls: "planner-filter",
     });
     const statusOptions = settings.availableStatuses || [];
@@ -152,7 +155,10 @@ export class GridView extends ItemView {
     );
     statusFilter.value = this.currentFilters.status;
 
-    const priorityFilter = filterBar.createEl("select", {
+    // Priority filter
+    const priorityFilterGroup = filterBar.createDiv("planner-filter-group");
+    priorityFilterGroup.createSpan({ cls: "planner-filter-label", text: "Priority:" });
+    const priorityFilter = priorityFilterGroup.createEl("select", {
       cls: "planner-filter",
     });
     const priorityOptions = settings.availablePriorities || [];
@@ -163,6 +169,7 @@ export class GridView extends ItemView {
     );
     priorityFilter.value = this.currentFilters.priority;
 
+    // Search input
     const searchInput = filterBar.createEl("input", {
       cls: "planner-search",
       attr: { type: "text", placeholder: "Search tasks..." },
@@ -735,35 +742,44 @@ export class GridView extends ItemView {
     // ---------------------------------------------------------------------
     if (this.isColumnVisible("bucket")) {
       const bucketCell = row.createEl("td");
-      const pluginAny = this.plugin as any;
-      const settings = pluginAny.settings || {};
-      const activeProject = settings.projects?.find(
-        (p: any) => p.id === settings.activeProjectId
-      );
-      const buckets = activeProject?.buckets || [];
-      const bucketNames = ["Unassigned", ...buckets.map((b: any) => b.name)];
 
-      const currentBucketId = task.bucketId;
-      const currentBucketName = currentBucketId
-        ? buckets.find((b: any) => b.id === currentBucketId)?.name || "Unassigned"
-        : "Unassigned";
+      // Parent tasks cannot be assigned to buckets
+      if (hasChildren) {
+        bucketCell.createSpan({
+          cls: "planner-disabled-cell",
+          text: "—"
+        });
+      } else {
+        const pluginAny = this.plugin as any;
+        const settings = pluginAny.settings || {};
+        const activeProject = settings.projects?.find(
+          (p: any) => p.id === settings.activeProjectId
+        );
+        const buckets = activeProject?.buckets || [];
+        const bucketNames = ["Unassigned", ...buckets.map((b: any) => b.name)];
 
-      this.createEditableSelectCell(
-        bucketCell,
-        currentBucketName,
-        bucketNames,
-        async (value) => {
-          if (value === "Unassigned") {
-            await this.taskStore.updateTask(task.id, { bucketId: undefined });
-          } else {
-            const selectedBucket = buckets.find((b: any) => b.name === value);
-            if (selectedBucket) {
-              await this.taskStore.updateTask(task.id, { bucketId: selectedBucket.id });
+        const currentBucketId = task.bucketId;
+        const currentBucketName = currentBucketId
+          ? buckets.find((b: any) => b.id === currentBucketId)?.name || "Unassigned"
+          : "Unassigned";
+
+        this.createEditableSelectCell(
+          bucketCell,
+          currentBucketName,
+          bucketNames,
+          async (value) => {
+            if (value === "Unassigned") {
+              await this.taskStore.updateTask(task.id, { bucketId: undefined });
+            } else {
+              const selectedBucket = buckets.find((b: any) => b.name === value);
+              if (selectedBucket) {
+                await this.taskStore.updateTask(task.id, { bucketId: selectedBucket.id });
+              }
             }
+            this.render();
           }
-          this.render();
-        }
-      );
+        );
+      }
     }
 
     // ---------------------------------------------------------------------
@@ -772,21 +788,6 @@ export class GridView extends ItemView {
     if (this.isColumnVisible("tags")) {
       const tagsCell = row.createEl("td", { cls: "planner-tags-cell" });
       this.renderTaskTags(tagsCell, task);
-    }
-
-    // ---------------------------------------------------------------------
-    // Start Date
-    // ---------------------------------------------------------------------
-    if (this.isColumnVisible("start")) {
-      const startCell = row.createEl("td");
-      this.createEditableDateOnlyCell(
-        startCell,
-        task.startDate || "",
-        async (value) => {
-          await this.taskStore.updateTask(task.id, { startDate: value });
-          this.render();
-        }
-      );
     }
 
     // ---------------------------------------------------------------------
@@ -817,6 +818,21 @@ export class GridView extends ItemView {
           (this.plugin as any).openTaskDetail(task);
         };
       }
+    }
+
+    // ---------------------------------------------------------------------
+    // Start Date
+    // ---------------------------------------------------------------------
+    if (this.isColumnVisible("start")) {
+      const startCell = row.createEl("td");
+      this.createEditableDateOnlyCell(
+        startCell,
+        task.startDate || "",
+        async (value) => {
+          await this.taskStore.updateTask(task.id, { startDate: value });
+          this.render();
+        }
+      );
     }
 
     // ---------------------------------------------------------------------

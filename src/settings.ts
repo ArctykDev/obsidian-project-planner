@@ -11,6 +11,8 @@ export interface BoardBucket {
 export interface PlannerProject {
   id: string;
   name: string;
+  createdDate?: string;
+  lastUpdatedDate?: string;
   buckets?: BoardBucket[]; // Board view buckets (independent of statuses)
   unassignedBucketName?: string; // Custom name for unassigned bucket
   completedSectionsCollapsed?: { [bucketId: string]: boolean }; // Track collapsed state per bucket
@@ -26,6 +28,17 @@ export interface ProjectPlannerSettings {
   availableTags: PlannerTag[];
   availableStatuses: PlannerStatus[];
   availablePriorities: PlannerPriority[];
+
+  // Bidirectional sync settings
+  enableMarkdownSync: boolean; // Enable sync between JSON and markdown notes
+  autoCreateTaskNotes: boolean; // Auto-create/update markdown notes when tasks change
+  syncOnStartup: boolean; // Perform initial sync when plugin loads
+
+  // Daily note task tagging settings
+  enableDailyNoteSync: boolean; // Enable scanning daily notes for tagged tasks
+  dailyNoteTagPattern: string; // Tag pattern for identifying tasks (e.g., "#planner" or "#task/project")
+  dailyNoteScanFolders: string[]; // Folders to scan for tagged tasks (empty = all notes)
+  dailyNoteDefaultProject: string; // Default project ID for tasks without specific project tag
 }
 
 export const DEFAULT_SETTINGS: ProjectPlannerSettings = {
@@ -47,7 +60,14 @@ export const DEFAULT_SETTINGS: ProjectPlannerSettings = {
     { id: "medium", name: "Medium", color: "#0a84ff" },
     { id: "high", name: "High", color: "#ff8c00" },
     { id: "critical", name: "Critical", color: "#d70022" }
-  ]
+  ],
+  enableMarkdownSync: true,
+  autoCreateTaskNotes: true,
+  syncOnStartup: true,
+  enableDailyNoteSync: false,
+  dailyNoteTagPattern: "#planner",
+  dailyNoteScanFolders: [],
+  dailyNoteDefaultProject: "",
 };
 
 export class ProjectPlannerSettingTab extends PluginSettingTab {
@@ -62,7 +82,24 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl("h2", { text: "Project Planner Settings" });
+    // Plugin header with version
+    const headerEl = containerEl.createDiv({ cls: "planner-settings-header" });
+    headerEl.createEl("h2", { text: "Project Planner Settings" });
+
+    const versionEl = headerEl.createDiv({ cls: "planner-settings-version" });
+    versionEl.createEl("span", {
+      text: `v${this.plugin.manifest.version}`,
+      cls: "planner-version-badge"
+    });
+
+    // Optional: Add link to releases/changelog
+    const changelogLink = versionEl.createEl("a", {
+      text: "Changelog",
+      cls: "planner-changelog-link",
+      href: "https://github.com/ArctykDev/obsidian-project-planner/releases"
+    });
+    changelogLink.setAttribute("target", "_blank");
+    changelogLink.setAttribute("rel", "noopener noreferrer");
 
     new Setting(containerEl)
       .setName("Projects")
@@ -70,9 +107,12 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       .addButton((btn) => {
         btn.setButtonText("Add project").onClick(async () => {
           const id = crypto.randomUUID();
+          const now = new Date().toISOString();
           this.plugin.settings.projects.push({
             id,
             name: "New Project",
+            createdDate: now,
+            lastUpdatedDate: now,
           });
           this.plugin.settings.activeProjectId = id;
           await this.plugin.saveSettings();
@@ -155,6 +195,146 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       );
 
     // -----------------------------------------------------------------------
+    // Markdown Sync Section
+    // -----------------------------------------------------------------------
+    containerEl.createEl("h2", { text: "Markdown Sync" });
+
+    new Setting(containerEl)
+      .setName("Enable Markdown Sync")
+      .setDesc("Sync tasks between plugin data and markdown notes with YAML frontmatter")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.enableMarkdownSync)
+          .onChange(async (value) => {
+            this.plugin.settings.enableMarkdownSync = value;
+            await this.plugin.saveSettings();
+            // Initialize or stop watchers
+            if (value) {
+              this.plugin.initializeTaskSync();
+            }
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Auto-Create Task Notes")
+      .setDesc("Automatically create/update markdown notes when tasks are added or modified")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.autoCreateTaskNotes)
+          .onChange(async (value) => {
+            this.plugin.settings.autoCreateTaskNotes = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Sync on Startup")
+      .setDesc("Scan project folders and sync markdown notes when plugin loads")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.syncOnStartup)
+          .onChange(async (value) => {
+            this.plugin.settings.syncOnStartup = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Sync All Tasks Now")
+      .setDesc("Manually sync all tasks in the current project to markdown notes")
+      .addButton((btn) => {
+        btn
+          .setButtonText("Sync Now")
+          .setCta()
+          .onClick(async () => {
+            await this.plugin.syncAllTasksToMarkdown();
+            // Show notice
+            (this.plugin as any).app.workspace.trigger('notice', 'Tasks synced to markdown!');
+          });
+      });
+
+    // -----------------------------------------------------------------------
+    // Daily Note Task Tagging Section
+    // -----------------------------------------------------------------------
+    containerEl.createEl("h2", { text: "Daily Note Task Tagging" });
+
+    new Setting(containerEl)
+      .setName("Enable Daily Note Sync")
+      .setDesc("Automatically detect and import tasks tagged in daily notes and other markdown files")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.enableDailyNoteSync)
+          .onChange(async (value) => {
+            this.plugin.settings.enableDailyNoteSync = value;
+            await this.plugin.saveSettings();
+            // Initialize or stop daily note scanner
+            if (value) {
+              this.plugin.initializeDailyNoteScanner();
+            }
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Tag Pattern")
+      .setDesc("Tag pattern to identify tasks (e.g., #planner or #task). Tasks with #planner/ProjectName will be added to the specific project.")
+      .addText((text) =>
+        text
+          .setPlaceholder("#planner")
+          .setValue(this.plugin.settings.dailyNoteTagPattern)
+          .onChange(async (value) => {
+            this.plugin.settings.dailyNoteTagPattern = value.trim() || "#planner";
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Scan Folders")
+      .setDesc("Comma-separated list of folders to scan (leave empty to scan all notes). Example: Daily Notes, Journal")
+      .addText((text) =>
+        text
+          .setPlaceholder("Daily Notes, Journal")
+          .setValue(this.plugin.settings.dailyNoteScanFolders.join(", "))
+          .onChange(async (value) => {
+            this.plugin.settings.dailyNoteScanFolders = value
+              .split(",")
+              .map(f => f.trim())
+              .filter(f => f.length > 0);
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Default Project")
+      .setDesc("Project to add tasks to when no specific project tag is found (e.g., #planner without /ProjectName)")
+      .addDropdown((dropdown) => {
+        dropdown.addOption("", "Select a project...");
+        this.plugin.settings.projects.forEach((project) => {
+          dropdown.addOption(project.id, project.name);
+        });
+        dropdown
+          .setValue(this.plugin.settings.dailyNoteDefaultProject)
+          .onChange(async (value) => {
+            this.plugin.settings.dailyNoteDefaultProject = value;
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("Scan Now")
+      .setDesc("Manually scan all notes for tagged tasks and import them")
+      .addButton((btn) => {
+        btn
+          .setButtonText("Scan Notes")
+          .setCta()
+          .onClick(async () => {
+            if (this.plugin.dailyNoteScanner) {
+              await this.plugin.dailyNoteScanner.scanAllNotes();
+              (this.plugin as any).app.workspace.trigger('notice', 'Daily notes scanned for tasks!');
+            }
+          });
+      });
+
+    // -----------------------------------------------------------------------
     // Actions Section
     // -----------------------------------------------------------------------
     containerEl.createEl("h2", { text: "Actions" });
@@ -172,20 +352,8 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Create/Update Project Hub")
-      .setDesc("Generate a comprehensive markdown overview of the current project with task links")
-      .addButton((btn) => {
-        btn
-          .setButtonText("Create Hub")
-          .setCta()
-          .onClick(async () => {
-            await this.plugin.createProjectHub();
-          });
-      });
-
-    new Setting(containerEl)
       .setName("Create Task Notes")
-      .setDesc("Generate individual markdown notes for all tasks with backlinks")
+      .setDesc("Generate individual markdown notes for all tasks in the current project")
       .addButton((btn) => {
         btn
           .setButtonText("Create Notes")

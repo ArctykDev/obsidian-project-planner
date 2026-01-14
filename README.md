@@ -51,5 +51,3 @@ Project roadmap. All version goals are subject to change.
 ## Changelog
 
 **Read the full changelog:** [Obsidian Project Planner Changlog](https://reactivewebstudio.ca/docs/obsidian-project-planner#changelog)
-
-> > > > > > > dev

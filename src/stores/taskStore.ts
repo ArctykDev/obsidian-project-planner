@@ -128,8 +128,68 @@ export class TaskStore {
     };
 
     this.tasks.push(task);
+    this.updateProjectTimestamp();
     await this.save();
+
+    // Sync to markdown if enabled
+    if (this.plugin.settings.enableMarkdownSync && this.plugin.settings.autoCreateTaskNotes) {
+      await this.plugin.taskSync.syncTaskToMarkdown(task, this.activeProjectId);
+    }
+
     return task;
+  }
+
+  async addTaskFromObject(task: PlannerTask): Promise<void> {
+    // Check if task already exists
+    const existing = this.tasks.find(t => t.id === task.id);
+    if (existing) {
+      // Update instead of adding duplicate
+      Object.assign(existing, task);
+    } else {
+      this.tasks.push(task);
+    }
+
+    this.updateProjectTimestamp();
+    await this.save();
+  }
+
+  async addTaskToProject(task: PlannerTask, projectId: string): Promise<void> {
+    // Ensure project bucket exists
+    if (!this.tasksByProject[projectId]) {
+      this.tasksByProject[projectId] = [];
+    }
+
+    // Check if task already exists in this project
+    const projectTasks = this.tasksByProject[projectId];
+    const existing = projectTasks.find(t => t.id === task.id);
+
+    if (existing) {
+      // Update instead of adding duplicate
+      Object.assign(existing, task);
+    } else {
+      projectTasks.push(task);
+    }
+
+    // Update the project bucket
+    this.tasksByProject[projectId] = projectTasks;
+
+    // Update project timestamp
+    const project = this.plugin.settings.projects.find(p => p.id === projectId);
+    if (project) {
+      project.lastUpdatedDate = new Date().toISOString();
+    }
+
+    // Save and emit changes
+    const raw = ((await this.plugin.loadData()) || {}) as StoredData;
+    raw.tasksByProject = this.tasksByProject;
+    await this.plugin.saveData(raw);
+
+    // If this is the active project, refresh the working tasks
+    if (projectId === this.activeProjectId) {
+      this.tasks = this.tasksByProject[projectId];
+    }
+
+    this.emit();
   }
 
   async updateTask(id: string, partial: Partial<PlannerTask>): Promise<void> {
@@ -144,10 +204,14 @@ export class TaskStore {
     }
 
     Object.assign(task, partial);
+    this.updateProjectTimestamp();
     await this.save();
   }
 
   async deleteTask(id: string): Promise<void> {
+    // Get task before deleting for sync purposes
+    const task = this.tasks.find(t => t.id === id);
+
     // Find children of the task being deleted
     const children = this.tasks.filter(t => t.parentId === id);
 
@@ -159,7 +223,16 @@ export class TaskStore {
     // Remove the task itself
     this.tasks = this.tasks.filter(t => t.id !== id);
 
+    this.updateProjectTimestamp();
     await this.save();
+
+    // Delete markdown note if enabled
+    if (task && this.plugin.settings.enableMarkdownSync && this.plugin.settings.autoCreateTaskNotes) {
+      const project = this.plugin.settings.projects.find(p => p.id === this.activeProjectId);
+      if (project) {
+        await this.plugin.taskSync.deleteTaskMarkdown(task, project.name);
+      }
+    }
   }
 
   async setOrder(ids: string[]): Promise<void> {
@@ -185,10 +258,27 @@ export class TaskStore {
     await this.save();
   }
 
+  getTaskById(id: string): PlannerTask | undefined {
+    return this.tasks.find(t => t.id === id);
+  }
+
+  getTasks(): PlannerTask[] {
+    return this.tasks;
+  }
+
   async promoteSubtask(taskId: string): Promise<void> {
     const task = this.tasks.find((t) => t.id === taskId);
     if (!task) return;
     task.parentId = null;
     await this.save();
+  }
+
+  private updateProjectTimestamp(): void {
+    const activeProject = this.plugin.settings.projects.find(
+      p => p.id === this.plugin.settings.activeProjectId
+    );
+    if (activeProject) {
+      activeProject.lastUpdatedDate = new Date().toISOString();
+    }
   }
 }

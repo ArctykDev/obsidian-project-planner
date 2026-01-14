@@ -108,18 +108,6 @@ export function renderPlannerHeader(
         options.buildExtraActions(headerActions);
     }
 
-    const openHubBtn = headerActions.createEl("button", {
-        cls: "planner-hub-btn",
-        title: "Open Project Hub",
-        text: "Project Hub",
-    });
-
-    openHubBtn.onclick = async () => {
-        const activeProject = projects.find((p: any) => p.id === activeProjectId);
-        if (!activeProject) return;
-        await (plugin as any).hubManager.openOrCreateProjectHub(activeProject.name);
-    };
-
     const settingsBtn = headerActions.createEl("button", {
         cls: "planner-settings-btn",
         title: "Open plugin settings",

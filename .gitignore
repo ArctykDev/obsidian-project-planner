@@ -18,6 +18,15 @@ main.js.map
 # TypeScript cache
 *.tsbuildinfo
 
+# Internal Docs
+BOARD_VIEW.md
+GRAPH_FEATURES.md
+MARKDOWN_SYNC.md
+TASK_DETAILS.md
+URI_LINKING.md
+TIMELINE_VIEW.md
+DAILY_NOTE_TAGGING.md
+
 # Logs and temp files
 .DS_Store
 Thumbs.db
