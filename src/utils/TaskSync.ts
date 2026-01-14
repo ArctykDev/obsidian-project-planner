@@ -196,17 +196,18 @@ export class TaskSync {
             const subtasksText = subtasksMatch[1];
             const subtaskLines = subtasksText.split('\n').filter(line => line.trim().startsWith('-'));
 
-            result.subtasks = subtaskLines.map(line => {
+            const parsedSubtasks: PlannerSubtask[] = [];
+            subtaskLines.forEach(line => {
                 const checkboxMatch = line.match(/- \[([ x])\]\s*(.+)/);
                 if (checkboxMatch) {
-                    return {
+                    parsedSubtasks.push({
                         id: crypto.randomUUID(),
                         title: checkboxMatch[2].trim(),
                         completed: checkboxMatch[1] === 'x',
-                    };
+                    });
                 }
-                return null;
-            }).filter((st): st is PlannerSubtask => st !== null);
+            });
+            result.subtasks = parsedSubtasks;
         }
 
         // Parse links section
@@ -215,31 +216,32 @@ export class TaskSync {
             const linksText = linksMatch[1];
             const linkLines = linksText.split('\n').filter(line => line.trim().startsWith('-'));
 
-            result.links = linkLines.map(line => {
+            const parsedLinks: TaskLink[] = [];
+            linkLines.forEach(line => {
                 // Obsidian internal link: - [[Link]]
                 const obsidianMatch = line.match(/- \[\[([^\]]+)\]\]/);
                 if (obsidianMatch) {
-                    return {
+                    parsedLinks.push({
                         id: crypto.randomUUID(),
                         title: obsidianMatch[1],
                         url: obsidianMatch[1],
                         type: 'obsidian' as const,
-                    };
+                    });
+                    return;
                 }
 
                 // External link: - [url](url) or - [title](url)
                 const externalMatch = line.match(/- \[([^\]]+)\]\(([^\)]+)\)/);
                 if (externalMatch) {
-                    return {
+                    parsedLinks.push({
                         id: crypto.randomUUID(),
                         title: externalMatch[1],
                         url: externalMatch[2],
                         type: 'external' as const,
-                    };
+                    });
                 }
-
-                return null;
-            }).filter((link): link is TaskLink => link !== null);
+            });
+            result.links = parsedLinks;
         }
 
         return result;
