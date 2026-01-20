@@ -36,7 +36,7 @@ A full-featured project planner for [Obsidian](https://obidian.md) based on [Mic
 
 ## Documentation
 
-**Read the documentation:** [Obsidian Project Planner Docs](https://reactivewebstudio.ca/docs/obsidian-project-planner)
+**Read the documentation:** [Obsidian Project Planner Docs](https://projectplanner.md)
 
 ---
 
@@ -44,10 +44,16 @@ A full-featured project planner for [Obsidian](https://obidian.md) based on [Mic
 
 Project roadmap. All version goals are subject to change.
 
-**View the full roadmap:** [Obsidian Project Planner Roadmap](https://reactivewebstudio.ca/docs/obsidian-project-planner#roadmap)
+**View the full roadmap:** [Obsidian Project Planner Roadmap](https://projectplanner.md/roadmap/)
 
 ---
 
 ## Changelog
 
-**Read the full changelog:** [Obsidian Project Planner Changlog](https://reactivewebstudio.ca/docs/obsidian-project-planner#changelog)
+**Read the full changelog:** [Obsidian Project Planner Changlog](https://projectplanner.md/changelog/
+
+## Support
+
+Project Planner is free to use and enjoy but if you are feeling generous, you're welcome to buy me a coffee! 
+
+<a href="https://www.buymeacoffee.com/arctykdev" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
