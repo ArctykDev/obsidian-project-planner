@@ -50,7 +50,7 @@ Project roadmap. All version goals are subject to change.
 
 ## Changelog
 
-**Read the full changelog:** [Obsidian Project Planner Changlog](https://projectplanner.md/changelog/
+**Read the full changelog:** [Obsidian Project Planner Changlog](https://projectplanner.md/changelog/)
 
 ## Support
 
