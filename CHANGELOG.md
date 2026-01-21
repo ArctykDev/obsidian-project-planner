@@ -2,6 +2,57 @@
 
 All notable changes to Obsidian Project Planner will be documented in this file.
 
+## [0.6.4] - 2026-01-20
+
+### Added
+
+#### Card Preview Options
+- **Card Preview Setting**: New per-task setting in Task Details to control what displays on board cards
+  - **Hide**: Default mode - no extra content on card
+  - **Show Checklist**: Display inline checklist with interactive checkboxes directly on card
+  - **Show Description**: Display task description with full Markdown rendering on card
+- **Interactive Card Checklists**: Check/uncheck checklist items directly on board cards
+  - Real-time synchronization with Task Details panel
+  - Updates immediately without requiring page refresh
+- **Markdown Description Rendering**: Task descriptions on cards now render with full Markdown support
+  - Headings, lists, links, code blocks, blockquotes
+  - Styled to match Task Details description rendering
+  - Scrollable container with 100px max height
+
+### Improved
+
+#### Board View UI Enhancements (Microsoft Planner Style)
+- **"Add Task" Button Positioning**: Moved to top of bucket columns (matches MS Planner)
+- **Card Layout Improvements**:
+  - Tags now display at the very top of cards (MS Planner style)
+  - Checkbox aligned on same row as task title
+  - Improved checkbox vertical alignment with title text
+  - Cards align to top of bucket columns
+- **Real-time Updates**: Task Details panel now updates immediately when checklist items are changed on cards
+
+### Fixed
+
+#### Code Quality & CSS Improvements
+- **CSS Custom Properties**: Added CSS variables for all colors for better theme consistency
+  - Priority colors: `--planner-priority-low/medium/high/critical`
+  - Status colors: `--planner-status-not-started/in-progress/blocked/completed`
+  - Accent colors: `--planner-accent-red/blue`
+- **CSS Cleanup**:
+  - Removed duplicate padding declaration in `.planner-grid-wrapper`
+  - Replaced 14 hardcoded color values with CSS variables
+  - Fixed odd line break in `.planner-board-column-header`
+  - Removed 3 unnecessary `!important` declarations
+  - Removed duplicate code block at end of stylesheet
+- **TaskDetailView Updates**: Simplified canonical task retrieval to use plugin's taskStore directly for better reliability
+
+### Technical
+
+- Enhanced `PlannerTask` type with `cardPreview` property (`"none" | "checklist" | "description"`)
+- Added `MarkdownRenderer` integration to BoardView for description rendering
+- Converted multiple BoardView rendering methods to async to support Markdown rendering
+- Added TaskStore subscription to TaskDetailView for real-time updates
+- Added comprehensive CSS styles for Markdown elements in card descriptions
+
 ## [0.6.3] - 2026-01-14
 
 ### Added
@@ -11,8 +62,12 @@ All notable changes to Obsidian Project Planner will be documented in this file.
 - **Automatic Task Import from Daily Notes**: New feature to automatically scan any markdown note in your vault for tagged tasks and import them into projects
   - Tag tasks with `#planner` to add to default project
   - Tag tasks with `#planner/ProjectName` to add to specific project
-  - Real-time file watching detects new tasks as you create them
+  - **Debounced file watching** - Waits 1 second after last change before scanning for better performance
   - Supports both direct project names with spaces (`#planner/Project Planner`) and hyphenated format (`#planner/Project-Planner`)
+- **Easy Manual Refresh**: Multiple ways to manually trigger scanning:
+  - **Ribbon Icon**: Scan icon (📡) in left sidebar for one-click refresh
+  - **Command Palette**: "Scan Daily Notes for Tagged Tasks" command
+  - **Settings Button**: "Scan Now" button in settings panel
 - **Smart Task Parsing**: Automatically extracts metadata from task text:
   - **Priority indicators**: `!!!` (Critical), `!!` (High), `!` (Medium), or text like `(high)`, `(low)`
   - **Due dates**: Multiple formats supported - `📅 2026-01-20`, `due: 2026-01-20`, `@2026-01-20`
@@ -27,16 +82,23 @@ All notable changes to Obsidian Project Planner will be documented in this file.
 - **Task Metadata**: Imported tasks include:
   - Automatic link back to source note
   - Description showing "Imported from: [[Note Name]]"
-  - Content-based unique IDs to prevent duplicates
+  - **Location-based tracking** - Tasks tracked by file path + line number
+  - **No duplicates on edit** - Editing task content updates existing task instead of creating duplicates
   - Support for task updates (re-importing updates existing tasks)
 
 ### Technical
 
 - **DailyNoteTaskScanner**: New utility class (`src/utils/DailyNoteTaskScanner.ts`) managing:
+  - **Debounced file watching** - 1-second delay after changes to batch scans efficiently
+  - **Location-based task tracking** - Uses file path + line number to prevent duplicates when editing
   - File watching using Obsidian's vault events (create, modify)
   - Regex-based task detection and parsing
   - Project name extraction with flexible space/hyphen handling
-  - Duplicate prevention using content-based ID generation
+  - Automatic cleanup of removed tasks from location map
+- **User-Friendly Refresh Options**:
+  - Ribbon icon for quick manual scanning
+  - Command palette integration
+  - Notification feedback showing tasks imported count
 - **TaskStore Enhancement**: New `addTaskToProject()` method to add tasks to specific projects (not just active project)
 - **Settings Extensions**: Added four new settings properties:
   - `enableDailyNoteSync`: boolean
@@ -61,6 +123,7 @@ All notable changes to Obsidian Project Planner will be documented in this file.
 
 ### Fixed
 
+- **Duplicate task prevention** - Tasks are now tracked by file location (path + line number) instead of content hash, preventing duplicates when you edit task text
 - Improved project name matching to support both spaces and hyphens consistently
 - Added validation and error messages when default project is not configured
 

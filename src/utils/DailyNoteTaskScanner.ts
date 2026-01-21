@@ -15,6 +15,10 @@ export class DailyNoteTaskScanner {
     private app: App;
     private plugin: ProjectPlannerPlugin;
     private processedTasks = new Set<string>(); // Track task IDs to avoid duplicates
+    private scanTimeout: number | null = null;
+    private pendingScans = new Set<string>(); // Track files pending scan
+    // Map: "filePath:lineNumber" -> taskId to track task locations
+    private taskLocationMap = new Map<string, string>();
 
     constructor(app: App, plugin: ProjectPlannerPlugin) {
         this.app = app;
@@ -70,7 +74,7 @@ export class DailyNoteTaskScanner {
     /**
      * Parse a tagged task line into a PlannerTask object
      */
-    private parseTaskLine(line: string, file: TFile): PlannerTask | null {
+    private parseTaskLine(line: string, file: TFile, lineNumber: number): { task: PlannerTask, locationKey: string } | null {
         const taskRegex = /^[\s]*-\s+\[([ xX])\]\s+(.+)/;
         const match = line.match(taskRegex);
 
@@ -153,9 +157,17 @@ export class DailyNoteTaskScanner {
             }
         }
 
-        // Generate a unique ID based on file path + line content
-        const uniqueString = `${file.path}:${title}`;
-        const taskId = this.generateTaskId(uniqueString);
+        // Generate location key for tracking
+        const locationKey = `${file.path}:${lineNumber}`;
+
+        // Check if we already have a task at this location
+        let taskId = this.taskLocationMap.get(locationKey);
+
+        // If no existing task, generate new ID
+        if (!taskId) {
+            taskId = `daily-task-${crypto.randomUUID()}`;
+            this.taskLocationMap.set(locationKey, taskId);
+        }
 
         // Create the task object
         const task: PlannerTask = {
@@ -178,21 +190,30 @@ export class DailyNoteTaskScanner {
             type: "obsidian",
         }];
 
-        return task;
+        return { task, locationKey };
     }
 
     /**
-     * Generate a consistent task ID from a string
+     * Schedule a debounced scan of a file
      */
-    private generateTaskId(input: string): string {
-        // Simple hash function to generate consistent IDs
-        let hash = 0;
-        for (let i = 0; i < input.length; i++) {
-            const char = input.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32bit integer
+    private scheduleScan(file: TFile) {
+        this.pendingScans.add(file.path);
+
+        if (this.scanTimeout) {
+            clearTimeout(this.scanTimeout);
         }
-        return `daily-task-${Math.abs(hash)}`;
+
+        this.scanTimeout = setTimeout(async () => {
+            const paths = Array.from(this.pendingScans);
+            this.pendingScans.clear();
+
+            for (const path of paths) {
+                const fileToScan = this.app.vault.getAbstractFileByPath(path);
+                if (fileToScan instanceof TFile) {
+                    await this.scanFile(fileToScan);
+                }
+            }
+        }, 1000); // Wait 1 second after last change
     }
 
     /**
@@ -211,17 +232,24 @@ export class DailyNoteTaskScanner {
 
         const content = await this.app.vault.read(file);
         const lines = content.split('\n');
+        const currentFileTasks = new Set<string>(); // Track task IDs in this file
 
-        for (const line of lines) {
+        for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
+            const line = lines[lineNumber];
             if (this.isTaggedTask(line)) {
-                const task = this.parseTaskLine(line, file);
-                if (task) {
-                    // Check if task already exists
+                const result = this.parseTaskLine(line, file, lineNumber);
+                if (result) {
+                    const { task, locationKey } = result;
+
+                    // Track that we found a task at this location
+                    currentFileTasks.add(locationKey);
+
+                    // Check if task already processed in this scan
                     if (this.processedTasks.has(task.id)) {
                         continue;
                     }
 
-                    // Extract project name from tag using the same method as extractProjectFromTag
+                    // Extract project name from tag
                     const projectName = this.extractProjectFromTag(line);
                     const projectId = this.findProjectId(projectName);
 
@@ -232,7 +260,7 @@ export class DailyNoteTaskScanner {
                         continue;
                     }
 
-                    // Check if task already exists in the project
+                    // Check if task already exists
                     const existingTask = this.plugin.taskStore.getTaskById(task.id);
 
                     if (!existingTask) {
@@ -241,12 +269,21 @@ export class DailyNoteTaskScanner {
                         await this.plugin.taskStore.addTaskToProject(task, projectId);
                         this.processedTasks.add(task.id);
                     } else {
-                        // Update existing task
+                        // Update existing task (content may have changed)
                         console.log(`[DailyNoteScanner] Updating task: ${task.title}`);
                         await this.plugin.taskStore.updateTask(task.id, task);
                         this.processedTasks.add(task.id);
                     }
                 }
+            }
+        }
+
+        // Clean up location map entries for tasks that were removed from this file
+        const allKeysForFile = Array.from(this.taskLocationMap.keys()).filter(key => key.startsWith(`${file.path}:`));
+        for (const key of allKeysForFile) {
+            if (!currentFileTasks.has(key)) {
+                // Task was removed from this location
+                this.taskLocationMap.delete(key);
             }
         }
     }
@@ -280,23 +317,28 @@ export class DailyNoteTaskScanner {
 
         // Watch for file modifications
         this.plugin.registerEvent(
-            this.app.vault.on('modify', async (file) => {
+            this.app.vault.on('modify', (file) => {
                 if (file instanceof TFile) {
-                    await this.scanFile(file);
+                    this.scheduleScan(file);
                 }
             })
         );
 
         // Watch for new files
         this.plugin.registerEvent(
-            this.app.vault.on('create', async (file) => {
+            this.app.vault.on('create', (file) => {
                 if (file instanceof TFile) {
-                    // Wait for file to be written
-                    setTimeout(async () => {
-                        await this.scanFile(file);
-                    }, 500);
+                    this.scheduleScan(file);
                 }
             })
         );
+    }
+
+    /**
+     * Perform a quick scan and provide user feedback
+     */
+    async quickScan(): Promise<void> {
+        new Notice('Scanning for tagged tasks...');
+        await this.scanAllNotes();
     }
 }

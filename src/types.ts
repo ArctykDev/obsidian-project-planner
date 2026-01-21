@@ -75,4 +75,7 @@ export interface PlannerTask {
 
   // Existing checklist in Task Details (NOT the grid children)
   subtasks?: PlannerSubtask[];
+
+  // Card preview setting (what to show on board card)
+  cardPreview?: "none" | "checklist" | "description";
 }

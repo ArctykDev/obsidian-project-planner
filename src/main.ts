@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf } from "obsidian";
+import { Plugin, WorkspaceLeaf, Notice } from "obsidian";
 
 import {
   ProjectPlannerSettingTab,
@@ -85,6 +85,13 @@ export default class ProjectPlannerPlugin extends Plugin {
       await this.openDependencyGraph();
     });
 
+    // Add ribbon icon for daily note scanning (if enabled)
+    if (this.settings.enableDailyNoteSync) {
+      this.addRibbonIcon("scan", "Scan Daily Notes for Tasks", async () => {
+        await this.dailyNoteScanner.quickScan();
+      });
+    }
+
     // Register main GridView
     this.registerView(
       VIEW_TYPE_PLANNER,
@@ -154,6 +161,19 @@ export default class ProjectPlannerPlugin extends Plugin {
       id: "open-dashboard-view",
       name: "Open Dashboard",
       callback: async () => await this.activateDashboardView(),
+    });
+
+    // Command: Scan Daily Notes
+    this.addCommand({
+      id: "scan-daily-notes",
+      name: "Scan Daily Notes for Tagged Tasks",
+      callback: async () => {
+        if (this.settings.enableDailyNoteSync) {
+          await this.dailyNoteScanner.quickScan();
+        } else {
+          new Notice('Daily note scanning is disabled. Enable it in settings.');
+        }
+      },
     });
 
     // Register URI protocol handler for opening tasks directly

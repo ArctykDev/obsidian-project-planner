@@ -1,4 +1,21 @@
 /* ========================================================================= */
+/* CSS CUSTOM PROPERTIES                                                     */
+/* ========================================================================= */
+
+:root {
+  --planner-priority-low: #6c757d;
+  --planner-priority-medium: #0a84ff;
+  --planner-priority-high: #ff8c00;
+  --planner-priority-critical: #d70022;
+  --planner-status-not-started: #6c757d;
+  --planner-status-in-progress: #0a84ff;
+  --planner-status-blocked: #d70022;
+  --planner-status-completed: #2f9e44;
+  --planner-accent-red: #e81123;
+  --planner-accent-blue: #0078d4;
+}
+
+/* ========================================================================= */
 /* MICROSOFT PLANNER — GRID VIEW STYLING                                    */
 /* ========================================================================= */
 
@@ -6,7 +23,6 @@
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 8px;
   box-sizing: border-box;
   padding: 12px 18px 24px 18px;
   font-size: 14px;
@@ -251,29 +267,29 @@
 }
 
 .priority-low {
-  background-color: #6c757d;
+  background-color: var(--planner-priority-low);
 }
 .priority-medium {
-  background-color: #0a84ff;
+  background-color: var(--planner-priority-medium);
 }
 .priority-high {
-  background-color: #ff8c00;
+  background-color: var(--planner-priority-high);
 }
 .priority-critical {
-  background-color: #d70022;
+  background-color: var(--planner-priority-critical);
 }
 
 .status-not-started {
-  background-color: #6c757d;
+  background-color: var(--planner-status-not-started);
 }
 .status-in-progress {
-  background-color: #0a84ff;
+  background-color: var(--planner-status-in-progress);
 }
 .status-blocked {
-  background-color: #d70022;
+  background-color: var(--planner-status-blocked);
 }
 .status-completed {
-  background-color: #2f9e44;
+  background-color: var(--planner-status-completed);
 }
 
 /* ========================================================================= */
@@ -695,15 +711,15 @@
 /* Overdue (Planner red) */
 .planner-date-pill-overdue {
   background: rgba(255, 0, 0, 0.1);
-  color: #e81123;
-  border: 1px solid #e81123;
+  color: var(--planner-accent-red);
+  border: 1px solid var(--planner-accent-red);
 }
 
 /* Today (Planner blue) */
 .planner-date-pill-today {
   background: rgba(0, 120, 215, 0.15);
-  color: #0078d4;
-  border: 1px solid #0078d4;
+  color: var(--planner-accent-blue);
+  border: 1px solid var(--planner-accent-blue);
 }
 
 /* Makes TH usable for sorting */
@@ -817,8 +833,8 @@
 
 .planner-subtask-delete:hover {
   background: rgba(255, 0, 0, 0.1);
-  color: #e81123;
-  border-color: #e81123;
+  color: var(--planner-accent-red);
+  border-color: var(--planner-accent-red);
 }
 
 .planner-subtask-add {
@@ -1161,7 +1177,7 @@
 
 /* Tags in GridView */
 .planner-tags-cell {
-  padding: 4px 8px !important;
+  padding: 4px 8px;
 }
 
 .planner-tags-cell-interactive:hover {
@@ -1370,12 +1386,12 @@
 
 .planner-deps-cell {
   text-align: center;
-  padding: 4px !important;
+  padding: 4px;
 }
 /* Dependents indicator in grid (tasks blocked by this task) */
 .planner-dependents-cell {
   text-align: center;
-  padding: 4px !important;
+  padding: 4px;
 }
 
 .planner-dependent-indicator {
@@ -1585,7 +1601,7 @@
 }
 
 /* ========================================================================= */
-/* BOARD VIEW (MICROSOFT PLANNER KANBAN STYLE)                              */
+/* BOARD VIEW (KANBAN STYLE)                                                      */
 /* ========================================================================= */
 
 .planner-board-wrapper {
@@ -1646,9 +1662,7 @@
   justify-content: space-between;
   padding: 16px 16px 12px 16px;
   border-bottom: 2px solid var(--background-modifier-border);
-  color: var(
-    --text-normal
-  ); /* Default color, will be overridden for custom bucket colors */
+  color: var(--text-normal); /* Default color, will be overridden for custom bucket colors */
 }
 
 .planner-board-column-title {
@@ -1791,21 +1805,23 @@
   cursor: grabbing;
 }
 
-/* Card header with checkbox and menu */
+/* Card header with checkbox, title, and menu on same row */
 .planner-board-card-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
+  align-items: flex-start;
   gap: 8px;
+  margin-bottom: 0;
 }
 
 .planner-board-card-checkbox {
-  width: 18px;
-  height: 18px;
+  width: 18px !important;
+  height: 18px !important;
   cursor: pointer;
   flex-shrink: 0;
   accent-color: var(--interactive-accent);
+  margin-top: 6px !important;
+  margin-bottom: 0 !important;
+  vertical-align: top;
 }
 
 .planner-board-card-menu {
@@ -1851,14 +1867,23 @@
   font-size: 14px;
   font-weight: 500;
   color: var(--text-normal);
-  margin-bottom: 8px;
   line-height: 1.4;
   word-wrap: break-word;
+  flex: 1;
+  margin: 0;
 }
 
 /* ========================================================================= */
 /* CARD TAGS                                                                 */
 /* ========================================================================= */
+
+/* Tags at top of card (MS Planner style) */
+.planner-board-card-tags-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
 
 .planner-board-card-tags {
   display: flex;
@@ -1886,6 +1911,135 @@
 /* CARD FOOTER (METADATA)                                                   */
 /* ========================================================================= */
 
+/* Card preview content (checklist or description) */
+.planner-board-card-checklist {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.planner-board-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.planner-board-checklist-checkbox {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  accent-color: var(--interactive-accent);
+}
+
+.planner-board-checklist-label {
+  flex: 1;
+  color: var(--text-normal);
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.planner-board-checklist-completed {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.planner-board-card-description {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-normal);
+  line-height: 1.4;
+  max-height: 100px;
+  overflow-y: auto;
+  word-wrap: break-word;
+}
+
+/* Markdown styles within card description */
+.planner-board-card-description p {
+  margin: 0 0 6px 0;
+  color: var(--text-normal);
+}
+
+.planner-board-card-description p:last-child {
+  margin-bottom: 0;
+}
+
+.planner-board-card-description h1,
+.planner-board-card-description h2,
+.planner-board-card-description h3,
+.planner-board-card-description h4,
+.planner-board-card-description h5,
+.planner-board-card-description h6 {
+  margin: 6px 0 4px 0;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.planner-board-card-description h1 { font-size: 14px; }
+.planner-board-card-description h2 { font-size: 13px; }
+.planner-board-card-description h3 { font-size: 12px; }
+
+.planner-board-card-description ul,
+.planner-board-card-description ol {
+  margin: 4px 0;
+  padding-left: 16px;
+}
+
+.planner-board-card-description li {
+  margin: 2px 0;
+}
+
+.planner-board-card-description code {
+  background: var(--background-primary);
+  padding: 1px 3px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--text-accent);
+}
+
+.planner-board-card-description pre {
+  background: var(--background-primary);
+  padding: 6px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 4px 0;
+}
+
+.planner-board-card-description blockquote {
+  border-left: 2px solid var(--interactive-accent);
+  margin: 4px 0;
+  padding-left: 8px;
+  color: var(--text-muted);
+}
+
+.planner-board-card-description a {
+  color: var(--interactive-accent);
+  text-decoration: none;
+}
+
+.planner-board-card-description a:hover {
+  text-decoration: underline;
+}
+
+.planner-board-card-description strong {
+  font-weight: 600;
+}
+
+.planner-board-card-description em {
+  font-style: italic;
+}
+
 .planner-board-card-footer {
   display: flex;
   flex-wrap: wrap;
@@ -1911,15 +2065,15 @@
 
 .planner-board-card-date-overdue {
   background: rgba(232, 17, 35, 0.1);
-  color: #e81123;
-  border: 1px solid #e81123;
+  color: var(--planner-accent-red);
+  border: 1px solid var(--planner-accent-red);
   font-weight: 600;
 }
 
 .planner-board-card-date-today {
   background: rgba(0, 120, 212, 0.1);
-  color: #0078d4;
-  border: 1px solid #0078d4;
+  color: var(--planner-accent-blue);
+  border: 1px solid var(--planner-accent-blue);
   font-weight: 600;
 }
 
@@ -1936,8 +2090,8 @@
 
 .planner-board-card-subtasks-complete {
   background: rgba(47, 158, 68, 0.1);
-  color: #2f9e44;
-  border: 1px solid #2f9e44;
+  color: var(--planner-status-completed);
+  border: 1px solid var(--planner-status-completed);
   font-weight: 600;
 }
 
@@ -1961,7 +2115,6 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
-  margin-top: auto;
 }
 
 .planner-board-add-card:hover {
@@ -2867,11 +3020,4 @@
   padding: 40px 20px;
   color: var(--text-muted);
   font-style: italic;
-}
-}
-
-.dashboard-stat-value {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text-normal);
 }

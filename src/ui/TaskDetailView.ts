@@ -7,6 +7,7 @@ export const VIEW_TYPE_TASK_DETAIL = "project-planner-task-detail";
 export class TaskDetailView extends ItemView {
   private plugin: ProjectPlannerPlugin;
   private task: PlannerTask | null = null;
+  private unsubscribe: (() => void) | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
     super(leaf);
@@ -26,27 +27,8 @@ export class TaskDetailView extends ItemView {
   // ---------------------------------------------------------------------------
 
   private getCanonicalTask(id: string): PlannerTask | null {
-    // Check GridView first
-    const gridLeaf = this.app.workspace.getLeavesOfType("project-planner-view")[0];
-    if (gridLeaf) {
-      const grid: any = gridLeaf.view;
-      if (grid && grid.taskStore) {
-        const task = grid.taskStore.getAll().find((t: PlannerTask) => t.id === id);
-        if (task) return task;
-      }
-    }
-
-    // Check BoardView if not found in GridView
-    const boardLeaf = this.app.workspace.getLeavesOfType("project-planner-board-view")[0];
-    if (boardLeaf) {
-      const board: any = boardLeaf.view;
-      if (board && board.taskStore) {
-        const task = board.taskStore.getAll().find((t: PlannerTask) => t.id === id);
-        if (task) return task;
-      }
-    }
-
-    return null;
+    // Use plugin's taskStore directly - it's the single source of truth
+    return this.plugin.taskStore.getAll().find((t: PlannerTask) => t.id === id) || null;
   }
 
   // Called when GridView selects a task
@@ -57,11 +39,30 @@ export class TaskDetailView extends ItemView {
   }
 
   async onOpen() {
+    // Subscribe to taskStore changes to update in real-time
+    const taskStore = this.plugin.taskStore;
+    await taskStore.ensureLoaded();
+    
+    this.unsubscribe = taskStore.subscribe(() => {
+      // Re-fetch the current task to get latest data
+      if (this.task && this.task.id) {
+        const updated = this.getCanonicalTask(this.task.id);
+        if (updated) {
+          this.task = updated;
+          this.render();
+        }
+      }
+    });
+    
     this.render();
   }
 
   async onClose() {
     this.containerEl.empty();
+    if (this.unsubscribe) {
+      this.unsubscribe();
+      this.unsubscribe = null;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -190,6 +191,33 @@ export class TaskDetailView extends ItemView {
     //
     container.createEl("h3", { text: "Tags" });
     this.renderTagSelector(container, task);
+
+    //
+    // CARD PREVIEW — what to show on board card
+    //
+    container.createEl("h3", { text: "Card Preview" });
+    const cardPreviewOptions = ["none", "checklist", "description"];
+    const cardPreviewLabels: Record<string, string> = {
+      none: "Hide checklist and description",
+      checklist: "Show checklist on card",
+      description: "Show description on card"
+    };
+    const cardPreviewContainer = container.createDiv();
+    const cardPreviewSelect = cardPreviewContainer.createEl("select", {
+      cls: "planner-detail-select"
+    });
+    cardPreviewOptions.forEach(option => {
+      const opt = cardPreviewSelect.createEl("option", {
+        value: option,
+        text: cardPreviewLabels[option]
+      });
+      if ((task.cardPreview || "none") === option) {
+        opt.selected = true;
+      }
+    });
+    cardPreviewSelect.onchange = async () => {
+      await this.update({ cardPreview: cardPreviewSelect.value as "none" | "checklist" | "description" });
+    };
 
     //
     // BUCKET — dropdown

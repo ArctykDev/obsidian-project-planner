@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Menu, setIcon } from "obsidian";
+import { ItemView, WorkspaceLeaf, Menu, setIcon, MarkdownRenderer } from "obsidian";
 import type ProjectPlannerPlugin from "../main";
 import type { PlannerTask } from "../types";
 import { TaskStore } from "../stores/taskStore";
@@ -112,7 +112,7 @@ export class BoardView extends ItemView {
         }
     }
 
-    render() {
+    async render() {
         const container = this.containerEl;
         container.empty();
 
@@ -190,12 +190,12 @@ export class BoardView extends ItemView {
         updateClearButtonVisibility();
 
         // Render board columns
-        this.renderBoard(wrapper);
+        await this.renderBoard(wrapper);
     }
 
     // Header is now shared; previous method removed
 
-    private renderBoard(wrapper: HTMLElement) {
+    private async renderBoard(wrapper: HTMLElement) {
         const boardContainer = wrapper.createDiv("planner-board-container");
 
         const allTasks = this.taskStore.getAll();
@@ -206,7 +206,7 @@ export class BoardView extends ItemView {
         tasks = tasks.filter(t => this.matchesFilters(t));
 
         // Render "Unassigned" bucket first for tasks without bucketId
-        this.renderUnassignedBucket(boardContainer, tasks);
+        await this.renderUnassignedBucket(boardContainer, tasks);
 
         // Render each bucket/column
         for (const bucket of this.buckets) {
@@ -256,16 +256,7 @@ export class BoardView extends ItemView {
             // Enable drop zone
             this.setupDropZone(columnContent, bucket);
 
-            // Separate incomplete and completed tasks
-            const incompleteTasks = bucketTasks.filter(t => !t.completed);
-            const completedTasks = bucketTasks.filter(t => t.completed);
-
-            // Render incomplete task cards
-            for (const task of incompleteTasks) {
-                this.renderCard(columnContent, task);
-            }
-
-            // Add task button (before completed section)
+            // Add task button at the top (MS Planner style)
             const addTaskBtn = columnContent.createDiv("planner-board-add-card");
             addTaskBtn.textContent = "+ Add task";
             addTaskBtn.onclick = async () => {
@@ -274,9 +265,18 @@ export class BoardView extends ItemView {
                 this.render();
             };
 
+            // Separate incomplete and completed tasks
+            const incompleteTasks = bucketTasks.filter(t => !t.completed);
+            const completedTasks = bucketTasks.filter(t => t.completed);
+
+            // Render incomplete task cards
+            for (const task of incompleteTasks) {
+                await this.renderCard(columnContent, task);
+            }
+
             // Render completed section if there are completed tasks
             if (completedTasks.length > 0) {
-                this.renderCompletedSection(columnContent, completedTasks, bucket.id);
+                await this.renderCompletedSection(columnContent, completedTasks, bucket.id);
             }
         }
 
@@ -306,7 +306,7 @@ export class BoardView extends ItemView {
         };
     }
 
-    private renderCard(container: HTMLElement, task: PlannerTask) {
+    private async renderCard(container: HTMLElement, task: PlannerTask) {
         const card = container.createDiv("planner-board-card");
         card.setAttribute("data-task-id", task.id);
         card.draggable = true;
@@ -321,31 +321,6 @@ export class BoardView extends ItemView {
         card.ondragend = () => {
             this.draggedTaskId = null;
             card.classList.remove("planner-board-card-dragging");
-        };
-
-        // Card header with checkbox and menu
-        const cardHeader = card.createDiv("planner-board-card-header");
-
-        // Checkbox for complete/incomplete toggle
-        const checkbox = cardHeader.createEl("input", {
-            type: "checkbox",
-            cls: "planner-board-card-checkbox",
-        });
-        checkbox.checked = task.completed;
-        checkbox.onclick = async (e) => {
-            e.stopPropagation(); // Prevent opening details
-            await this.taskStore.updateTask(task.id, { completed: !task.completed });
-            this.render();
-        };
-
-        // Three-dot menu button
-        const menuBtn = cardHeader.createEl("button", {
-            cls: "planner-board-card-menu",
-            text: "⋯",
-        });
-        menuBtn.onclick = (e) => {
-            e.stopPropagation(); // Prevent opening details
-            this.showCardMenu(task, e);
         };
 
         // Click card body to open details
@@ -367,48 +342,90 @@ export class BoardView extends ItemView {
             }
         }
 
-        // Title
-        const title = card.createDiv("planner-board-card-title");
+        // TAGS AT THE TOP (MS Planner style)
+        if (task.tags && task.tags.length > 0) {
+            const tagsRow = card.createDiv("planner-board-card-tags-top");
+            const settings = this.plugin.settings;
+            const availableTags = settings.availableTags || [];
+
+            task.tags.forEach((tagId) => {
+                const tag = availableTags.find(t => t.id === tagId);
+                if (tag) {
+                    const tagBadge = tagsRow.createDiv("planner-board-card-tag");
+                    tagBadge.textContent = tag.name;
+                    tagBadge.style.backgroundColor = tag.color;
+                }
+            });
+        }
+
+        // Card header with checkbox, title, and menu (aligned on same row)
+        const cardHeader = card.createDiv("planner-board-card-header");
+
+        // Checkbox for complete/incomplete toggle
+        const checkbox = cardHeader.createEl("input", {
+            type: "checkbox",
+            cls: "planner-board-card-checkbox",
+        });
+        checkbox.checked = task.completed;
+        checkbox.onclick = async (e) => {
+            e.stopPropagation(); // Prevent opening details
+            await this.taskStore.updateTask(task.id, { completed: !task.completed });
+            this.render();
+        };
+
+        // Title (inline with checkbox)
+        const title = cardHeader.createDiv("planner-board-card-title");
         title.textContent = task.title;
         if (task.completed) {
             title.classList.add("planner-task-completed");
         }
 
-        // Priority badge + Tags (combined row)
-        if (task.priority || (task.tags && task.tags.length > 0)) {
-            const metadataRow = card.createDiv("planner-board-card-tags");
+        // Three-dot menu button
+        const menuBtn = cardHeader.createEl("button", {
+            cls: "planner-board-card-menu",
+            text: "⋯",
+        });
+        menuBtn.onclick = (e) => {
+            e.stopPropagation(); // Prevent opening details
+            this.showCardMenu(task, e);
+        };
 
-            // Priority badge first
-            if (task.priority) {
-                const pill = metadataRow.createEl("span", {
-                    cls: "priority-pill",
-                    text: task.priority
+        // Card preview content (checklist or description)
+        const cardPreview = task.cardPreview || "none";
+        
+        if (cardPreview === "checklist" && task.subtasks && task.subtasks.length > 0) {
+            const checklistContainer = card.createDiv("planner-board-card-checklist");
+            task.subtasks.forEach((subtask) => {
+                const itemDiv = checklistContainer.createDiv("planner-board-checklist-item");
+                const checkbox = itemDiv.createEl("input", {
+                    type: "checkbox",
+                    cls: "planner-board-checklist-checkbox"
                 });
-
-                // Apply priority color from settings
-                const settings = this.plugin.settings;
-                const availablePriorities = settings.availablePriorities || [];
-                const priority = availablePriorities.find(p => p.name === task.priority);
-
-                if (priority) {
-                    pill.style.backgroundColor = priority.color;
+                checkbox.checked = subtask.completed;
+                checkbox.onclick = async (e) => {
+                    e.stopPropagation();
+                    const updatedSubtasks = task.subtasks!.map(s => 
+                        s.id === subtask.id ? { ...s, completed: !s.completed } : s
+                    );
+                    await this.taskStore.updateTask(task.id, { subtasks: updatedSubtasks });
+                    this.render();
+                };
+                const label = itemDiv.createSpan("planner-board-checklist-label");
+                label.textContent = subtask.title;
+                if (subtask.completed) {
+                    label.classList.add("planner-board-checklist-completed");
                 }
-            }
-
-            // Then tags
-            if (task.tags && task.tags.length > 0) {
-                const settings = this.plugin.settings;
-                const availableTags = settings.availableTags || [];
-
-                task.tags.forEach((tagId) => {
-                    const tag = availableTags.find(t => t.id === tagId);
-                    if (tag) {
-                        const tagBadge = metadataRow.createDiv("planner-board-card-tag");
-                        tagBadge.textContent = tag.name;
-                        tagBadge.style.backgroundColor = tag.color;
-                    }
-                });
-            }
+            });
+        } else if (cardPreview === "description" && task.description) {
+            const descContainer = card.createDiv("planner-board-card-description");
+            // Render markdown in description
+            await MarkdownRenderer.render(
+                this.app,
+                task.description,
+                descContainer,
+                "",
+                this.plugin
+            );
         }
 
         // Footer with metadata
@@ -490,7 +507,7 @@ export class BoardView extends ItemView {
         menu.showAtMouseEvent(evt);
     }
 
-    private renderCompletedSection(columnContent: HTMLElement, completedTasks: PlannerTask[], bucketId: string) {
+    private async renderCompletedSection(columnContent: HTMLElement, completedTasks: PlannerTask[], bucketId: string) {
         const isCollapsed = this.completedSectionsCollapsed[bucketId] ?? false;
 
         // Completed section header
@@ -513,7 +530,7 @@ export class BoardView extends ItemView {
         if (!isCollapsed) {
             const completedContainer = columnContent.createDiv("planner-board-completed-tasks");
             for (const task of completedTasks) {
-                this.renderCard(completedContainer, task);
+                await this.renderCard(completedContainer, task);
             }
         }
     }
@@ -564,7 +581,7 @@ export class BoardView extends ItemView {
         };
     }
 
-    private renderUnassignedBucket(boardContainer: HTMLElement, tasks: PlannerTask[]) {
+    private async renderUnassignedBucket(boardContainer: HTMLElement, tasks: PlannerTask[]) {
         // Filter tasks without bucketId (tasks are already filtered to exclude parents)
         const unassignedTasks = tasks.filter((t) => !t.bucketId);
 
@@ -620,16 +637,7 @@ export class BoardView extends ItemView {
         const unassignedBucket: BoardBucket = { id: "unassigned", name: "Unassigned" };
         this.setupDropZone(columnContent, unassignedBucket);
 
-        // Separate incomplete and completed tasks
-        const incompleteTasks = unassignedTasks.filter(t => !t.completed);
-        const completedTasks = unassignedTasks.filter(t => t.completed);
-
-        // Render incomplete task cards
-        for (const task of incompleteTasks) {
-            this.renderCard(columnContent, task);
-        }
-
-        // Add task button at bottom of column
+        // Add task button at the top (MS Planner style)
         const addTaskBtn = columnContent.createDiv("planner-board-add-card");
         addTaskBtn.textContent = "+ Add task";
         addTaskBtn.onclick = async () => {
@@ -638,9 +646,18 @@ export class BoardView extends ItemView {
             this.render();
         };
 
+        // Separate incomplete and completed tasks
+        const incompleteTasks = unassignedTasks.filter(t => !t.completed);
+        const completedTasks = unassignedTasks.filter(t => t.completed);
+
+        // Render incomplete task cards
+        for (const task of incompleteTasks) {
+            await this.renderCard(columnContent, task);
+        }
+
         // Render completed section if there are completed tasks
         if (completedTasks.length > 0) {
-            this.renderCompletedSection(columnContent, completedTasks, "unassigned");
+            await this.renderCompletedSection(columnContent, completedTasks, "unassigned");
         }
     }
 
