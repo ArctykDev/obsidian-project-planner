@@ -40,11 +40,9 @@ A full-featured project planner for [Obsidian](https://obidian.md) based on [Mic
 
 ---
 
-## Roadmap
+## Community
 
-Project roadmap. All version goals are subject to change.
-
-**View the full roadmap:** [Obsidian Project Planner Roadmap](https://projectplanner.md/roadmap/)
+**Discussion board:** [Discussions](https://github.com/ArctykDev/obsidian-project-planner/discussions)
 
 ---
 
