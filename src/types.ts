@@ -60,8 +60,10 @@ export interface PlannerTask {
   status: string; // status name (not ID)
   priority?: string; // priority name (not ID)
   bucketId?: string; // Board view bucket assignment (independent of status)
-  startDate?: string;
-  dueDate?: string;
+  startDate?: string; // YYYY-MM-DD format
+  dueDate?: string; // YYYY-MM-DD format
+  createdDate?: string; // YYYY-MM-DD format - when task was created
+  lastModifiedDate?: string; // YYYY-MM-DD format - when task was last updated
   description?: string;
 
   // Tags/Labels

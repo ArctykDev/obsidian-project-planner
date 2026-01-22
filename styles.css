@@ -251,6 +251,13 @@
   border-color: var(--interactive-accent);
 }
 
+/* Date cell (read-only for Created/Modified columns) */
+.planner-date-cell-readonly {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: var(--font-monospace);
+}
+
 /* ========================================================================= */
 /* PRIORITY & STATUS PILLS                                                   */
 /* ========================================================================= */
@@ -407,6 +414,17 @@
 .planner-detail-textarea {
   min-height: 100px;
   resize: vertical;
+}
+
+.planner-detail-readonly {
+  width: 100%;
+  padding: 6px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-family: var(--font-monospace);
 }
 
 /* ========================================================================= */

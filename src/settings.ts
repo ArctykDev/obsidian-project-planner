@@ -13,6 +13,7 @@ export interface PlannerProject {
   name: string;
   createdDate?: string;
   lastUpdatedDate?: string;
+  lastSyncTimestamp?: number; // Unix timestamp of last successful sync
   buckets?: BoardBucket[]; // Board view buckets (independent of statuses)
   unassignedBucketName?: string; // Custom name for unassigned bucket
   completedSectionsCollapsed?: { [bucketId: string]: boolean }; // Track collapsed state per bucket
@@ -63,7 +64,7 @@ export const DEFAULT_SETTINGS: ProjectPlannerSettings = {
   ],
   enableMarkdownSync: true,
   autoCreateTaskNotes: true,
-  syncOnStartup: true,
+  syncOnStartup: false,
   enableDailyNoteSync: false,
   dailyNoteTagPattern: "#planner",
   dailyNoteScanFolders: [],
@@ -229,7 +230,7 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Sync on Startup")
-      .setDesc("Scan project folders and sync markdown notes when plugin loads")
+      .setDesc("Scan project folders and sync markdown notes when plugin loads. ⚠️ WARNING: If using Obsidian Sync, disable this to prevent duplicate tasks across devices. The plugin will still watch for file changes.")
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.syncOnStartup)

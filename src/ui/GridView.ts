@@ -849,6 +849,26 @@ export class GridView extends ItemView {
         }
       );
     }
+
+    // ---------------------------------------------------------------------
+    // Created Date (read-only)
+    // ---------------------------------------------------------------------
+    if (this.isColumnVisible("created")) {
+      const createdCell = row.createEl("td", {
+        cls: "planner-date-cell-readonly",
+        text: task.createdDate || "-"
+      });
+    }
+
+    // ---------------------------------------------------------------------
+    // Last Modified Date (read-only)
+    // ---------------------------------------------------------------------
+    if (this.isColumnVisible("modified")) {
+      const modifiedCell = row.createEl("td", {
+        cls: "planner-date-cell-readonly",
+        text: task.lastModifiedDate || "-"
+      });
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -1511,6 +1531,8 @@ export class GridView extends ItemView {
       { key: "dependencies", label: "Deps", hideable: true },
       { key: "start", label: "Start Date", hideable: true },
       { key: "due", label: "Due Date", hideable: true },
+      { key: "created", label: "Created", hideable: true },
+      { key: "modified", label: "Modified", hideable: true },
     ];
   }
 

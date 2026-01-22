@@ -724,12 +724,14 @@ export class TaskDetailView extends ItemView {
     });
 
     if (value) {
-      input.value = new Date(value).toISOString().slice(0, 10);
+      // Handle both YYYY-MM-DD and ISO format (for backward compatibility)
+      const dateStr = value.includes('T') ? value.slice(0, 10) : value;
+      input.value = dateStr;
     }
 
     input.onchange = () => {
-      const iso = input.value ? new Date(input.value).toISOString() : "";
-      void onSave(iso);
+      // Store as YYYY-MM-DD format
+      void onSave(input.value);
     };
   }
 

@@ -187,11 +187,6 @@ export default class ProjectPlannerPlugin extends Plugin {
 
     // Settings tab
     this.addSettingTab(new ProjectPlannerSettingTab(this.app, this));
-
-    // Open default view if configured - wait for workspace to be ready
-    this.app.workspace.onLayoutReady(() => {
-      void this.openDefaultView();
-    });
   }
 
   private migrateProjectTimestamps() {
@@ -476,23 +471,6 @@ export default class ProjectPlannerPlugin extends Plugin {
     });
 
     this.app.workspace.revealLeaf(leaf);
-  }
-
-  private async openDefaultView() {
-    const choice = this.settings.defaultView;
-    // Always force new tab during plugin initialization
-    switch (choice) {
-      case "board":
-        await this.activateBoardView(true);
-        break;
-      case "gantt":
-        await this.activateGanttView(true);
-        break;
-      case "grid":
-      default:
-        await this.activateView(true);
-        break;
-    }
   }
 
   // ---------------------------------------------------------------------------

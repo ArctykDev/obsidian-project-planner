@@ -1,6 +1,12 @@
 import type ProjectPlannerPlugin from "../main";
 import type { PlannerTask } from "../types";
 
+// Helper to get today's date in YYYY-MM-DD format
+function getTodayDate(): string {
+  const now = new Date();
+  return now.toISOString().slice(0, 10);
+}
+
 interface StoredData {
   tasks?: PlannerTask[]; // legacy single-project storage
   tasksByProject?: Record<string, PlannerTask[]>;
@@ -117,6 +123,7 @@ export class TaskStore {
   }
 
   async addTask(title: string): Promise<PlannerTask> {
+    const today = getTodayDate();
     const task: PlannerTask = {
       id: crypto.randomUUID(),
       title,
@@ -125,6 +132,9 @@ export class TaskStore {
       completed: false,
       parentId: null,
       collapsed: false,
+      createdDate: today,
+      lastModifiedDate: today,
+      startDate: today, // Set start date to today by default
     };
 
     this.tasks.push(task);
@@ -145,7 +155,11 @@ export class TaskStore {
     if (existing) {
       // Update instead of adding duplicate
       Object.assign(existing, task);
+      // Preserve lastModifiedDate from the task object (don't overwrite with today)
     } else {
+      // Set timestamps if not already set
+      if (!task.createdDate) task.createdDate = getTodayDate();
+      if (!task.lastModifiedDate) task.lastModifiedDate = getTodayDate();
       this.tasks.push(task);
     }
 
@@ -166,7 +180,11 @@ export class TaskStore {
     if (existing) {
       // Update instead of adding duplicate
       Object.assign(existing, task);
+      existing.lastModifiedDate = getTodayDate();
     } else {
+      // Set timestamps if not already set
+      if (!task.createdDate) task.createdDate = getTodayDate();
+      if (!task.lastModifiedDate) task.lastModifiedDate = getTodayDate();
       projectTasks.push(task);
     }
 
@@ -202,6 +220,9 @@ export class TaskStore {
     } else if (partial.completed !== undefined) {
       partial.status = partial.completed ? "Completed" : task.status || "Not Started";
     }
+
+    // Set last modified timestamp
+    partial.lastModifiedDate = getTodayDate();
 
     Object.assign(task, partial);
     this.updateProjectTimestamp();

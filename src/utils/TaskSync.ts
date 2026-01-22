@@ -33,6 +33,8 @@ export class TaskSync {
         if (task.bucketId) yaml.bucketId = task.bucketId;
         if (task.startDate) yaml.startDate = task.startDate;
         if (task.dueDate) yaml.dueDate = task.dueDate;
+        if (task.createdDate) yaml.createdDate = task.createdDate;
+        if (task.lastModifiedDate) yaml.lastModifiedDate = task.lastModifiedDate;
         if (task.tags && task.tags.length > 0) yaml.tags = task.tags;
         if (task.collapsed !== undefined) yaml.collapsed = task.collapsed;
 
@@ -123,6 +125,8 @@ export class TaskSync {
         if (fm.bucketId) task.bucketId = fm.bucketId;
         if (fm.startDate) task.startDate = fm.startDate;
         if (fm.dueDate) task.dueDate = fm.dueDate;
+        if (fm.createdDate) task.createdDate = fm.createdDate;
+        if (fm.lastModifiedDate) task.lastModifiedDate = fm.lastModifiedDate;
         if (fm.tags) task.tags = Array.isArray(fm.tags) ? fm.tags : [fm.tags];
         if (fm.collapsed !== undefined) task.collapsed = fm.collapsed;
 
@@ -279,8 +283,8 @@ export class TaskSync {
                 await this.app.vault.create(filePath, content);
             }
         } finally {
-            // Remove from set after a delay to allow metadata cache to update
-            setTimeout(() => this.syncInProgress.delete(task.id), 200);
+            // Longer timeout for Obsidian Sync delays
+            setTimeout(() => this.syncInProgress.delete(task.id), 1000);
         }
     }
 
@@ -302,16 +306,19 @@ export class TaskSync {
             const existingTask = this.plugin.taskStore.getTaskById(task.id);
 
             if (existingTask) {
-                // Update existing task
+                // Update existing task (always update to ensure markdown is source of truth)
                 console.log('[TaskSync] Updating task from markdown:', task.title);
-                await this.plugin.taskStore.updateTask(task.id, task);
+                // Don't use updateTask as it triggers lastModifiedDate change
+                // Instead use addTaskFromObject which handles merging
+                await this.plugin.taskStore.addTaskFromObject(task);
             } else {
                 // Task doesn't exist in JSON - new task created via markdown
                 console.log('[TaskSync] Adding new task from markdown:', task.title);
                 await this.plugin.taskStore.addTaskFromObject(task);
             }
         } finally {
-            setTimeout(() => this.syncInProgress.delete(task.id), 200);
+            // Longer timeout for Obsidian Sync delays
+            setTimeout(() => this.syncInProgress.delete(task.id), 1000);
         }
     }
 
@@ -376,10 +383,24 @@ export class TaskSync {
      * Perform initial sync - scan project folder and sync all markdown files
      */
     async initialSync(projectId: string, projectName: string): Promise<void> {
+        const project = this.plugin.settings.projects.find(p => p.id === projectId);
+        if (!project) return;
+
+        // Check if we've synced recently (within last 5 minutes) to avoid repeated syncs
+        const now = Date.now();
+        const fiveMinutes = 5 * 60 * 1000;
+        if (project.lastSyncTimestamp && (now - project.lastSyncTimestamp) < fiveMinutes) {
+            console.log(`[TaskSync] Skipping initial sync - last sync was ${Math.round((now - project.lastSyncTimestamp) / 1000)}s ago`);
+            return;
+        }
+
         const folderPath = `${projectName}/Tasks`;
         const folder = this.app.vault.getAbstractFileByPath(folderPath);
 
-        if (!folder) return;
+        if (!folder) {
+            console.log(`[TaskSync] Folder not found: ${folderPath}`);
+            return;
+        }
 
         console.log(`[TaskSync] Starting initial sync for: ${folderPath}`);
         const files = this.app.vault.getMarkdownFiles().filter(f =>
@@ -387,8 +408,19 @@ export class TaskSync {
         );
 
         console.log(`[TaskSync] Found ${files.length} files to sync`);
-        for (const file of files) {
-            await this.syncMarkdownToTask(file, projectId);
+        
+        // Batch process files to avoid overwhelming the system
+        for (let i = 0; i < files.length; i++) {
+            await this.syncMarkdownToTask(files[i], projectId);
+            // Small delay between files to prevent race conditions
+            if (i < files.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
         }
+
+        // Update last sync timestamp
+        project.lastSyncTimestamp = Date.now();
+        await this.plugin.saveSettings();
+        console.log(`[TaskSync] Initial sync complete for: ${folderPath}`);
     }
 }

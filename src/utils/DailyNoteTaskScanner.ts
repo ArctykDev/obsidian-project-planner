@@ -162,12 +162,16 @@ export class DailyNoteTaskScanner {
 
         // Check if we already have a task at this location
         let taskId = this.taskLocationMap.get(locationKey);
+        const isNewTask = !taskId;
 
         // If no existing task, generate new ID
         if (!taskId) {
             taskId = `daily-task-${crypto.randomUUID()}`;
             this.taskLocationMap.set(locationKey, taskId);
         }
+
+        // Get today's date in YYYY-MM-DD format
+        const today = new Date().toISOString().slice(0, 10);
 
         // Create the task object
         const task: PlannerTask = {
@@ -177,6 +181,12 @@ export class DailyNoteTaskScanner {
             status: isCompleted ? "Completed" : "Not Started",
             description: `Imported from: [[${file.basename}]]`,
         };
+
+        // Set timestamps
+        if (isNewTask) {
+            task.createdDate = today;
+        }
+        task.lastModifiedDate = today;
 
         if (priority) task.priority = priority;
         if (dueDate) task.dueDate = dueDate;

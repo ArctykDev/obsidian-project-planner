@@ -27,18 +27,22 @@
           }
         ],
         "completedSectionsCollapsed": {
-          "unassigned": false,
+          "unassigned": true,
           "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0": true,
           "f98a3102-a298-4a98-8d99-ed93eac60755": true
         },
         "unassignedBucketName": "Backlog",
         "createdDate": "2026-01-12T21:50:10.880Z",
-        "lastUpdatedDate": "2026-01-20T21:11:11.374Z"
+        "lastUpdatedDate": "2026-01-22T00:19:11.995Z"
       },
       {
         "id": "bb29a79d-acfa-41cb-8ff7-5dda36ff6759",
         "name": "Integrations",
         "buckets": [
+          {
+            "id": "38e2915e-52d9-4456-bf51-0e2e1f7410ea",
+            "name": "Up Next"
+          },
           {
             "id": "4c2d5ab3-75b1-4bfb-9392-c3d7d38e17c6",
             "name": "In Progress"
@@ -53,7 +57,7 @@
           "unassigned": true
         },
         "createdDate": "2026-01-12T21:50:10.880Z",
-        "lastUpdatedDate": "2026-01-12T21:50:10.880Z"
+        "lastUpdatedDate": "2026-01-21T15:00:37.478Z"
       },
       {
         "id": "0050b066-dd4b-43ef-aa0d-728be590a30b",
@@ -84,18 +88,38 @@
     "availableTags": [
       {
         "id": "cfc49091-140c-4b0d-8d54-b812dbf02db5",
-        "name": "Planning",
+        "name": "planning",
         "color": "#9677ee"
       },
       {
         "id": "064a02ab-b3ad-4ea1-9581-27b261a0be99",
-        "name": "Documentation",
+        "name": "documentation",
         "color": "#f73b7d"
       },
       {
         "id": "78bf00ac-a3cc-47d6-92a3-5f4816dc4719",
-        "name": "In Review",
+        "name": "testing",
         "color": "#ebb442"
+      },
+      {
+        "id": "c2b5b773-cd7c-404b-864c-d89a0842c3fc",
+        "name": "feature",
+        "color": "#3b82f6"
+      },
+      {
+        "id": "9dc4b926-ef53-403d-b000-e2f48e2087e3",
+        "name": "github",
+        "color": "#58db00"
+      },
+      {
+        "id": "e983767c-4d22-4f34-a6c2-f37ee52ed113",
+        "name": "bug",
+        "color": "#e00000"
+      },
+      {
+        "id": "12bd3120-3aec-4bc7-a32f-7dfc49297c2d",
+        "name": "update",
+        "color": "#f73ba9"
       }
     ],
     "availableStatuses": [
@@ -149,17 +173,17 @@
     ],
     "enableMarkdownSync": true,
     "autoCreateTaskNotes": true,
-    "syncOnStartup": true,
+    "syncOnStartup": false,
     "enableDailyNoteSync": true,
     "dailyNoteTagPattern": "#planner",
     "dailyNoteScanFolders": [],
     "dailyNoteDefaultProject": "de2ed79d-b1f3-473d-a3dd-d3640cb89c54",
     "gridViewColumnWidths": {
-      "status": 135,
-      "title": 468,
-      "priority": 73,
-      "tags": 96,
-      "bucket": 87
+      "status": 179,
+      "title": 412,
+      "priority": 69,
+      "tags": 76,
+      "bucket": 161
     },
     "gridViewSortKey": "Manual",
     "gridViewSortDirection": "asc",
@@ -175,7 +199,9 @@
       "due": true,
       "dependencies": true,
       "dependents": false,
-      "bucket": true
+      "bucket": true,
+      "created": false,
+      "modified": false
     }
   },
   "tasksByProject": {
@@ -190,7 +216,7 @@
         "collapsed": false,
         "links": [
           {
-            "id": "cddc43cb-6c52-49fb-bedf-1f95abbbeaed",
+            "id": "24e07170-280f-4f2a-a7db-221bbf251019",
             "title": "Milestones",
             "url": "Milestones",
             "type": "obsidian"
@@ -198,7 +224,35 @@
         ],
         "tags": [
           "064a02ab-b3ad-4ea1-9581-27b261a0be99"
-        ]
+        ],
+        "lastModifiedDate": "2026-01-21"
+      },
+      {
+        "id": "60f41647-b6c5-4968-97cc-095334871e5e",
+        "title": "Drag and drop ordering for Tags",
+        "status": "Completed",
+        "priority": "Medium",
+        "completed": true,
+        "parentId": "40186745-554c-4767-9fcd-da5bbe565dad",
+        "collapsed": false,
+        "tags": [
+          "cfc49091-140c-4b0d-8d54-b812dbf02db5"
+        ],
+        "bucketId": "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0",
+        "subtasks": [
+          {
+            "id": "a18d9dc7-7367-4ba6-bf50-98af9faea9b8",
+            "title": "New checklist item",
+            "completed": true
+          },
+          {
+            "id": "781282b3-cfa0-4d06-88da-fef2b7bcb1d0",
+            "title": "New checklist item",
+            "completed": false
+          }
+        ],
+        "description": "# Markdown\n\n**bold**",
+        "lastModifiedDate": "2026-01-21"
       },
       {
         "id": "b8c9afce-566c-4a41-b66a-8d60123479c3",
@@ -209,17 +263,19 @@
         "parentId": "91f7f8a6-a676-4124-864f-8d52a1382040",
         "collapsed": false,
         "tags": [
-          "cfc49091-140c-4b0d-8d54-b812dbf02db5"
+          "c2b5b773-cd7c-404b-864c-d89a0842c3fc"
         ],
         "subtasks": [
           {
-            "id": "1cd20af1-5272-4fa0-8d04-3071a3f8e071",
+            "id": "011c1444-3bc8-486c-9e6b-6d7417d5728c",
             "title": "New checklist item",
             "completed": false
           }
         ],
-        "description": "If possible, allow user to drag and drop Priority tags in the plugin settings. ",
-        "cardPreview": "description"
+        "description": "If possible, allow user to drag and drop Priority tags in the plugin settings.",
+        "lastModifiedDate": "2026-01-22",
+        "bucketId": "ae3f335d-2bb6-4727-82bf-eda7c18a1370",
+        "cardPreview": "checklist"
       },
       {
         "id": "1d202c93-46df-4183-89f7-5acee1cfd0a2",
@@ -236,24 +292,23 @@
           }
         ],
         "tags": [
-          "cfc49091-140c-4b0d-8d54-b812dbf02db5",
-          "064a02ab-b3ad-4ea1-9581-27b261a0be99",
-          "2026-01-04"
+          "2026-01-04",
+          "c2b5b773-cd7c-404b-864c-d89a0842c3fc"
         ],
         "description": "More description. More more.\nThis feature has been implemented.",
         "subtasks": [
           {
-            "id": "5bc510b3-4ea0-43aa-a5f3-0d261680baec",
+            "id": "51c9ef28-4fab-4638-b6ad-9c443233ec19",
             "title": "New checklist item",
             "completed": true
           },
           {
-            "id": "0e3bf793-e220-4222-b8bc-a18749b2a1dd",
+            "id": "d3bb569d-1488-4b7a-b78d-b7d541dd1366",
             "title": "This is the second checklist item",
             "completed": true
           },
           {
-            "id": "caad95d2-9732-4ce2-a7d4-f20508a207c5",
+            "id": "e865539c-641e-43bf-aaa5-51611e3113dd",
             "title": "This is a third checklist item.",
             "completed": false
           }
@@ -262,6 +317,29 @@
         "dueDate": "2025-12-23T00:00:00.000Z",
         "bucketId": "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0",
         "cardDisplay": "description",
+        "lastModifiedDate": "2026-01-22",
+        "cardPreview": "checklist"
+      },
+      {
+        "id": "e1312412-4050-44d7-915e-15ea9aa3063b",
+        "title": "Task history",
+        "status": "Not Started",
+        "completed": false,
+        "parentId": "91f7f8a6-a676-4124-864f-8d52a1382040",
+        "priority": "Medium",
+        "tags": [
+          "c2b5b773-cd7c-404b-864c-d89a0842c3fc"
+        ],
+        "collapsed": false,
+        "description": "Add task history to the plugin settings to allow users to audit tasks and restore deleted tasks.\n\nObsidian also has this feature so I should look into whether or not adding history or backup feature is worth doing.",
+        "subtasks": [
+          {
+            "id": "748d1edf-5ea9-4dd3-97a8-8d4c76df9242",
+            "title": "Investigate Obsidian note history",
+            "completed": false
+          }
+        ],
+        "lastModifiedDate": "2026-01-22",
         "cardPreview": "checklist"
       },
       {
@@ -272,7 +350,8 @@
         "completed": false,
         "parentId": null,
         "collapsed": false,
-        "description": "---\n*Task from Project: Project Planner*"
+        "description": "---\n*Task from Project: Project Planner*",
+        "lastModifiedDate": "2026-01-21"
       },
       {
         "id": "5152b8a3-d734-488f-8250-b377af2aeb06",
@@ -288,7 +367,7 @@
         ],
         "links": [
           {
-            "id": "c917fc64-7142-4e50-b241-7bdc5bdabb46",
+            "id": "e63f7293-5052-40e6-af57-e389baf7a5d4",
             "title": " 2025-10-15 ",
             "url": " 2025-10-15 ",
             "type": "obsidian"
@@ -297,91 +376,36 @@
         "bucketId": "e9136041-f9f7-4332-9d81-7fb4c19a97bc",
         "subtasks": [
           {
-            "id": "1d3fe681-ad66-4b80-9a4c-6cbbddd56127",
+            "id": "0519c90d-8131-49db-859c-70061850a683",
             "title": "Test Start-to-Finish",
             "completed": false
           },
           {
-            "id": "57c26fb5-d36f-42be-ae3d-020f648e2dd8",
+            "id": "2d5a225d-8a80-4e55-9969-2787aa144e50",
             "title": "Test Finish-to-Start",
             "completed": false
           },
           {
-            "id": "e4e9a42c-942e-4a12-8707-3bdb05057879",
+            "id": "b950720a-5147-4466-bbd4-39dd08f2527c",
             "title": "Test Finish to Finish",
             "completed": false
           },
           {
-            "id": "64beb5af-3f41-45e4-bec1-baedda21f6ad",
+            "id": "20d0ef88-dfeb-4822-bbac-df9f5d8fb1e6",
             "title": "Test Start-to-Start",
             "completed": false
           }
-        ]
-      },
-      {
-        "id": "2cb80dc3-4939-4ffc-8905-096cf0e603a7",
-        "title": "Quick Action: Send task to Completed",
-        "status": "Not Started",
-        "priority": "Medium",
-        "completed": false,
-        "parentId": "7cefa6d9-9ff7-4c56-8e74-5f1fa96da8e9",
-        "collapsed": false,
-        "tags": [
-          "cfc49091-140c-4b0d-8d54-b812dbf02db5"
         ],
-        "description": "Add a quick action to send task to completed parent and bucket.",
-        "cardPreview": "description"
+        "lastModifiedDate": "2026-01-21"
       },
       {
-        "id": "2b5895f5-5b62-4044-be39-51e7119c2135",
-        "title": "Sub tasks can't be dragged outside of parent",
+        "id": "36ca858f-00c3-423d-9f69-181b740bc203",
+        "title": "New Task",
         "status": "Completed",
         "priority": "Medium",
         "completed": true,
-        "parentId": "90b0d854-37b6-404f-923a-dc275648a7fd",
-        "collapsed": false,
-        "description": "---\n*Task from Project: Project Planner*",
-        "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755"
-      },
-      {
-        "id": "5b96be2a-3689-4bcf-91b6-db88a908b819",
-        "title": "Change task details header to fit",
-        "status": "Not Started",
-        "priority": "Medium",
-        "completed": false,
-        "parentId": "7cefa6d9-9ff7-4c56-8e74-5f1fa96da8e9",
-        "collapsed": false,
-        "description": "*Task from Project: Project Planner*\n\n- Change **Mark as Complete** to **Complete**\n- Change **Copy Link** to **Copy**",
-        "cardDisplay": "checklist",
-        "cardPreview": "description",
-        "bucketId": "ae3f335d-2bb6-4727-82bf-eda7c18a1370",
-        "tags": [
-          "cfc49091-140c-4b0d-8d54-b812dbf02db5"
-        ]
-      },
-      {
-        "id": "5b87799a-e6d3-40a8-a616-8d34064744ee",
-        "title": "Move tasks between projects",
-        "status": "Not Started",
-        "priority": "Medium",
-        "completed": false,
-        "parentId": "7cefa6d9-9ff7-4c56-8e74-5f1fa96da8e9",
-        "collapsed": false,
-        "description": "Allow tasks to be moved to a different project.",
-        "cardPreview": "description",
-        "tags": [
-          "cfc49091-140c-4b0d-8d54-b812dbf02db5"
-        ]
-      },
-      {
-        "id": "e5327f90-13f4-4be6-afb4-8aab39b7838a",
-        "title": "Board View",
-        "status": "Not Started",
-        "priority": "Medium",
-        "completed": false,
-        "parentId": null,
-        "collapsed": false,
-        "description": "---\n*Task from Project: Project Planner*"
+        "parentId": "5152b8a3-d734-488f-8250-b377af2aeb06",
+        "collapsed": false
       },
       {
         "id": "4d6f72df-ebb5-4c10-b326-ecaf4fc5374c",
@@ -392,7 +416,7 @@
         "parentId": "e5327f90-13f4-4be6-afb4-8aab39b7838a",
         "collapsed": false,
         "tags": [
-          "78bf00ac-a3cc-47d6-92a3-5f4816dc4719"
+          "c2b5b773-cd7c-404b-864c-d89a0842c3fc"
         ],
         "startDate": "2026-01-06T00:00:00.000Z",
         "dueDate": "2026-01-09T00:00:00.000Z",
@@ -400,67 +424,19 @@
         "cardDisplay": "checklist",
         "subtasks": [
           {
-            "id": "4ff57acc-67d1-4e26-b613-31280f6180bc",
+            "id": "00361f49-ccf3-41d2-ae6d-e819eb05926b",
             "title": "Checklist item 1",
             "completed": true
           },
           {
-            "id": "c8ec1996-db51-4fb1-a147-9c0158be2107",
+            "id": "906b2d13-c960-4e00-81e0-dd59bb43c716",
             "title": "Checklist item 2",
             "completed": true
           }
         ],
         "bucketId": "e9136041-f9f7-4332-9d81-7fb4c19a97bc",
+        "lastModifiedDate": "2026-01-22",
         "cardPreview": "description"
-      },
-      {
-        "id": "90b0d854-37b6-404f-923a-dc275648a7fd",
-        "title": "Grid View",
-        "status": "Not Started",
-        "priority": "Medium",
-        "completed": false,
-        "parentId": null,
-        "collapsed": false,
-        "description": "---\n*Task from Project: Project Planner*"
-      },
-      {
-        "id": "40186745-554c-4767-9fcd-da5bbe565dad",
-        "title": "Completed",
-        "status": "Not Started",
-        "priority": "Medium",
-        "completed": false,
-        "parentId": null,
-        "collapsed": true,
-        "tags": [
-          "cfc49091-140c-4b0d-8d54-b812dbf02db5"
-        ],
-        "description": "---\n*Task from Project: Project Planner*"
-      },
-      {
-        "id": "60f41647-b6c5-4968-97cc-095334871e5e",
-        "title": "Drag and drop ordering for Tags",
-        "status": "Completed",
-        "priority": "Medium",
-        "completed": true,
-        "parentId": "40186745-554c-4767-9fcd-da5bbe565dad",
-        "collapsed": false,
-        "tags": [
-          "cfc49091-140c-4b0d-8d54-b812dbf02db5"
-        ],
-        "bucketId": "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0",
-        "subtasks": [
-          {
-            "id": "82a9d480-5258-44ca-ad07-efe514ef278a",
-            "title": "New checklist item",
-            "completed": true
-          },
-          {
-            "id": "448d58d8-2821-4882-b959-4bc450c66b0b",
-            "title": "New checklist item",
-            "completed": false
-          }
-        ],
-        "description": "# Markdown\n\n**bold**"
       },
       {
         "id": "742e5aaf-319e-4b4e-a8d4-7c832d0f4d9d",
@@ -476,35 +452,34 @@
         "description": "Centralize the task store.",
         "subtasks": [
           {
-            "id": "b1d45422-5a89-4e9f-a47e-671fdba8ae76",
+            "id": "4b3bd9bf-8461-4cab-b1a1-c0c82145978a",
             "title": "New checklist item",
             "completed": false
           }
         ],
-        "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755"
+        "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755",
+        "lastModifiedDate": "2026-01-21"
       },
       {
-        "id": "daily-task-2c1662dc-d5b0-44ae-b010-e3ded2828c4b",
-        "title": "Configure domain to be used with GitHub Pages",
+        "id": "2cb80dc3-4939-4ffc-8905-096cf0e603a7",
+        "title": "Quick Action: Send task to Completed",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": "7cefa6d9-9ff7-4c56-8e74-5f1fa96da8e9",
+        "collapsed": false
+      },
+      {
+        "id": "2b5895f5-5b62-4044-be39-51e7119c2135",
+        "title": "Sub tasks can't be dragged outside of parent",
         "status": "Completed",
+        "priority": "Medium",
         "completed": true,
-        "parentId": "40186745-554c-4767-9fcd-da5bbe565dad",
-        "priority": "High",
+        "parentId": "90b0d854-37b6-404f-923a-dc275648a7fd",
+        "collapsed": false,
+        "description": "---\n*Task from Project: Project Planner*",
         "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755",
-        "startDate": "2026-01-15T00:00:00.000Z",
-        "dueDate": "2026-01-18T00:00:00.000Z",
-        "tags": [
-          "064a02ab-b3ad-4ea1-9581-27b261a0be99"
-        ],
-        "description": "Imported from: [[Domain]]",
-        "links": [
-          {
-            "id": "f41fa0e6-467e-4b25-b443-9e0dc13f675f",
-            "title": "Obsidian Project Planner/Domain.md",
-            "url": "Obsidian Project Planner/Domain.md",
-            "type": "obsidian"
-          }
-        ]
+        "lastModifiedDate": "2026-01-21"
       },
       {
         "id": "c4a0b47b-dde4-4a33-9adb-2a2cb5ddec19",
@@ -522,7 +497,50 @@
           "78bf00ac-a3cc-47d6-92a3-5f4816dc4719",
           "064a02ab-b3ad-4ea1-9581-27b261a0be99",
           "cfc49091-140c-4b0d-8d54-b812dbf02db5"
-        ]
+        ],
+        "lastModifiedDate": "2026-01-21"
+      },
+      {
+        "id": "5b96be2a-3689-4bcf-91b6-db88a908b819",
+        "title": "Change task details header to fit",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": "7cefa6d9-9ff7-4c56-8e74-5f1fa96da8e9",
+        "collapsed": false,
+        "description": "*Task from Project: Project Planner*\n\n- Change **Mark as Complete** to **Complete**\n- Change **Copy Link** to **Copy**",
+        "cardDisplay": "checklist",
+        "bucketId": "ae3f335d-2bb6-4727-82bf-eda7c18a1370",
+        "tags": [
+          "cfc49091-140c-4b0d-8d54-b812dbf02db5"
+        ],
+        "lastModifiedDate": "2026-01-22",
+        "cardPreview": "description"
+      },
+      {
+        "id": "5b87799a-e6d3-40a8-a616-8d34064744ee",
+        "title": "Move tasks between projects",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": "7cefa6d9-9ff7-4c56-8e74-5f1fa96da8e9",
+        "collapsed": false,
+        "description": "Allow tasks to be moved to a different project.",
+        "tags": [
+          "c2b5b773-cd7c-404b-864c-d89a0842c3fc"
+        ],
+        "lastModifiedDate": "2026-01-21"
+      },
+      {
+        "id": "e5327f90-13f4-4be6-afb4-8aab39b7838a",
+        "title": "Board View",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": null,
+        "collapsed": false,
+        "description": "---\n*Task from Project: Project Planner*",
+        "lastModifiedDate": "2026-01-21"
       },
       {
         "id": "9e809c20-a536-4b7a-8081-689e9792f256",
@@ -533,7 +551,31 @@
         "parentId": "40186745-554c-4767-9fcd-da5bbe565dad",
         "collapsed": false,
         "bucketId": "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0",
-        "description": "---\n*Task from Project: Project Planner*"
+        "description": "---\n*Task from Project: Project Planner*",
+        "lastModifiedDate": "2026-01-21"
+      },
+      {
+        "id": "90b0d854-37b6-404f-923a-dc275648a7fd",
+        "title": "Grid View",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": null,
+        "collapsed": false,
+        "description": "---\n*Task from Project: Project Planner*",
+        "lastModifiedDate": "2026-01-21"
+      },
+      {
+        "id": "40186745-554c-4767-9fcd-da5bbe565dad",
+        "title": "Completed",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": null,
+        "collapsed": true,
+        "tags": [],
+        "description": "---\n*Task from Project: Project Planner*",
+        "lastModifiedDate": "2026-01-22"
       },
       {
         "id": "403083d7-f92a-4e64-af33-1601358e5aca",
@@ -546,7 +588,7 @@
         "description": "",
         "subtasks": [
           {
-            "id": "7f74860a-3848-402e-9866-dbff4188336c",
+            "id": "b53e9de0-e51a-440e-a6e7-7bc0863ecc06",
             "title": "New checklist item",
             "completed": false
           }
@@ -554,7 +596,8 @@
         "tags": [
           "78bf00ac-a3cc-47d6-92a3-5f4816dc4719"
         ],
-        "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755"
+        "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755",
+        "lastModifiedDate": "2026-01-21"
       },
       {
         "id": "ea019827-29a8-429c-bc3e-4c14f09cf872",
@@ -567,7 +610,8 @@
         "startDate": "2025-12-12",
         "dueDate": "2025-12-12",
         "description": "**Markdown** support with preview.",
-        "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755"
+        "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755",
+        "lastModifiedDate": "2026-01-21"
       },
       {
         "id": "97b96980-6f72-46e9-81c8-59ffdc1f3485",
@@ -579,12 +623,12 @@
         "collapsed": false,
         "subtasks": [
           {
-            "id": "f6d33990-565f-4351-9e17-ca9b6c89f855",
+            "id": "91c3fcd0-a8ec-48e0-9c7b-80f1824fb7f7",
             "title": "Test and confirm working",
             "completed": true
           },
           {
-            "id": "d804bb23-9d4e-4663-874a-c1acf58d6f3e",
+            "id": "2fb7e3b4-929f-4501-bca0-442c30b5661f",
             "title": "Add check box to task details panel",
             "completed": true
           }
@@ -592,7 +636,8 @@
         "description": "Add a complete checkbox to Task Details panel which syncs to the Grid View and future views.",
         "startDate": "2025-12-12T22:40:00.000Z",
         "dueDate": "2025-12-12T22:40:00.000Z",
-        "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755"
+        "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755",
+        "lastModifiedDate": "2026-01-21"
       },
       {
         "id": "8195be81-f1a7-48d0-bd79-dbefdc83a8f7",
@@ -603,7 +648,8 @@
         "parentId": "40186745-554c-4767-9fcd-da5bbe565dad",
         "collapsed": false,
         "description": "---\n*Task from Project: Project Planner*",
-        "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755"
+        "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755",
+        "lastModifiedDate": "2026-01-21"
       },
       {
         "id": "d4089ed9-9b67-48af-9dd6-740d6bf65416",
@@ -614,7 +660,8 @@
         "parentId": "40186745-554c-4767-9fcd-da5bbe565dad",
         "collapsed": false,
         "description": "---\n*Task from Project: Project Planner*",
-        "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755"
+        "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755",
+        "lastModifiedDate": "2026-01-21"
       },
       {
         "id": "5fc4f9b1-b8fe-43cc-9ab2-91652407fa3e",
@@ -636,7 +683,7 @@
         ],
         "links": [
           {
-            "id": "3f7d1ae7-4cfb-49ce-a1ea-b1ecfebd974a",
+            "id": "fe2d14fa-dc59-45c4-9c95-1ade74c18340",
             "title": "https://obsidian.md",
             "url": "https://obsidian.md",
             "type": "external"
@@ -644,44 +691,36 @@
         ],
         "subtasks": [
           {
-            "id": "5e3e71ca-0de8-4328-8849-91b8d42638a2",
+            "id": "e45aaf55-d02a-4248-8eaf-ab497435ac1b",
             "title": "Example checklist item 1",
             "completed": false
           },
           {
-            "id": "21417313-093a-43bd-bf0b-08064f586edc",
+            "id": "1389bafb-187c-4b2e-a7e3-5244949913ae",
             "title": "Example checklist item 2",
             "completed": false
           }
         ],
-        "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755"
+        "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755",
+        "lastModifiedDate": "2026-01-21"
       },
       {
-        "id": "931c948e-f550-4c0d-88e8-21ece03e579e",
+        "id": "36ca858f-00c3-423d-9f69-181b740bc203",
         "title": "New Task",
         "status": "Completed",
         "priority": "Medium",
         "completed": true,
-        "parentId": "40186745-554c-4767-9fcd-da5bbe565dad",
-        "collapsed": false,
-        "bucketId": "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0",
-        "tags": [
-          "cfc49091-140c-4b0d-8d54-b812dbf02db5"
-        ],
-        "startDate": "2025-12-25T00:00:00.000Z",
-        "dueDate": "2025-12-31T00:00:00.000Z",
-        "subtasks": [
-          {
-            "id": "b6dc4310-8fee-4f14-b180-7b4de9008bfe",
-            "title": "Second thing",
-            "completed": true
-          },
-          {
-            "id": "1c3271cb-a9f0-4632-95d1-227b6a06f305",
-            "title": "First thing",
-            "completed": true
-          }
-        ]
+        "parentId": "5152b8a3-d734-488f-8250-b377af2aeb06",
+        "collapsed": false
+      },
+      {
+        "id": "36ca858f-00c3-423d-9f69-181b740bc203",
+        "title": "New Task",
+        "status": "Completed",
+        "priority": "Medium",
+        "completed": true,
+        "parentId": "5152b8a3-d734-488f-8250-b377af2aeb06",
+        "collapsed": false
       },
       {
         "id": "c456e482-101c-4d1d-8252-06ae6299abcd",
@@ -692,7 +731,8 @@
         "parentId": "40186745-554c-4767-9fcd-da5bbe565dad",
         "collapsed": false,
         "description": "Fix the styling on Add Task button in top menu to match the Columns and Plugin Settings button.\n\n- Fix on hover to use white text. It's currently using black.",
-        "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755"
+        "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755",
+        "lastModifiedDate": "2026-01-21"
       },
       {
         "id": "10edb8a9-aa71-46aa-8203-9ce3cbccfbc3",
@@ -705,7 +745,8 @@
         "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755",
         "startDate": "2026-01-12T00:00:00.000Z",
         "dueDate": "2026-01-12T00:00:00.000Z",
-        "description": "Allow users to customize the colour of each bucket. Like Microsoft Planner."
+        "description": "Allow users to customize the colour of each bucket. Like Microsoft Planner.",
+        "lastModifiedDate": "2026-01-21"
       }
     ],
     "bb29a79d-acfa-41cb-8ff7-5dda36ff6759": [
