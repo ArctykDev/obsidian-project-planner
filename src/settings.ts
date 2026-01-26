@@ -34,6 +34,7 @@ export interface ProjectPlannerSettings {
   enableMarkdownSync: boolean; // Enable sync between JSON and markdown notes
   autoCreateTaskNotes: boolean; // Auto-create/update markdown notes when tasks change
   syncOnStartup: boolean; // Perform initial sync when plugin loads
+  projectsBasePath: string; // Base folder path for project folders (e.g., "Project Planner")
 
   // Daily note task tagging settings
   enableDailyNoteSync: boolean; // Enable scanning daily notes for tagged tasks
@@ -65,6 +66,7 @@ export const DEFAULT_SETTINGS: ProjectPlannerSettings = {
   enableMarkdownSync: true,
   autoCreateTaskNotes: true,
   syncOnStartup: false,
+  projectsBasePath: "Project Planner",
   enableDailyNoteSync: false,
   dailyNoteTagPattern: "#planner",
   dailyNoteScanFolders: [],
@@ -93,11 +95,11 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       cls: "planner-version-badge"
     });
 
-    // Optional: Add link to releases/changelog
+    // Add link to releases/changelog
     const changelogLink = versionEl.createEl("a", {
       text: "Changelog",
       cls: "planner-changelog-link",
-      href: "https://github.com/ArctykDev/obsidian-project-planner/releases"
+      href: "https://projectplanner.md/changelog"
     });
     changelogLink.setAttribute("target", "_blank");
     changelogLink.setAttribute("rel", "noopener noreferrer");
@@ -157,13 +159,13 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
     });
 
     new Setting(containerEl)
-      .setName("Default View")
+      .setName("Default view")
       .setDesc("Choose which view opens first.")
       .addDropdown((dropdown) =>
         dropdown
-          .addOption("grid", "Grid View")
-          .addOption("board", "Board View")
-          .addOption("gantt", "Timeline (Gantt) View")
+          .addOption("grid", "Grid view")
+          .addOption("board", "Board view")
+          .addOption("gantt", "Timeline (Gantt) view")
           .setValue(this.plugin.settings.defaultView)
           .onChange(async (value) => {
             this.plugin.settings.defaultView = value as any;
@@ -172,7 +174,7 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Show Completed Tasks")
+      .setName("Show completed tasks")
       .setDesc("Display tasks marked as completed.")
       .addToggle((toggle) =>
         toggle
@@ -184,7 +186,7 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Open Views in New Tab")
+      .setName("Open views in new tab")
       .setDesc("When switching between views (Grid, Board, Timeline, Dashboard, Graph), open them in a new tab instead of replacing the current view.")
       .addToggle((toggle) =>
         toggle
@@ -198,10 +200,12 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
     // -----------------------------------------------------------------------
     // Markdown Sync Section
     // -----------------------------------------------------------------------
-    containerEl.createEl("h2", { text: "Markdown Sync" });
+    // Markdown Sync Section
+    // -----------------------------------------------------------------------
+    new Setting(containerEl).setName("Markdown sync").setHeading();
 
     new Setting(containerEl)
-      .setName("Enable Markdown Sync")
+      .setName("Enable markdown sync")
       .setDesc("Sync tasks between plugin data and markdown notes with YAML frontmatter")
       .addToggle((toggle) =>
         toggle
@@ -217,7 +221,7 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Auto-Create Task Notes")
+      .setName("Auto-create task notes")
       .setDesc("Automatically create/update markdown notes when tasks are added or modified")
       .addToggle((toggle) =>
         toggle
@@ -229,7 +233,7 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Sync on Startup")
+      .setName("Sync on startup")
       .setDesc("Scan project folders and sync markdown notes when plugin loads. ⚠️ WARNING: If using Obsidian Sync, disable this to prevent duplicate tasks across devices. The plugin will still watch for file changes.")
       .addToggle((toggle) =>
         toggle
@@ -241,7 +245,7 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Sync All Tasks Now")
+      .setName("Sync all tasks now")
       .setDesc("Manually sync all tasks in the current project to markdown notes")
       .addButton((btn) => {
         btn
@@ -257,10 +261,10 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
     // -----------------------------------------------------------------------
     // Daily Note Task Tagging Section
     // -----------------------------------------------------------------------
-    containerEl.createEl("h2", { text: "Daily Note Task Tagging" });
+    new Setting(containerEl).setName("Daily note task tagging").setHeading();
 
     new Setting(containerEl)
-      .setName("Enable Daily Note Sync")
+      .setName("Enable daily note sync")
       .setDesc("Automatically detect and import tasks tagged in daily notes and other markdown files")
       .addToggle((toggle) =>
         toggle
@@ -276,7 +280,7 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Tag Pattern")
+      .setName("Tag pattern")
       .setDesc("Tag pattern to identify tasks (e.g., #planner or #task). Tasks with #planner/ProjectName will be added to the specific project.")
       .addText((text) =>
         text
@@ -289,7 +293,7 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Scan Folders")
+      .setName("Scan folders")
       .setDesc("Comma-separated list of folders to scan (leave empty to scan all notes). Example: Daily Notes, Journal")
       .addText((text) =>
         text
@@ -305,7 +309,7 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Default Project")
+      .setName("Default project")
       .setDesc("Project to add tasks to when no specific project tag is found (e.g., #planner without /ProjectName)")
       .addDropdown((dropdown) => {
         dropdown.addOption("", "Select a project...");
@@ -321,11 +325,11 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Scan Now")
+      .setName("Scan now")
       .setDesc("Manually scan all notes for tagged tasks and import them")
       .addButton((btn) => {
         btn
-          .setButtonText("Scan Notes")
+          .setButtonText("Scan notes")
           .setCta()
           .onClick(async () => {
             if (this.plugin.dailyNoteScanner) {
@@ -338,14 +342,14 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
     // -----------------------------------------------------------------------
     // Actions Section
     // -----------------------------------------------------------------------
-    containerEl.createEl("h2", { text: "Actions" });
+    new Setting(containerEl).setName("Actions").setHeading();
 
     new Setting(containerEl)
-      .setName("Open Dependency Graph")
+      .setName("Open dependency graph")
       .setDesc("Visualize task dependencies in an interactive graph view")
       .addButton((btn) => {
         btn
-          .setButtonText("Open Graph")
+          .setButtonText("Open graph")
           .setCta()
           .onClick(async () => {
             await this.plugin.openDependencyGraph();
@@ -353,11 +357,11 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Create Task Notes")
+      .setName("Create task notes")
       .setDesc("Generate individual markdown notes for all tasks in the current project")
       .addButton((btn) => {
         btn
-          .setButtonText("Create Notes")
+          .setButtonText("Create notes")
           .setCta()
           .onClick(async () => {
             await this.plugin.createTaskNotes();
@@ -367,17 +371,17 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
     // -----------------------------------------------------------------------
     // Tags / Labels Section
     // -----------------------------------------------------------------------
-    containerEl.createEl("h2", { text: "Tags" });
+    new Setting(containerEl).setName("Tags").setHeading();
 
     new Setting(containerEl)
-      .setName("Manage Tags")
+      .setName("Manage tags")
       .setDesc("Create custom tags with colors for organizing tasks")
       .addButton((btn) => {
         btn.setButtonText("Add tag").onClick(async () => {
           const id = crypto.randomUUID();
           this.plugin.settings.availableTags.push({
             id,
-            name: "New Tag",
+            name: "New tag",
             color: "#3b82f6" // default blue
           });
           await this.plugin.saveSettings();
@@ -393,7 +397,7 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
             .setValue(tag.name)
             .setPlaceholder("Tag name")
             .onChange(async (value) => {
-              tag.name = value.trim() || "Untitled Tag";
+              tag.name = value.trim() || "Untitled tag";
               await this.plugin.saveSettings();
             });
         })
@@ -433,17 +437,17 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
     // -----------------------------------------------------------------------
     // Statuses Section
     // -----------------------------------------------------------------------
-    containerEl.createEl("h2", { text: "Statuses" });
+    new Setting(containerEl).setName("Statuses").setHeading();
 
     new Setting(containerEl)
-      .setName("Manage Statuses")
+      .setName("Manage statuses")
       .setDesc("Create custom statuses with colors for task workflow")
       .addButton((btn) => {
         btn.setButtonText("Add status").onClick(async () => {
           const id = crypto.randomUUID();
           this.plugin.settings.availableStatuses.push({
             id,
-            name: "New Status",
+            name: "New status",
             color: "#0a84ff" // default blue
           });
           await this.plugin.saveSettings();
@@ -459,7 +463,7 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
             .setValue(status.name)
             .setPlaceholder("Status name")
             .onChange(async (value) => {
-              status.name = value.trim() || "Untitled Status";
+              status.name = value.trim() || "Untitled status";
               await this.plugin.saveSettings();
             });
         })
@@ -503,17 +507,17 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
     // -----------------------------------------------------------------------
     // Priorities Section
     // -----------------------------------------------------------------------
-    containerEl.createEl("h2", { text: "Priorities" });
+    new Setting(containerEl).setName("Priorities").setHeading();
 
     new Setting(containerEl)
-      .setName("Manage Priorities")
+      .setName("Manage priorities")
       .setDesc("Create custom priorities with colors for task importance")
       .addButton((btn) => {
         btn.setButtonText("Add priority").onClick(async () => {
           const id = crypto.randomUUID();
           this.plugin.settings.availablePriorities.push({
             id,
-            name: "New Priority",
+            name: "New priority",
             color: "#0a84ff" // default blue
           });
           await this.plugin.saveSettings();
@@ -529,7 +533,7 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
             .setValue(priority.name)
             .setPlaceholder("Priority name")
             .onChange(async (value) => {
-              priority.name = value.trim() || "Untitled Priority";
+              priority.name = value.trim() || "Untitled priority";
               await this.plugin.saveSettings();
             });
         })
@@ -569,5 +573,44 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       });
       previewBadge.style.backgroundColor = priority.color;
     });
+
+    // -----------------------------------------------------------------------
+    // Support Section
+    // -----------------------------------------------------------------------
+    containerEl.createEl("hr", { attr: { style: "margin: 32px 0 24px 0;" } });
+    
+    new Setting(containerEl).setName("Support development").setHeading();
+    
+    new Setting(containerEl)
+      .setName("Documentation & Updates")
+      .setDesc("Visit the official website for documentation, guides, and updates")
+      .addButton((btn) => {
+        btn
+          .setButtonText("Visit projectplanner.md")
+          .onClick(() => {
+            window.open("https://projectplanner.md", "_blank");
+          });
+      });
+    
+    const coffeeSetting = new Setting(containerEl)
+      .setName("Buy me a coffee")
+      .setDesc("If you find this plugin useful, consider supporting development!");
+    
+    // Add Buy Me a Coffee button in the same row
+    const coffeeLink = coffeeSetting.controlEl.createEl("a", {
+      href: "https://www.buymeacoffee.com/arctykdev"
+    });
+    coffeeLink.setAttribute("target", "_blank");
+    coffeeLink.setAttribute("rel", "noopener noreferrer");
+    
+    const coffeeImg = coffeeLink.createEl("img", {
+      attr: {
+        src: "https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png",
+        alt: "Buy Me A Coffee"
+      }
+    });
+    coffeeImg.style.height = "40px";
+    coffeeImg.style.width = "145px";
+    coffeeImg.style.verticalAlign = "middle";
   }
 }

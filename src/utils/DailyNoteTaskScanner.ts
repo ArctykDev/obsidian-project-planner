@@ -275,12 +275,10 @@ export class DailyNoteTaskScanner {
 
                     if (!existingTask) {
                         // Add new task
-                        console.log(`[DailyNoteScanner] Adding task: ${task.title} to project: ${projectId}`);
                         await this.plugin.taskStore.addTaskToProject(task, projectId);
                         this.processedTasks.add(task.id);
                     } else {
                         // Update existing task (content may have changed)
-                        console.log(`[DailyNoteScanner] Updating task: ${task.title}`);
                         await this.plugin.taskStore.updateTask(task.id, task);
                         this.processedTasks.add(task.id);
                     }
@@ -302,7 +300,6 @@ export class DailyNoteTaskScanner {
      * Scan all notes in the vault for tagged tasks
      */
     async scanAllNotes(): Promise<void> {
-        console.log('[DailyNoteScanner] Starting scan of all notes...');
         this.processedTasks.clear();
 
         const files = this.app.vault.getMarkdownFiles();
@@ -315,7 +312,6 @@ export class DailyNoteTaskScanner {
             tasksFound += (afterCount - beforeCount);
         }
 
-        console.log(`[DailyNoteScanner] Scan complete. Found ${tasksFound} tasks.`);
         new Notice(`Imported ${tasksFound} tasks from daily notes`);
     }
 
@@ -323,8 +319,6 @@ export class DailyNoteTaskScanner {
      * Watch for changes to files and scan them
      */
     setupWatchers() {
-        console.log('[DailyNoteScanner] Setting up file watchers...');
-
         // Watch for file modifications
         this.plugin.registerEvent(
             this.app.vault.on('modify', (file) => {

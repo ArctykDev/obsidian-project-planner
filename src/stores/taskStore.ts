@@ -99,6 +99,10 @@ export class TaskStore {
     return this.tasks;
   }
 
+  getAllForProject(projectId: string): PlannerTask[] {
+    return this.tasksByProject[projectId] || [];
+  }
+
   isLoaded(): boolean {
     return this.loaded;
   }
@@ -143,7 +147,11 @@ export class TaskStore {
 
     // Sync to markdown if enabled
     if (this.plugin.settings.enableMarkdownSync && this.plugin.settings.autoCreateTaskNotes) {
-      await this.plugin.taskSync.syncTaskToMarkdown(task, this.activeProjectId);
+      try {
+        await this.plugin.taskSync.syncTaskToMarkdown(task, this.activeProjectId);
+      } catch (error) {
+        console.error("Failed to sync task to markdown:", error);
+      }
     }
 
     return task;
@@ -227,6 +235,15 @@ export class TaskStore {
     Object.assign(task, partial);
     this.updateProjectTimestamp();
     await this.save();
+
+    // Sync to markdown if enabled
+    if (this.plugin.settings.enableMarkdownSync && this.plugin.settings.autoCreateTaskNotes) {
+      try {
+        await this.plugin.taskSync.syncTaskToMarkdown(task, this.activeProjectId);
+      } catch (error) {
+        console.error("Failed to sync task to markdown:", error);
+      }
+    }
   }
 
   async deleteTask(id: string): Promise<void> {

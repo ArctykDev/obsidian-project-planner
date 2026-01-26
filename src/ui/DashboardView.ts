@@ -64,8 +64,8 @@ export class DashboardView extends ItemView {
         const inProgressTasks = tasks.filter(t => t.status === "In Progress").length;
         const blockedTasks = tasks.filter(t => t.status === "Blocked").length;
         const notStartedTasks = tasks.filter(t => t.status === "Not Started").length;
-        const highPriorityTasks = tasks.filter(t => t.priority === "High").length;
-        const criticalPriorityTasks = tasks.filter(t => t.priority === "Critical").length;
+        const highPriorityTasks = tasks.filter(t => t.priority === "High" && t.status !== "Completed").length;
+        const criticalPriorityTasks = tasks.filter(t => t.priority === "Critical" && t.status !== "Completed").length;
 
         const now = new Date();
         now.setHours(0, 0, 0, 0);
@@ -204,6 +204,16 @@ export class DashboardView extends ItemView {
                         completed: isDone,
                         status: isDone ? "Completed" : "Not Started"
                     });
+                    // Update UI
+                    task.completed = isDone;
+                    task.status = isDone ? "Completed" : "Not Started";
+                    if (isDone) {
+                        titleEl.addClass("dashboard-task-modal-completed");
+                    } else {
+                        titleEl.removeClass("dashboard-task-modal-completed");
+                    }
+                    statusBadge.textContent = task.status;
+                    statusBadge.style.background = this.getStatusColor(task.status);
                 };
 
                 // Task title
@@ -217,12 +227,20 @@ export class DashboardView extends ItemView {
 
                 // Task metadata
                 const meta = taskItem.createDiv("dashboard-task-modal-meta");
+                
+                // Status badge (using same style as Grid/Board views)
+                const statusBadge = meta.createSpan({
+                    text: task.status,
+                    cls: "status-pill"
+                });
+                statusBadge.style.backgroundColor = this.getStatusColor(task.status);
+                
                 if (task.priority) {
                     const priorityPill = meta.createSpan({
                         text: task.priority,
-                        cls: "dashboard-task-modal-priority"
+                        cls: "priority-pill"
                     });
-                    priorityPill.style.background = this.getPriorityColor(task.priority);
+                    priorityPill.style.backgroundColor = this.getPriorityColor(task.priority);
                 }
                 if (task.dueDate) {
                     meta.createSpan({
@@ -251,6 +269,21 @@ export class DashboardView extends ItemView {
             case "Medium": return "#0a84ff";
             case "Low": return "#6366f1";
             default: return "#6366f1";
+        }
+    }
+
+    private getStatusColor(status: string): string {
+        const settings = (this.plugin as any).settings;
+        const statusObj = settings.availableStatuses?.find((s: any) => s.name === status);
+        if (statusObj) return statusObj.color;
+        
+        // Fallback colors
+        switch (status) {
+            case "Completed": return "#2f9e44";
+            case "In Progress": return "#0a84ff";
+            case "Blocked": return "#d70022";
+            case "Not Started": return "#6c757d";
+            default: return "#6c757d";
         }
     }
 
@@ -335,7 +368,7 @@ export class DashboardView extends ItemView {
             return dueDate >= today && dueDate <= weekFromNow;
         });
 
-        const criticalTasks = allTasks.filter(t => t.priority === "Critical");
+        const criticalTasks = allTasks.filter(t => t.priority === "Critical" && t.status !== "Completed");
 
         this.renderKPICard(
             alertsGrid, "Overdue", stats.overdueTasks, "alert-triangle", "#d70022",
@@ -355,19 +388,24 @@ export class DashboardView extends ItemView {
         );
 
         // Additional stats
-        const statsGrid = projectCard.createDiv("dashboard-stats-grid");
+        const statsGrid = projectCard.createDiv("dashboard-kpi-grid");
 
-        const statItem1 = statsGrid.createDiv("dashboard-stat-item");
-        statItem1.createDiv({ text: "High Priority Tasks", cls: "dashboard-stat-label" });
-        statItem1.createDiv({ text: String(stats.highPriorityTasks), cls: "dashboard-stat-value" });
+        const highPriorityTasks = allTasks.filter(t => t.priority === "High" && t.status !== "Completed");
+        const dependencyTasks = allTasks.filter(t => t.dependencies && t.dependencies.length > 0 && t.status !== "Completed");
+        const notStartedTasks = allTasks.filter(t => t.status === "Not Started");
 
-        const statItem2 = statsGrid.createDiv("dashboard-stat-item");
-        statItem2.createDiv({ text: "Tasks with Dependencies", cls: "dashboard-stat-label" });
-        statItem2.createDiv({ text: String(stats.tasksWithDependencies), cls: "dashboard-stat-value" });
-
-        const statItem3 = statsGrid.createDiv("dashboard-stat-item");
-        statItem3.createDiv({ text: "Not Started", cls: "dashboard-stat-label" });
-        statItem3.createDiv({ text: String(stats.notStartedTasks), cls: "dashboard-stat-value" });
+        this.renderKPICard(
+            statsGrid, "High Priority", stats.highPriorityTasks, "arrow-up", "#f59e0b",
+            () => this.showTaskListModal("High Priority Tasks", highPriorityTasks)
+        );
+        this.renderKPICard(
+            statsGrid, "Has Dependencies", stats.tasksWithDependencies, "git-branch", "#6366f1",
+            () => this.showTaskListModal("Tasks with Dependencies", dependencyTasks)
+        );
+        this.renderKPICard(
+            statsGrid, "Not Started", stats.notStartedTasks, "circle", "#6c757d",
+            () => this.showTaskListModal("Not Started Tasks", notStartedTasks)
+        );
     }
 
     render() {

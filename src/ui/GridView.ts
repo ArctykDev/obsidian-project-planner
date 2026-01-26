@@ -180,8 +180,8 @@ export class GridView extends ItemView {
     const clearFilterBtn = filterBar.createEl("button", {
       cls: "planner-clear-filter",
       title: "Clear all filters",
+      text: "✕"
     });
-    clearFilterBtn.innerHTML = "✕";
 
     const updateClearButtonVisibility = () => {
       const hasFilters =

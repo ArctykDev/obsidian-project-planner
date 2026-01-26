@@ -552,17 +552,13 @@
 .planner-title-cell {
   position: relative;
   padding-left: 4px;
+  white-space: nowrap;
 }
 
 /* Bold parent task titles (MS Planner Premium style) */
 .planner-parent-bold {
   font-weight: 600;
   color: var(--text-normal);
-}
-
-/* Subtask indent */
-.planner-title-cell.subtask {
-  padding-left: 28px;
 }
 
 .planner-expand-toggle,
@@ -573,6 +569,7 @@
   cursor: pointer;
   opacity: 0.8;
   font-size: 20px;
+  vertical-align: middle;
 }
 
 .planner-expand-toggle:hover {
@@ -582,6 +579,7 @@
 .planner-title-inner {
   display: inline-flex;
   align-items: center;
+  vertical-align: middle;
 }
 
 /* Hover highlight for parent tasks (MS Planner Premium style) */
@@ -3038,4 +3036,30 @@
   padding: 40px 20px;
   color: var(--text-muted);
   font-style: italic;
+}
+
+/* ========================================================================= */
+/* SETTINGS: BUY ME A COFFEE BUTTON                                         */
+/* ========================================================================= */
+
+.planner-coffee-button-container {
+  margin-top: 16px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background: var(--background-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.planner-coffee-button-container a {
+  display: inline-block;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.planner-coffee-button-container a:hover {
+  transform: translateY(-2px);
+  opacity: 0.9;
 }

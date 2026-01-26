@@ -38,8 +38,6 @@ export default class ProjectPlannerPlugin extends Plugin {
   private inlineStyleEl: HTMLStyleElement | null = null;
 
   async onload() {
-    console.log("Loading Project Planner plugin");
-
     await this.loadSettings();
 
     // Migrate existing projects to add timestamps if missing
@@ -238,9 +236,13 @@ export default class ProjectPlannerPlugin extends Plugin {
   // ---------------------------------------------------------------------------
   async activateView(forceNewTab = false): Promise<WorkspaceLeaf> {
     const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
-    const leaf = openInNewTab
-      ? this.app.workspace.getLeaf('tab')
-      : this.app.workspace.activeLeaf ?? this.app.workspace.getLeaf(true);
+    let leaf: WorkspaceLeaf;
+    
+    if (openInNewTab) {
+      leaf = this.app.workspace.getLeaf('tab');
+    } else {
+      leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf(true);
+    }
 
     await leaf.setViewState({
       type: VIEW_TYPE_PLANNER,
@@ -256,9 +258,13 @@ export default class ProjectPlannerPlugin extends Plugin {
   // ---------------------------------------------------------------------------
   async activateBoardView(forceNewTab = false): Promise<WorkspaceLeaf> {
     const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
-    const leaf = openInNewTab
-      ? this.app.workspace.getLeaf('tab')
-      : this.app.workspace.activeLeaf ?? this.app.workspace.getLeaf(true);
+    let leaf: WorkspaceLeaf;
+    
+    if (openInNewTab) {
+      leaf = this.app.workspace.getLeaf('tab');
+    } else {
+      leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf(true);
+    }
 
     await leaf.setViewState({
       type: VIEW_TYPE_BOARD,
@@ -273,9 +279,13 @@ export default class ProjectPlannerPlugin extends Plugin {
   // ---------------------------------------------------------------------------
   async activateDashboardView(forceNewTab = false): Promise<WorkspaceLeaf> {
     const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
-    const leaf = openInNewTab
-      ? this.app.workspace.getLeaf('tab')
-      : this.app.workspace.activeLeaf ?? this.app.workspace.getLeaf(true);
+    let leaf: WorkspaceLeaf;
+    
+    if (openInNewTab) {
+      leaf = this.app.workspace.getLeaf('tab');
+    } else {
+      leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf(true);
+    }
 
     await leaf.setViewState({
       type: VIEW_TYPE_DASHBOARD,
@@ -290,9 +300,13 @@ export default class ProjectPlannerPlugin extends Plugin {
   // ---------------------------------------------------------------------------
   async activateGanttView(forceNewTab = false): Promise<WorkspaceLeaf> {
     const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
-    const leaf = openInNewTab
-      ? this.app.workspace.getLeaf('tab')
-      : this.app.workspace.activeLeaf ?? this.app.workspace.getLeaf(true);
+    let leaf: WorkspaceLeaf;
+    
+    if (openInNewTab) {
+      leaf = this.app.workspace.getLeaf('tab');
+    } else {
+      leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf(true);
+    }
 
     await leaf.setViewState({
       type: VIEW_TYPE_GANTT,
@@ -370,11 +384,6 @@ export default class ProjectPlannerPlugin extends Plugin {
       return;
     }
 
-    console.log('[DailyNoteScanner] Initializing daily note scanner...');
-    console.log('[DailyNoteScanner] Tag pattern:', this.settings.dailyNoteTagPattern);
-    console.log('[DailyNoteScanner] Scan folders:', this.settings.dailyNoteScanFolders);
-    console.log('[DailyNoteScanner] Default project:', this.settings.dailyNoteDefaultProject);
-    console.log('[DailyNoteScanner] Available projects:', this.settings.projects.map(p => `${p.name} (${p.id})`));
     // Set up file watchers
     this.dailyNoteScanner.setupWatchers();
 
@@ -407,7 +416,6 @@ export default class ProjectPlannerPlugin extends Plugin {
       ((raw as unknown) as ProjectPlannerSettings); // legacy root-level settings
 
     this.settings = Object.assign({}, DEFAULT_SETTINGS, storedSettings);
-    console.log("[Project Planner] Settings loaded - openViewsInNewTab:", this.settings.openViewsInNewTab);
     // Ensure we have at least one project
     if (!this.settings.projects || this.settings.projects.length === 0) {
       const defaultProjectId = crypto.randomUUID();
@@ -461,9 +469,13 @@ export default class ProjectPlannerPlugin extends Plugin {
   // ---------------------------------------------------------------------------
   async openDependencyGraph() {
     const openInNewTab = this.settings?.openViewsInNewTab === true;
-    const leaf = openInNewTab
-      ? this.app.workspace.getLeaf('tab')
-      : this.app.workspace.activeLeaf ?? this.app.workspace.getLeaf(true);
+    let leaf: WorkspaceLeaf;
+    
+    if (openInNewTab) {
+      leaf = this.app.workspace.getLeaf('tab');
+    } else {
+      leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf(true);
+    }
 
     await leaf.setViewState({
       type: VIEW_TYPE_DEPENDENCY_GRAPH,
@@ -569,11 +581,5 @@ export default class ProjectPlannerPlugin extends Plugin {
       this.inlineStyleEl.parentElement.removeChild(this.inlineStyleEl);
       this.inlineStyleEl = null;
     }
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_PLANNER);
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_BOARD);
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_TASK_DETAIL);
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_DEPENDENCY_GRAPH);
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_GANTT);
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_DASHBOARD);
   }
 }

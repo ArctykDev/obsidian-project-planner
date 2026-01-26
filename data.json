@@ -33,54 +33,30 @@
         },
         "unassignedBucketName": "Backlog",
         "createdDate": "2026-01-12T21:50:10.880Z",
-        "lastUpdatedDate": "2026-01-22T00:19:11.995Z"
+        "lastUpdatedDate": "2026-01-25T16:17:31.700Z"
       },
       {
-        "id": "bb29a79d-acfa-41cb-8ff7-5dda36ff6759",
-        "name": "Integrations",
+        "id": "b11b178b-baf8-4c28-80db-4330a74c1d65",
+        "name": "Tutorials",
+        "createdDate": "2026-01-23T18:17:19.333Z",
+        "lastUpdatedDate": "2026-01-25T16:20:04.429Z",
         "buckets": [
           {
-            "id": "38e2915e-52d9-4456-bf51-0e2e1f7410ea",
-            "name": "Up Next"
-          },
-          {
-            "id": "4c2d5ab3-75b1-4bfb-9392-c3d7d38e17c6",
-            "name": "In Progress"
-          },
-          {
-            "id": "88f92960-3f08-4f2e-94de-be555047d07e",
-            "name": "Done"
-          }
-        ],
-        "unassignedBucketName": "Backlog",
-        "completedSectionsCollapsed": {
-          "unassigned": true
-        },
-        "createdDate": "2026-01-12T21:50:10.880Z",
-        "lastUpdatedDate": "2026-01-21T15:00:37.478Z"
-      },
-      {
-        "id": "0050b066-dd4b-43ef-aa0d-728be590a30b",
-        "name": "Timeline",
-        "buckets": [
-          {
-            "id": "e7385665-a91c-41c8-8b84-7b76593f7e81",
+            "id": "afa26cb7-5d78-4581-94c4-65a965ef7a1e",
             "name": "To Do"
           },
           {
-            "id": "eff58d51-ad17-4300-9e4b-6ee470509a75",
+            "id": "682eb1f0-f99c-4096-9025-a883bbf251f5",
             "name": "In Progress"
           },
           {
-            "id": "a824db3b-4e33-460c-b872-1e90fac13fe5",
+            "id": "b985d8b1-da84-4431-96e8-f67c29df5f22",
             "name": "Done"
           }
-        ],
-        "createdDate": "2026-01-12T21:50:10.880Z",
-        "lastUpdatedDate": "2026-01-12T21:50:10.880Z"
+        ]
       }
     ],
-    "activeProjectId": "de2ed79d-b1f3-473d-a3dd-d3640cb89c54",
+    "activeProjectId": "b11b178b-baf8-4c28-80db-4330a74c1d65",
     "defaultView": "grid",
     "showCompleted": true,
     "openLinksInNewTab": false,
@@ -174,13 +150,14 @@
     "enableMarkdownSync": true,
     "autoCreateTaskNotes": true,
     "syncOnStartup": false,
+    "projectsBasePath": "Project Planner",
     "enableDailyNoteSync": true,
     "dailyNoteTagPattern": "#planner",
     "dailyNoteScanFolders": [],
     "dailyNoteDefaultProject": "de2ed79d-b1f3-473d-a3dd-d3640cb89c54",
     "gridViewColumnWidths": {
-      "status": 179,
-      "title": 412,
+      "status": 153,
+      "title": 328,
       "priority": 69,
       "tags": 76,
       "bucket": 161
@@ -200,8 +177,8 @@
       "dependencies": true,
       "dependents": false,
       "bucket": true,
-      "created": false,
-      "modified": false
+      "created": true,
+      "modified": true
     }
   },
   "tasksByProject": {
@@ -216,7 +193,7 @@
         "collapsed": false,
         "links": [
           {
-            "id": "24e07170-280f-4f2a-a7db-221bbf251019",
+            "id": "c186d511-b36b-466d-b5ba-175f49cda76f",
             "title": "Milestones",
             "url": "Milestones",
             "type": "obsidian"
@@ -228,12 +205,29 @@
         "lastModifiedDate": "2026-01-21"
       },
       {
+        "id": "6c8a6750-6dda-48d6-90ad-83719ac74a2e",
+        "title": "Adhere to Obsidian Plugin guidelines",
+        "status": "Completed",
+        "priority": "Critical",
+        "completed": true,
+        "parentId": "91f7f8a6-a676-4124-864f-8d52a1382040",
+        "collapsed": false,
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "startDate": "2026-01-24",
+        "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755",
+        "tags": [
+          "12bd3120-3aec-4bc7-a32f-7dfc49297c2d"
+        ],
+        "dueDate": "2026-01-25"
+      },
+      {
         "id": "60f41647-b6c5-4968-97cc-095334871e5e",
         "title": "Drag and drop ordering for Tags",
         "status": "Completed",
         "priority": "Medium",
         "completed": true,
-        "parentId": "40186745-554c-4767-9fcd-da5bbe565dad",
+        "parentId": null,
         "collapsed": false,
         "tags": [
           "cfc49091-140c-4b0d-8d54-b812dbf02db5"
@@ -241,12 +235,12 @@
         "bucketId": "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0",
         "subtasks": [
           {
-            "id": "a18d9dc7-7367-4ba6-bf50-98af9faea9b8",
+            "id": "5b44349b-742e-47e8-bc60-412f99d2d437",
             "title": "New checklist item",
             "completed": true
           },
           {
-            "id": "781282b3-cfa0-4d06-88da-fef2b7bcb1d0",
+            "id": "13254368-5d17-4c2f-b9e4-c28c2d3c6b49",
             "title": "New checklist item",
             "completed": false
           }
@@ -267,7 +261,7 @@
         ],
         "subtasks": [
           {
-            "id": "011c1444-3bc8-486c-9e6b-6d7417d5728c",
+            "id": "a153ea34-f71a-4e24-bc26-3c350e5e0de6",
             "title": "New checklist item",
             "completed": false
           }
@@ -298,49 +292,46 @@
         "description": "More description. More more.\nThis feature has been implemented.",
         "subtasks": [
           {
-            "id": "51c9ef28-4fab-4638-b6ad-9c443233ec19",
+            "id": "fb96fc52-cf14-418c-8b5f-5f77a8ec6289",
             "title": "New checklist item",
             "completed": true
           },
           {
-            "id": "d3bb569d-1488-4b7a-b78d-b7d541dd1366",
+            "id": "b093bcd2-c104-461c-b528-d38c5ef33b01",
             "title": "This is the second checklist item",
             "completed": true
           },
           {
-            "id": "e865539c-641e-43bf-aaa5-51611e3113dd",
+            "id": "18d203e6-a339-4593-aa9a-56e8616d0a9f",
             "title": "This is a third checklist item.",
-            "completed": false
+            "completed": true
           }
         ],
         "startDate": "2025-12-19T00:00:00.000Z",
         "dueDate": "2025-12-23T00:00:00.000Z",
-        "bucketId": "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0",
+        "bucketId": "e9136041-f9f7-4332-9d81-7fb4c19a97bc",
         "cardDisplay": "description",
-        "lastModifiedDate": "2026-01-22",
+        "lastModifiedDate": "2026-01-25",
         "cardPreview": "checklist"
       },
       {
         "id": "e1312412-4050-44d7-915e-15ea9aa3063b",
-        "title": "Task history",
-        "status": "Not Started",
-        "completed": false,
+        "title": "Sample task",
+        "status": "Completed",
+        "completed": true,
         "parentId": "91f7f8a6-a676-4124-864f-8d52a1382040",
-        "priority": "Medium",
+        "priority": "Critical",
         "tags": [
-          "c2b5b773-cd7c-404b-864c-d89a0842c3fc"
+          "12bd3120-3aec-4bc7-a32f-7dfc49297c2d"
         ],
         "collapsed": false,
-        "description": "Add task history to the plugin settings to allow users to audit tasks and restore deleted tasks.\n\nObsidian also has this feature so I should look into whether or not adding history or backup feature is worth doing.",
-        "subtasks": [
-          {
-            "id": "748d1edf-5ea9-4dd3-97a8-8d4c76df9242",
-            "title": "Investigate Obsidian note history",
-            "completed": false
-          }
-        ],
-        "lastModifiedDate": "2026-01-22",
-        "cardPreview": "checklist"
+        "description": "Review and audit plugin code to ensure it adheres to the Obsidian plugin guidelines. \n\nRefactor any code that does not meet the guidelines.",
+        "subtasks": [],
+        "lastModifiedDate": "2026-01-24",
+        "cardPreview": "description",
+        "bucketId": "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0",
+        "startDate": "2026-01-24",
+        "dueDate": "2026-01-26"
       },
       {
         "id": "7cefa6d9-9ff7-4c56-8e74-5f1fa96da8e9",
@@ -367,7 +358,7 @@
         ],
         "links": [
           {
-            "id": "e63f7293-5052-40e6-af57-e389baf7a5d4",
+            "id": "fad95c0d-1ed6-4798-8f81-9a0cb46ac876",
             "title": " 2025-10-15 ",
             "url": " 2025-10-15 ",
             "type": "obsidian"
@@ -376,22 +367,22 @@
         "bucketId": "e9136041-f9f7-4332-9d81-7fb4c19a97bc",
         "subtasks": [
           {
-            "id": "0519c90d-8131-49db-859c-70061850a683",
+            "id": "f599f125-0416-4e43-ba87-398e6deb76ff",
             "title": "Test Start-to-Finish",
             "completed": false
           },
           {
-            "id": "2d5a225d-8a80-4e55-9969-2787aa144e50",
+            "id": "a4e632f6-2dcc-4166-904f-7eb1412af894",
             "title": "Test Finish-to-Start",
             "completed": false
           },
           {
-            "id": "b950720a-5147-4466-bbd4-39dd08f2527c",
+            "id": "2c01507e-ecd8-4584-980b-88417300f47d",
             "title": "Test Finish to Finish",
             "completed": false
           },
           {
-            "id": "20d0ef88-dfeb-4822-bbac-df9f5d8fb1e6",
+            "id": "08149407-99d7-4a82-894c-de0f048a9d6e",
             "title": "Test Start-to-Start",
             "completed": false
           }
@@ -408,37 +399,6 @@
         "collapsed": false
       },
       {
-        "id": "4d6f72df-ebb5-4c10-b326-ecaf4fc5374c",
-        "title": "Task description on cards",
-        "status": "In Review",
-        "priority": "Critical",
-        "completed": false,
-        "parentId": "e5327f90-13f4-4be6-afb4-8aab39b7838a",
-        "collapsed": false,
-        "tags": [
-          "c2b5b773-cd7c-404b-864c-d89a0842c3fc"
-        ],
-        "startDate": "2026-01-06T00:00:00.000Z",
-        "dueDate": "2026-01-09T00:00:00.000Z",
-        "description": "Testing Description **formatting** to ensure the description on the card appears polished. \n\nThe description content will automatically scroll if there is a lot of text. A limit may need to be implemented in the future to prevent super long descriptions.",
-        "cardDisplay": "checklist",
-        "subtasks": [
-          {
-            "id": "00361f49-ccf3-41d2-ae6d-e819eb05926b",
-            "title": "Checklist item 1",
-            "completed": true
-          },
-          {
-            "id": "906b2d13-c960-4e00-81e0-dd59bb43c716",
-            "title": "Checklist item 2",
-            "completed": true
-          }
-        ],
-        "bucketId": "e9136041-f9f7-4332-9d81-7fb4c19a97bc",
-        "lastModifiedDate": "2026-01-22",
-        "cardPreview": "description"
-      },
-      {
         "id": "742e5aaf-319e-4b4e-a8d4-7c832d0f4d9d",
         "title": "Task Store - Add centralized task store",
         "status": "Completed",
@@ -452,7 +412,7 @@
         "description": "Centralize the task store.",
         "subtasks": [
           {
-            "id": "4b3bd9bf-8461-4cab-b1a1-c0c82145978a",
+            "id": "f3931c73-eefd-42f4-86f2-09404ff1420e",
             "title": "New checklist item",
             "completed": false
           }
@@ -480,42 +440,6 @@
         "description": "---\n*Task from Project: Project Planner*",
         "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755",
         "lastModifiedDate": "2026-01-21"
-      },
-      {
-        "id": "c4a0b47b-dde4-4a33-9adb-2a2cb5ddec19",
-        "title": "Task Details - Add Section/Bucket",
-        "status": "Completed",
-        "priority": "High",
-        "completed": true,
-        "parentId": "40186745-554c-4767-9fcd-da5bbe565dad",
-        "collapsed": false,
-        "description": "Testing to see if this shows on card.",
-        "startDate": "2025-12-16",
-        "dueDate": "2025-12-18",
-        "bucketId": "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0",
-        "tags": [
-          "78bf00ac-a3cc-47d6-92a3-5f4816dc4719",
-          "064a02ab-b3ad-4ea1-9581-27b261a0be99",
-          "cfc49091-140c-4b0d-8d54-b812dbf02db5"
-        ],
-        "lastModifiedDate": "2026-01-21"
-      },
-      {
-        "id": "5b96be2a-3689-4bcf-91b6-db88a908b819",
-        "title": "Change task details header to fit",
-        "status": "Not Started",
-        "priority": "Medium",
-        "completed": false,
-        "parentId": "7cefa6d9-9ff7-4c56-8e74-5f1fa96da8e9",
-        "collapsed": false,
-        "description": "*Task from Project: Project Planner*\n\n- Change **Mark as Complete** to **Complete**\n- Change **Copy Link** to **Copy**",
-        "cardDisplay": "checklist",
-        "bucketId": "ae3f335d-2bb6-4727-82bf-eda7c18a1370",
-        "tags": [
-          "cfc49091-140c-4b0d-8d54-b812dbf02db5"
-        ],
-        "lastModifiedDate": "2026-01-22",
-        "cardPreview": "description"
       },
       {
         "id": "5b87799a-e6d3-40a8-a616-8d34064744ee",
@@ -568,14 +492,16 @@
       {
         "id": "40186745-554c-4767-9fcd-da5bbe565dad",
         "title": "Completed",
-        "status": "Not Started",
+        "status": "Completed",
         "priority": "Medium",
-        "completed": false,
+        "completed": true,
         "parentId": null,
         "collapsed": true,
-        "tags": [],
+        "tags": [
+          "cfc49091-140c-4b0d-8d54-b812dbf02db5"
+        ],
         "description": "---\n*Task from Project: Project Planner*",
-        "lastModifiedDate": "2026-01-22"
+        "lastModifiedDate": "2026-01-24"
       },
       {
         "id": "403083d7-f92a-4e64-af33-1601358e5aca",
@@ -588,7 +514,7 @@
         "description": "",
         "subtasks": [
           {
-            "id": "b53e9de0-e51a-440e-a6e7-7bc0863ecc06",
+            "id": "0589676d-513a-49a6-8271-dd953fac21e8",
             "title": "New checklist item",
             "completed": false
           }
@@ -623,12 +549,12 @@
         "collapsed": false,
         "subtasks": [
           {
-            "id": "91c3fcd0-a8ec-48e0-9c7b-80f1824fb7f7",
+            "id": "cd9b1dc6-2b25-4861-9399-2ef1186f0eb4",
             "title": "Test and confirm working",
             "completed": true
           },
           {
-            "id": "2fb7e3b4-929f-4501-bca0-442c30b5661f",
+            "id": "80fdd4b7-a2fc-4164-b5e3-2c90fa6fe34a",
             "title": "Add check box to task details panel",
             "completed": true
           }
@@ -637,7 +563,7 @@
         "startDate": "2025-12-12T22:40:00.000Z",
         "dueDate": "2025-12-12T22:40:00.000Z",
         "bucketId": "f98a3102-a298-4a98-8d99-ed93eac60755",
-        "lastModifiedDate": "2026-01-21"
+        "lastModifiedDate": "2026-01-23"
       },
       {
         "id": "8195be81-f1a7-48d0-bd79-dbefdc83a8f7",
@@ -683,7 +609,7 @@
         ],
         "links": [
           {
-            "id": "fe2d14fa-dc59-45c4-9c95-1ade74c18340",
+            "id": "a0a5e03b-e7a5-4458-a183-0136a1d8763f",
             "title": "https://obsidian.md",
             "url": "https://obsidian.md",
             "type": "external"
@@ -691,12 +617,12 @@
         ],
         "subtasks": [
           {
-            "id": "e45aaf55-d02a-4248-8eaf-ab497435ac1b",
+            "id": "b0c47e9e-7ea5-47de-8d0a-3f68f1e0b67b",
             "title": "Example checklist item 1",
             "completed": false
           },
           {
-            "id": "1389bafb-187c-4b2e-a7e3-5244949913ae",
+            "id": "f3d19aaf-85f2-4372-b065-b888076d2ebc",
             "title": "Example checklist item 2",
             "completed": false
           }
@@ -747,6 +673,1321 @@
         "dueDate": "2026-01-12T00:00:00.000Z",
         "description": "Allow users to customize the colour of each bucket. Like Microsoft Planner.",
         "lastModifiedDate": "2026-01-21"
+      },
+      {
+        "id": "daily-task-1090ae08-26ea-495e-aa11-c45a9298eea9",
+        "title": "Buy groceries",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "b6f6ae14-4f9c-4e32-88ae-cabce724d332",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ],
+        "createdDate": "2026-01-23",
+        "parentId": "40186745-554c-4767-9fcd-da5bbe565dad"
+      },
+      {
+        "id": "daily-task-5cfb538a-f702-4dac-bf71-06fadb02af3b",
+        "title": "Not dupes allowed",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "bff33ecf-ece0-4a03-a4d0-7830235ca5d2",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ],
+        "createdDate": "2026-01-23",
+        "parentId": "40186745-554c-4767-9fcd-da5bbe565dad"
+      },
+      {
+        "id": "daily-task-1e12ff6f-d0e3-4ba7-92bc-de4111cb8eb9",
+        "title": "Tag test",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "680fbd16-06fb-4954-a416-6ada38d5ae91",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ],
+        "createdDate": "2026-01-23",
+        "parentId": "40186745-554c-4767-9fcd-da5bbe565dad"
+      },
+      {
+        "id": "daily-task-ed066b9b-78a0-4cd0-9d65-170089f65194",
+        "title": "Buy groceries",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "28c24ed7-cec7-4f03-9285-34b8225455af",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ],
+        "parentId": "40186745-554c-4767-9fcd-da5bbe565dad"
+      },
+      {
+        "id": "daily-task-f01b1a8e-ec78-473e-bde3-d27d459a7c86",
+        "title": "Not dupes allowed",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "c9125833-0d07-43ad-b342-29e62bdc6028",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ],
+        "parentId": "40186745-554c-4767-9fcd-da5bbe565dad"
+      },
+      {
+        "id": "daily-task-12209b0a-6d51-49b2-8741-8e963566e72d",
+        "title": "Tag test",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "cf238509-b35d-4b32-a4e2-acb397081bb1",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ],
+        "parentId": "40186745-554c-4767-9fcd-da5bbe565dad"
+      },
+      {
+        "id": "daily-task-38e0572e-2827-4bea-8aef-fde1580151b0",
+        "title": "Buy groceries",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "181232d8-4db5-4f91-a59f-b07967155c20",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-eb5bfcac-3975-4dba-811a-7c7a64715bf1",
+        "title": "Not dupes allowed",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "14c4d1af-2c9d-40f1-9b78-c39bb1d3c862",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-4256532c-39f9-4aaf-b336-7f44336f1545",
+        "title": "Tag test",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "87418f56-11d9-4232-a7bf-c94d2676e597",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-377e0aff-5805-4dc4-8763-abb003f05ecb",
+        "title": "Buy groceries",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "6e1ca01a-dba6-4bde-9408-d63fb4e78792",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-214b11b8-ce37-4ea1-9a96-78197d461b81",
+        "title": "Not dupes allowed",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "069a7c9c-d076-49f2-abc0-812af708f850",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-7c7c38d7-1aa4-4f36-965c-68776fe7057e",
+        "title": "Tag test",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "c7507038-c0dc-4111-afc9-14e5bacf64a5",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-d82af158-54e1-4f13-a25a-4b0ae3069e2c",
+        "title": "Buy groceries",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "97e6e661-f4b5-4300-be17-374d4a00d6b9",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-39e18cba-ad83-4cb8-b3cb-f121a58631ea",
+        "title": "Not dupes allowed",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "936cd60a-610b-4797-bfe3-9d54f573a0a9",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-8e308832-b2c1-4ec0-b574-0569be35170b",
+        "title": "Tag test",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "50062401-a5e8-4332-8d85-b57809b9b52f",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-79d9a26b-9f7b-4852-adc3-70959a7ee5bf",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "4f883343-6604-466f-831f-cf685bc5ddf1",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-82c8e4c9-a3bd-4c9a-9214-036d6898a06e",
+        "title": "Buy groceries",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "4b278eff-b531-4f9c-9747-a0e2e5de1626",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-593bf70e-939e-4913-a1be-97ac763baf32",
+        "title": "Not dupes allowed",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "049e073e-2b23-4b48-926b-2aff465093f0",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-ea2b4bdd-f564-43ad-8508-4a80b7cc0ab6",
+        "title": "Tag test",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "8ae869ce-a3d7-4155-8ec7-de8a378c5889",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-c2f3e0bb-0c59-4cc7-8035-88244d2252ae",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "f794cd3d-681d-4d70-a4ca-10bc14df4cf7",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-f8c0277c-b8d4-4748-ba13-d7b34b86de26",
+        "title": "Buy groceries",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "9fc07dc0-85ad-40fc-9222-c986079b3643",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-696d55b6-4acf-47bb-abc1-2e1902bd0313",
+        "title": "Not dupes allowed",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "ec72cb47-3888-4fbf-8c81-cfabb505fee1",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-66fec628-5ff7-4687-96ca-b1704a0eddd2",
+        "title": "Tag test",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "abd83a67-bbd0-4408-bdf2-3193ee7edb49",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-ad8db7f5-a145-498b-abf0-99ec7124eb2b",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "9e00f80c-e299-4d24-996e-db9a2eb33a35",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-11e9684f-50ef-4948-b6f4-7b4c30b3208b",
+        "title": "Buy groceries",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "134340f9-5055-4974-923b-1773affab2f3",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-a1f3ade1-a32e-4c96-b03e-7f7513bee2da",
+        "title": "Not dupes allowed",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "67e85b7b-2cb2-4f54-917f-dbd902e9dda2",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-a13c56d8-8df8-4433-a422-4e0a93560a49",
+        "title": "Tag test",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "0da2cdb0-d266-4c19-b1aa-645ba7f7876f",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-54a4b6b5-6485-45fd-8053-704a0c2b6133",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "4316c90d-f50e-4c0d-aee2-05a841f8e261",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-e7302d5c-442e-400a-9d57-c941c69d053e",
+        "title": "Buy groceries",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "323779c8-11c5-4330-9bc5-31435c2beb11",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-9965c0e4-e092-462a-b124-458f8fbad46c",
+        "title": "Not dupes allowed",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "ffbd8715-42ec-4b44-89b7-426644ad46a5",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-696ac404-7a06-4dac-b61c-3ccec73a3082",
+        "title": "Tag test",
+        "completed": true,
+        "status": "Completed",
+        "description": "Imported from: [[Tagging Test]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "ca5a7e96-2897-4488-9bf2-9b981de1452d",
+            "title": "Tagging Test",
+            "url": "Tagging Test.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-d418bd4d-b6f8-4674-a714-fdfdde66e5c5",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "7350365c-bd4c-4ddd-b245-517474eb940b",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-987f0672-5338-44c8-a01f-b1413d06c2c0",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "627e185c-3eed-4046-8e8f-e458b6c519e0",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-0d1efe41-d24e-4e0d-86e6-17ffbfae74fc",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "links": [
+          {
+            "id": "f781d696-9fce-4b07-982b-2227762e7de2",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-dd47b8e9-9f62-4065-b8a8-36e63e0c6bc1",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "f7630c14-8421-4fcb-86c9-c853446346f6",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-c99d420e-075a-4d6c-a3d6-2f87bf02464f",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "dbb180b0-41e2-44a2-a7cc-41b771e5abd9",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-5aeb69e4-9b8f-4136-bff3-dc80ec9bb6d7",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "f460e677-b595-441b-86b6-cb2a645163d7",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-dd768ff9-3512-4d15-9705-93392118d625",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "29305f75-2997-4d03-a878-b96797cd9d13",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-065bc0a6-7637-4374-bae8-0cfea863f7da",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "4aef2e18-9519-4c43-b633-4f6c7c3053dc",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-8a58d6a7-4219-43a3-a46a-fa9a6b3d3f5b",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "d7cbdb60-9d9d-48cb-b933-11b35b3c050b",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-052229a3-4333-42e4-a173-1b00444b34ab",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "fb770f27-1e45-4ace-a941-cec341800ce1",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-19d18345-1121-4624-9df6-5915dfbc3874",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "b9a6ab4f-9935-4759-8342-c6483af0151c",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-c4fbab8a-c08e-4924-9736-d4900b7ec3ce",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "8dbf1840-5d95-486d-8b21-b000f25e2466",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-b7a676d0-6922-4a26-bf90-aebadd00760e",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "9f723abf-6f8a-4a6f-9fb6-604aafea52bd",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-78d9fbc3-0bc2-44fc-b22e-b6dc2885b516",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "e1db7fba-1b25-4a64-80fc-3855f7fa0867",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-3172db3f-6cbf-4549-b86b-5cc31a1bd4e8",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "a01590ce-e565-433e-b7f9-ccfd06c089c2",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-0ff6c636-831d-44b9-aca0-a755a1efa06f",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "7aea4db2-7a11-4cb5-87fc-6acf8d1e10ce",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-d1ae53ff-7db7-4077-988e-409e56064fb0",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "49cccbd6-893a-488f-b9f8-104e2c5c0260",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-b3a8ffce-6f63-474a-a768-f186e235a561",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "86829374-6a80-4d7c-b7a4-109f56c73757",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-317eccd0-7d7a-453b-acc1-620c7ab73a43",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "2b55d3e6-9089-466e-aa1a-0bec6ecb5cc1",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-fda40caf-595b-4bc3-8d4a-725d94c4c28f",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "3d2f512c-20a8-423f-8827-00cf3a33bd7c",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-91ad70cc-09fb-4df8-bcca-1ed9eb85fe3a",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "fd83a551-7b29-4236-9410-f273b83ed5b7",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-b83318d2-0056-4650-b650-2b78df916a6f",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "e7a7b780-5791-4ca8-906c-eff3324ab29d",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-a234fdd5-675b-42fa-ab06-987abec66a98",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "2d10128f-d528-4559-9e92-65fd0c610e7e",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-729947b7-ed72-4899-8f13-563dc3991213",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "852b2d0f-0a94-491c-a0eb-9d3978477c8d",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-62f2d580-a1e7-4454-a365-4ce0029bc418",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "a917758a-a6fe-4072-92e3-4ce2969781d4",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-b04f79e0-4905-428c-9447-ea08041caa7e",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "235116b9-e27f-4e81-9bd4-9b681425ba2d",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-bae7febc-9afe-474d-9477-02383b375551",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "d0918f6e-64b2-48d8-8dac-68adbd49877d",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-279f723e-2246-44e1-ac04-cf18aeff7d74",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "80b1a301-fac6-45db-b9d9-55da20477a62",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-8739a661-e012-4032-9ec6-5c3da22f7078",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "1c447d02-abc1-4c41-8b46-d727f260b544",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-8904e9e5-2201-49d7-8b57-74ca4f429f0f",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "89491762-10f1-4ffb-93ae-b570ed2561b7",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-d62d79e2-c1c6-4aea-8b38-778f69766ad3",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "8e1b7a07-50bf-4f87-a4db-45448aa10ba7",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-0fa0794b-5025-4e03-9d2f-77d9ad92a9da",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "3b4b094c-6630-4f76-b7ba-ee4382916c1f",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-8483b3c6-5b6f-4ec1-952f-fbce4298af11",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "46869664-631f-4ce5-ad47-7e9fa1feda11",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-f4037acb-0789-4e2e-8a23-d0d6763ae1eb",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-24",
+        "links": [
+          {
+            "id": "586e93da-f994-4d65-950e-2edb15600311",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-1113faaf-66d2-46a9-a383-c7d6401b6f7f",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-25",
+        "links": [
+          {
+            "id": "cfd4b628-d1f2-4c19-9abd-e641ecfdb1df",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-17046c0c-af05-4d3b-9516-bc470793f0e6",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-25",
+        "links": [
+          {
+            "id": "48008e41-4077-4558-85ff-d47544c785ce",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-2acae5c4-4bd8-45d4-baa3-990e4092d39d",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-25",
+        "links": [
+          {
+            "id": "c476e526-7f45-478f-8866-9a0ceb65e47e",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-41e9e443-ce3b-4d72-be6f-5168e3f38318",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-25",
+        "links": [
+          {
+            "id": "b429351e-6efc-4e53-9d8e-dc15ce453a3c",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-8750e16d-007f-4df8-91f5-6e94b98d8271",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-25",
+        "links": [
+          {
+            "id": "9e88c08c-8833-4c50-8688-b8a6bda6336f",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-d2a58ad9-bd8e-408a-91d2-e61016007bcb",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-25",
+        "links": [
+          {
+            "id": "591ca378-fa03-4685-aeac-40a092a20e3e",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-9581113b-778a-43a2-9de0-b0ea0943ab00",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-25",
+        "links": [
+          {
+            "id": "315b52b9-b56b-4e6f-b693-bb6319c08f80",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-748d4cd7-2bd2-43c1-9d64-db06563d9db3",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-25",
+        "links": [
+          {
+            "id": "ae703d8d-a325-4810-9b05-1e6e21f577a3",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-16b8a413-8a8c-4d9b-a68b-9e192a920343",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-25",
+        "links": [
+          {
+            "id": "30457e1a-670a-4542-b78b-1bea8871f12c",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-30fbed8c-db61-4689-a1ee-bf606f63d8c4",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-25",
+        "links": [
+          {
+            "id": "1916bdfe-d6d9-46da-a746-a52804448a8a",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-b3eda6ae-e38f-4e42-870a-5d2e31c223d2",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-25",
+        "links": [
+          {
+            "id": "52ec8f29-7d9d-4121-9b0c-e21daa7fe302",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-bbaf0de3-3601-4095-a258-92a5ffe438a8",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-25",
+        "links": [
+          {
+            "id": "dc0252bb-360e-4bb3-bfec-aa7aada1cee8",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
       }
     ],
     "bb29a79d-acfa-41cb-8ff7-5dda36ff6759": [
@@ -788,6 +2029,213 @@
         "collapsed": false
       }
     ],
-    "0050b066-dd4b-43ef-aa0d-728be590a30b": []
+    "0050b066-dd4b-43ef-aa0d-728be590a30b": [],
+    "b11b178b-baf8-4c28-80db-4330a74c1d65": [
+      {
+        "id": "6c53ef3a-f438-492f-94ca-c790155e96c3",
+        "title": "Grid View Tutorials",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": null,
+        "collapsed": false,
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-24",
+        "startDate": "2026-01-23",
+        "description": "---\n*Task from Project: Tutorials*",
+        "dueDate": "2026-01-27"
+      },
+      {
+        "id": "2752cd27-c53d-484e-9974-776c8437c3c5",
+        "title": "This is an example of a sub task",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": "6c53ef3a-f438-492f-94ca-c790155e96c3",
+        "collapsed": false,
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "startDate": "2026-01-23",
+        "description": "---\n*Task from Project: Tutorials*",
+        "bucketId": "afa26cb7-5d78-4581-94c4-65a965ef7a1e"
+      },
+      {
+        "id": "9c2b5b3e-94e8-4b80-8cb3-e7e48a0e3b00",
+        "title": "Task Details Tutorials",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": null,
+        "collapsed": false,
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "startDate": "2026-01-23",
+        "description": "---\n*Task from Project: Tutorials*"
+      },
+      {
+        "id": "fdbddbbe-f8e0-452e-90b9-dc309f9365d2",
+        "title": "Dashboard Tutorials",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": null,
+        "collapsed": false,
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "startDate": "2026-01-23",
+        "description": "---\n*Task from Project: Tutorials*"
+      },
+      {
+        "id": "d895161b-c3c7-475d-9a91-662d1c07688a",
+        "title": "Board View Tutorials",
+        "status": "In Progress",
+        "priority": "High",
+        "completed": false,
+        "parentId": null,
+        "collapsed": false,
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-25",
+        "startDate": "2026-01-23",
+        "description": "Add description?",
+        "cardPreview": "description"
+      },
+      {
+        "id": "4a1ffe6e-664c-4845-a6dd-093a5ccbe14f",
+        "title": "How to rename buckets",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": "d895161b-c3c7-475d-9a91-662d1c07688a",
+        "collapsed": false,
+        "createdDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-25",
+        "startDate": "2026-01-25",
+        "description": "A tutorial that shows the user how to rename and change the colour of a bucket.",
+        "cardPreview": "description",
+        "bucketId": "afa26cb7-5d78-4581-94c4-65a965ef7a1e"
+      },
+      {
+        "id": "43f6cc10-0840-449b-a909-15bbc7513360",
+        "title": "Timeline Tutorials",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": null,
+        "collapsed": false,
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "startDate": "2026-01-23",
+        "description": "---\n*Task from Project: Tutorials*"
+      },
+      {
+        "id": "d61f2a03-f7d8-44d4-853c-9ea78ce091ff",
+        "title": "Plugin Settings Tutorials",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": null,
+        "collapsed": false,
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "startDate": "2026-01-23",
+        "description": "---\n*Task from Project: Tutorials*"
+      },
+      {
+        "id": "1604341a-905e-4e55-8c86-31c3bf9cffc0",
+        "title": "Markdown Sync Tutorials",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": null,
+        "collapsed": false,
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-23",
+        "startDate": "2026-01-23",
+        "description": "---\n*Task from Project: Tutorials*"
+      },
+      {
+        "id": "4f74f827-e6c6-4d1c-a25f-3b8f1e1562fa",
+        "title": "Daily Note Task Tagging Tutorials",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": null,
+        "collapsed": false,
+        "createdDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-25",
+        "startDate": "2026-01-23",
+        "description": "---\n*Task from Project: Tutorials*"
+      },
+      {
+        "id": "61d039de-c12b-4c26-9e7b-833a60e65b6f",
+        "title": "YouTube Videos",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": null,
+        "collapsed": false,
+        "createdDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-25",
+        "startDate": "2026-01-25",
+        "description": "YouTube videos that showcase Project Planner.",
+        "cardPreview": "description",
+        "links": [
+          {
+            "id": "2c1ba241-5cf1-4534-9ae1-e79c5f321e08",
+            "title": "https://youtube.com/@ArctykDev",
+            "url": "https://youtube.com/@ArctykDev",
+            "type": "external"
+          }
+        ]
+      },
+      {
+        "id": "f3f88ef1-39cb-4688-9f54-1803ab739951",
+        "title": "Setup Channel",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": "61d039de-c12b-4c26-9e7b-833a60e65b6f",
+        "collapsed": false,
+        "createdDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-25",
+        "startDate": "2026-01-25",
+        "cardPreview": "description",
+        "description": "Setup YouTube channel description, avatar, profile, etc.",
+        "links": [
+          {
+            "id": "388fd6e4-fc19-471c-800a-87443d303a76",
+            "title": "https://youtube.com/@ArctykDev",
+            "url": "https://youtube.com/@ArctykDev",
+            "type": "external"
+          }
+        ],
+        "subtasks": [
+          {
+            "id": "1fc8aacc-0a13-492d-9ca2-0d522e496632",
+            "title": "Add channel description",
+            "completed": false
+          },
+          {
+            "id": "04acc783-714c-4701-b624-dbfd78156006",
+            "title": "Add channel avatar",
+            "completed": false
+          }
+        ],
+        "bucketId": "afa26cb7-5d78-4581-94c4-65a965ef7a1e"
+      },
+      {
+        "id": "e3746ab4-faea-4918-99f7-3e616fd3f295",
+        "title": "Research and download screen recorder",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": "61d039de-c12b-4c26-9e7b-833a60e65b6f",
+        "collapsed": false,
+        "createdDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-25",
+        "startDate": "2026-01-25",
+        "description": "---\n*Task from Project: Tutorials*"
+      }
+    ]
   }
 }

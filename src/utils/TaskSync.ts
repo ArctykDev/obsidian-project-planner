@@ -95,7 +95,8 @@ export class TaskSync {
             content += `\n`;
         }
 
-        content += `\n---\n*Task from Project: ${projectName}*\n`;
+        // Footer
+        content += `---\n*Task from Project: ${projectName}*\n`;
 
         return content;
     }
@@ -257,6 +258,10 @@ export class TaskSync {
     getTaskFilePath(task: PlannerTask, projectName: string): string {
         // Sanitize title for filename
         const safeName = task.title.replace(/[\\/:*?"<>|]/g, '-');
+        const basePath = this.plugin.settings.projectsBasePath;
+        if (basePath) {
+            return `${basePath}/${projectName}/Tasks/${safeName}.md`;
+        }
         return `${projectName}/Tasks/${safeName}.md`;
     }
 
@@ -280,6 +285,12 @@ export class TaskSync {
             if (existingFile instanceof TFile) {
                 await this.app.vault.modify(existingFile, content);
             } else {
+                // Ensure parent folders exist
+                const folderPath = filePath.substring(0, filePath.lastIndexOf('/'));
+                const folder = this.app.vault.getAbstractFileByPath(folderPath);
+                if (!folder) {
+                    await this.app.vault.createFolder(folderPath);
+                }
                 await this.app.vault.create(filePath, content);
             }
         } finally {
@@ -297,7 +308,6 @@ export class TaskSync {
 
         // Prevent infinite loop
         if (this.syncInProgress.has(task.id)) {
-            console.log('[TaskSync] Skipping sync (already in progress):', task.title);
             return;
         }
         this.syncInProgress.add(task.id);
@@ -307,13 +317,11 @@ export class TaskSync {
 
             if (existingTask) {
                 // Update existing task (always update to ensure markdown is source of truth)
-                console.log('[TaskSync] Updating task from markdown:', task.title);
                 // Don't use updateTask as it triggers lastModifiedDate change
                 // Instead use addTaskFromObject which handles merging
                 await this.plugin.taskStore.addTaskFromObject(task);
             } else {
                 // Task doesn't exist in JSON - new task created via markdown
-                console.log('[TaskSync] Adding new task from markdown:', task.title);
                 await this.plugin.taskStore.addTaskFromObject(task);
             }
         } finally {
@@ -338,14 +346,13 @@ export class TaskSync {
      * Watch for changes to markdown files in project folders
      */
     watchProjectFolder(projectId: string, projectName: string) {
-        const folderPath = `${projectName}/Tasks`;
-        console.log(`[TaskSync] Setting up watchers for: ${folderPath}`);
+        const basePath = this.plugin.settings.projectsBasePath;
+        const folderPath = basePath ? `${basePath}/${projectName}/Tasks` : `${projectName}/Tasks`;
 
         // Watch for metadata cache changes (most reliable for YAML frontmatter changes)
         this.plugin.registerEvent(
             this.app.metadataCache.on('changed', async (file) => {
                 if (file instanceof TFile && file.path.startsWith(folderPath) && file.extension === 'md') {
-                    console.log('[TaskSync] Metadata changed:', file.path);
                     await this.syncMarkdownToTask(file, projectId);
                 }
             })
@@ -355,7 +362,6 @@ export class TaskSync {
         this.plugin.registerEvent(
             this.app.vault.on('delete', async (file) => {
                 if (file instanceof TFile && file.path.startsWith(folderPath) && file.extension === 'md') {
-                    console.log('[TaskSync] File deleted:', file.path);
                     const cache = this.app.metadataCache.getFileCache(file);
                     const taskId = cache?.frontmatter?.id;
                     if (taskId) {
@@ -369,7 +375,6 @@ export class TaskSync {
         this.plugin.registerEvent(
             this.app.vault.on('create', async (file) => {
                 if (file instanceof TFile && file.path.startsWith(folderPath) && file.extension === 'md') {
-                    console.log('[TaskSync] File created:', file.path);
                     // Wait for metadata cache to populate
                     setTimeout(async () => {
                         await this.syncMarkdownToTask(file, projectId);
@@ -390,24 +395,20 @@ export class TaskSync {
         const now = Date.now();
         const fiveMinutes = 5 * 60 * 1000;
         if (project.lastSyncTimestamp && (now - project.lastSyncTimestamp) < fiveMinutes) {
-            console.log(`[TaskSync] Skipping initial sync - last sync was ${Math.round((now - project.lastSyncTimestamp) / 1000)}s ago`);
             return;
         }
 
-        const folderPath = `${projectName}/Tasks`;
+        const basePath = this.plugin.settings.projectsBasePath;
+        const folderPath = basePath ? `${basePath}/${projectName}/Tasks` : `${projectName}/Tasks`;
         const folder = this.app.vault.getAbstractFileByPath(folderPath);
 
         if (!folder) {
-            console.log(`[TaskSync] Folder not found: ${folderPath}`);
             return;
         }
 
-        console.log(`[TaskSync] Starting initial sync for: ${folderPath}`);
         const files = this.app.vault.getMarkdownFiles().filter(f =>
             f.path.startsWith(folderPath)
         );
-
-        console.log(`[TaskSync] Found ${files.length} files to sync`);
         
         // Batch process files to avoid overwhelming the system
         for (let i = 0; i < files.length; i++) {
@@ -421,6 +422,5 @@ export class TaskSync {
         // Update last sync timestamp
         project.lastSyncTimestamp = Date.now();
         await this.plugin.saveSettings();
-        console.log(`[TaskSync] Initial sync complete for: ${folderPath}`);
     }
 }
