@@ -240,7 +240,15 @@ export class GridView extends ItemView {
     // -----------------------------------------------------------------------
     // Build visible hierarchy (with filters + sort)
     // -----------------------------------------------------------------------
-    const all = this.taskStore.getAll();
+    let all = this.taskStore.getAll();
+    
+    // Filter out completed tasks if setting is disabled (Grid View only)
+    const pluginAny = this.plugin as any;
+    const showCompleted = pluginAny.settings?.showCompleted ?? true;
+    if (!showCompleted) {
+      all = all.filter((t) => !t.completed);
+    }
+    
     const matchesFilter = new Map<string, boolean>();
     const f = this.currentFilters;
 

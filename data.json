@@ -28,18 +28,18 @@
         ],
         "completedSectionsCollapsed": {
           "unassigned": true,
-          "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0": true,
+          "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0": false,
           "f98a3102-a298-4a98-8d99-ed93eac60755": true
         },
         "unassignedBucketName": "Backlog",
         "createdDate": "2026-01-12T21:50:10.880Z",
-        "lastUpdatedDate": "2026-01-29T12:07:17.617Z"
+        "lastUpdatedDate": "2026-01-29T17:50:25.192Z"
       },
       {
         "id": "b11b178b-baf8-4c28-80db-4330a74c1d65",
         "name": "Tutorials",
         "createdDate": "2026-01-23T18:17:19.333Z",
-        "lastUpdatedDate": "2026-01-29T12:07:17.380Z",
+        "lastUpdatedDate": "2026-01-29T18:04:24.639Z",
         "buckets": [
           {
             "id": "afa26cb7-5d78-4581-94c4-65a965ef7a1e",
@@ -52,6 +52,10 @@
             "color": "#5c2d91"
           },
           {
+            "id": "65a6b97a-82b5-4011-9180-1ac658756497",
+            "name": "New Bucket"
+          },
+          {
             "id": "b985d8b1-da84-4431-96e8-f67c29df5f22",
             "name": "Done"
           }
@@ -60,7 +64,7 @@
     ],
     "activeProjectId": "b11b178b-baf8-4c28-80db-4330a74c1d65",
     "defaultView": "grid",
-    "showCompleted": true,
+    "showCompleted": false,
     "openLinksInNewTab": false,
     "openViewsInNewTab": false,
     "availableTags": [
@@ -337,7 +341,7 @@
         "id": "e1312412-4050-44d7-915e-15ea9aa3063b",
         "title": "Sample task",
         "status": "Completed",
-        "completed": true,
+        "completed": false,
         "parentId": "91f7f8a6-a676-4124-864f-8d52a1382040",
         "priority": "Critical",
         "tags": [
@@ -346,7 +350,7 @@
         "collapsed": false,
         "description": "Review and audit plugin code to ensure it adheres to the Obsidian plugin guidelines. \n\nRefactor any code that does not meet the guidelines.",
         "subtasks": [],
-        "lastModifiedDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-29",
         "cardPreview": "description",
         "bucketId": "6655fcd9-c245-40e6-b4d5-d3a6e667b0a0",
         "startDate": "2026-01-24",
@@ -3095,6 +3099,23 @@
             "type": "obsidian"
           }
         ]
+      },
+      {
+        "id": "daily-task-b8f5c18e-cd8c-409a-ae29-962e14745a36",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-29",
+        "lastModifiedDate": "2026-01-29",
+        "links": [
+          {
+            "id": "b4d10c05-58d4-40ea-bf2d-ae6585480c64",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
       }
     ],
     "bb29a79d-acfa-41cb-8ff7-5dda36ff6759": [
@@ -3147,10 +3168,10 @@
         "parentId": null,
         "collapsed": false,
         "createdDate": "2026-01-23",
-        "lastModifiedDate": "2026-01-28",
-        "startDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-29",
+        "startDate": "2026-01-22",
         "description": "---\n*Task from Project: Tutorials*",
-        "dueDate": "2026-01-27"
+        "dueDate": "2026-01-28"
       },
       {
         "id": "2752cd27-c53d-484e-9974-776c8437c3c5",
@@ -3191,9 +3212,10 @@
         "parentId": null,
         "collapsed": false,
         "createdDate": "2026-01-28",
-        "lastModifiedDate": "2026-01-28",
-        "startDate": "2026-01-28",
-        "description": "---\n*Task from Project: Tutorials*"
+        "lastModifiedDate": "2026-01-29",
+        "startDate": "2026-01-27",
+        "description": "---\n*Task from Project: Tutorials*",
+        "dueDate": "2026-01-28"
       },
       {
         "id": "fdbddbbe-f8e0-452e-90b9-dc309f9365d2",
@@ -3307,7 +3329,7 @@
         "cardPreview": "description",
         "links": [
           {
-            "id": "52c5e7e3-8933-4c55-a57a-4ce36ff380fe",
+            "id": "c258ac34-a625-4e38-9f40-b239b9e2f8bf",
             "title": "https://youtube.com/@ArctykDev",
             "url": "https://youtube.com/@ArctykDev",
             "type": "external"
@@ -3329,7 +3351,7 @@
         "description": "Setup YouTube channel description, avatar, profile, etc.",
         "links": [
           {
-            "id": "8e706301-5104-44d0-9939-5725d5f5e96e",
+            "id": "b1843ac8-c555-45eb-aa61-4aadfc724f82",
             "title": "https://youtube.com/@ArctykDev",
             "url": "https://youtube.com/@ArctykDev",
             "type": "external"
@@ -3337,12 +3359,12 @@
         ],
         "subtasks": [
           {
-            "id": "327ca626-d1f7-4218-8901-7da60d6dc9c0",
+            "id": "087a11fe-7975-4846-bcaf-a893421bb259",
             "title": "Add channel description",
             "completed": false
           },
           {
-            "id": "6d188072-076f-47f1-ad34-e619fae784ef",
+            "id": "3b708824-0f55-4167-b13a-13b52d5b0d46",
             "title": "Add channel avatar",
             "completed": false
           }
@@ -3355,49 +3377,49 @@
       {
         "id": "e3746ab4-faea-4918-99f7-3e616fd3f295",
         "title": "Research and download screen recorder",
-        "status": "In Progress",
+        "status": "Completed",
         "priority": "Medium",
         "completed": false,
         "parentId": "61d039de-c12b-4c26-9e7b-833a60e65b6f",
         "collapsed": false,
         "createdDate": "2026-01-25",
-        "lastModifiedDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-29",
         "startDate": "2026-01-25",
         "description": "Research, review and choose a screen recorder for showing desktop apps. \n\n**Criteria:**\n- Should be available on all Operating Systems\n- No watermarks\n- Show in-screen display for content and presenter\n- Open-source preferrable\n- No cost or low cost\n- Easy YouTube formats\n\nSee checklist for options.",
         "cardPreview": "checklist",
         "subtasks": [
           {
-            "id": "68a213ce-96ee-40be-983c-b2a459362195",
+            "id": "740dd6e4-2660-403f-9822-2bbd74e3e3eb",
             "title": "Clip Champ",
             "completed": false
           },
           {
-            "id": "6ed7a28c-b596-4e18-b42f-b8f250545366",
+            "id": "b87ad03d-e3d9-4c32-80f8-e5809c43fea1",
             "title": "Snipping Tool & Game Bar",
             "completed": false
           },
           {
-            "id": "77cd17e2-033f-4ad5-8340-428be6b8564d",
+            "id": "2637f367-aac2-4b36-82df-038812087e57",
             "title": "Boom",
             "completed": false
           },
           {
-            "id": "2c88cb26-7043-4090-82dc-e0fe6ed97eef",
+            "id": "da7edfce-f233-440b-b9cb-c216f9f0f83b",
             "title": "ShareX",
             "completed": false
           },
           {
-            "id": "c6b0cc32-bb66-4bbc-92c7-effca928145b",
+            "id": "a940896b-f1a4-447e-ac2d-8ed51e132021",
             "title": "OBS Studio",
             "completed": false
           },
           {
-            "id": "b7c7d7d5-d6cb-4d6b-9b2c-444cc580bcc3",
+            "id": "75af44ab-7809-434d-8df8-c7a9dc2cff34",
             "title": "Debut",
             "completed": false
           },
           {
-            "id": "8ba29c94-5f08-42e4-879c-5fd358c3b3a2",
+            "id": "5d24b6b1-d45a-439b-94e9-217e7a9395d4",
             "title": "Screenify",
             "completed": false
           }
@@ -3409,13 +3431,13 @@
         ],
         "links": [
           {
-            "id": "51f39b2c-95e0-4beb-87d3-b2818dc8a08c",
+            "id": "b500a7c3-ab27-4802-b7ad-cb2c6bd64263",
             "title": "https://obsproject.com/",
             "url": "https://obsproject.com/",
             "type": "external"
           },
           {
-            "id": "d552a81a-011a-49a3-b0ce-e249db2fecd7",
+            "id": "5aeb1590-6200-4d25-9c1f-dc76bf270355",
             "title": "https://www.nchsoftware.com/capture/index.html",
             "url": "https://www.nchsoftware.com/capture/index.html",
             "type": "external"
@@ -3434,6 +3456,19 @@
         "lastModifiedDate": "2026-01-28",
         "startDate": "2026-01-28",
         "description": "---\n*Task from Project: Tutorials*"
+      },
+      {
+        "id": "1597640f-d9b0-481a-b6b9-21c033f946ab",
+        "title": "New Task",
+        "status": "Completed",
+        "priority": "Medium",
+        "completed": true,
+        "parentId": null,
+        "collapsed": false,
+        "createdDate": "2026-01-29",
+        "lastModifiedDate": "2026-01-29",
+        "startDate": "2026-01-29",
+        "bucketId": "65a6b97a-82b5-4011-9180-1ac658756497"
       }
     ]
   }

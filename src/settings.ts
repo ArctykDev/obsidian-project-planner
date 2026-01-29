@@ -191,8 +191,8 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Show completed tasks")
-      .setDesc("Display tasks marked as completed.")
+      .setName("Show completed tasks in Grid View")
+      .setDesc("When disabled, completed tasks will be hidden in Grid View only. Other views (Board, Timeline, Dashboard) will continue to show completed tasks.")
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.showCompleted)
