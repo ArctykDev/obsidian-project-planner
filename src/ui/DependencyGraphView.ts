@@ -29,6 +29,7 @@ export class DependencyGraphView extends ItemView {
     private dragNode: GraphNode | null = null;
     private animationFrame: number | null = null;
     private unsubscribe: (() => void) | null = null;
+    private resizeHandler: (() => void) | null = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
         super(leaf);
@@ -56,7 +57,7 @@ export class DependencyGraphView extends ItemView {
         renderPlannerHeader(container as HTMLElement, this.plugin, {
             active: "graph",
             onProjectChange: async () => {
-                await (this.plugin as any).taskStore.load();
+                await this.plugin.taskStore.load();
                 await this.refresh();
             }
         });
@@ -84,27 +85,26 @@ export class DependencyGraphView extends ItemView {
 
         // Set canvas size
         this.resizeCanvas();
-        const resizeHandler = () => this.resizeCanvas();
-        window.addEventListener("resize", resizeHandler);
-        // store handler on instance for cleanup
-        (this as any)._resizeHandler = resizeHandler;
+        this.resizeHandler = () => this.resizeCanvas();
+        window.addEventListener("resize", this.resizeHandler);
 
         // Setup mouse events
         this.setupMouseEvents();
 
         // Load and render
-        await (this.plugin as any).taskStore.ensureLoaded();
-        this.unsubscribe = (this.plugin as any).taskStore.subscribe(() => this.refresh());
+        await this.plugin.taskStore.ensureLoaded();
+        this.unsubscribe = this.plugin.taskStore.subscribe(() => this.refresh());
         await this.refresh();
     }
 
     async onClose() {
         if (this.animationFrame) {
             cancelAnimationFrame(this.animationFrame);
+            this.animationFrame = null;
         }
-        if ((this as any)._resizeHandler) {
-            window.removeEventListener("resize", (this as any)._resizeHandler);
-            (this as any)._resizeHandler = null;
+        if (this.resizeHandler) {
+            window.removeEventListener("resize", this.resizeHandler);
+            this.resizeHandler = null;
         }
         this.containerEl.empty();
         if (this.unsubscribe) {

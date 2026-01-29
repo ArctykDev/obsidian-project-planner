@@ -231,6 +231,15 @@
   color: var(--text-accent);
 }
 
+/* When actively editing */
+.planner-editing {
+  background-color: transparent;
+  outline: none;
+  border-bottom: 1px solid var(--interactive-accent);
+  color: inherit; /* Maintain the contrast color from parent */
+  caret-color: currentColor; /* Make cursor match text color */
+}
+
 .planner-input,
 .planner-select,
 .planner-date {
@@ -1688,6 +1697,31 @@
   flex: 1;
 }
 
+/* Bucket menu button (3-dots) - Microsoft Planner style */
+.planner-bucket-menu {
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+  padding: 4px 8px;
+  font-size: 18px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: inherit; /* Inherits from header (white on dark, dark on light) */
+  margin-right: 8px;
+  border-radius: 4px;
+}
+
+/* Show button on header hover or button hover */
+.planner-board-column-header:hover .planner-bucket-menu,
+.planner-bucket-menu:hover {
+  opacity: 1;
+}
+
+/* Only apply background when the button itself is hovered */
+.planner-bucket-menu:hover {
+  background-color: var(--hover-color, rgba(255, 255, 255, 0.8));
+}
+
 .planner-board-column-count {
   font-size: 14px;
   font-weight: 600;
@@ -2208,6 +2242,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow: hidden; /* Prevent content from overflowing the view */
 }
 
 .planner-gantt-layout {
@@ -2215,13 +2250,36 @@
   grid-template-columns: 300px 1fr;
   gap: 0;
   min-height: 300px;
+  max-height: calc(100vh - 200px); /* Ensure scrolling with reasonable max height */
   position: relative;
+  overflow: hidden; /* Layout itself doesn't scroll */
 }
 
 .planner-gantt-left {
   padding-right: 8px;
+  padding-top: 58px;
   overflow-y: auto;
+  overflow-x: hidden;
   border-right: 1px solid var(--background-modifier-border);
+  /* Scrollbar styling */
+  scrollbar-width: thin;
+}
+
+.planner-gantt-left::-webkit-scrollbar {
+  width: 8px;
+}
+
+.planner-gantt-left::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+}
+
+.planner-gantt-left::-webkit-scrollbar-thumb {
+  background: var(--background-modifier-border-hover);
+  border-radius: 4px;
+}
+
+.planner-gantt-left::-webkit-scrollbar-thumb:hover {
+  background: var(--background-modifier-border);
 }
 
 .planner-gantt-resizer {
@@ -2265,6 +2323,26 @@
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;
   background: var(--background-secondary);
+  /* Scrollbar styling */
+  scrollbar-width: thin;
+}
+
+.planner-gantt-right-wrap::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.planner-gantt-right-wrap::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+}
+
+.planner-gantt-right-wrap::-webkit-scrollbar-thumb {
+  background: var(--background-modifier-border-hover);
+  border-radius: 4px;
+}
+
+.planner-gantt-right-wrap::-webkit-scrollbar-thumb:hover {
+  background: var(--background-modifier-border);
 }
 
 .planner-gantt-right {

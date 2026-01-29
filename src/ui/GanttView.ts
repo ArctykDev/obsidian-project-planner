@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Menu, setIcon } from "obsidian";
+import { ItemView, WorkspaceLeaf, Menu, setIcon, Notice, TFile } from "obsidian";
 import type ProjectPlannerPlugin from "../main";
 import type { PlannerTask } from "../types";
 import { renderPlannerHeader } from "./Header";
@@ -32,17 +32,16 @@ export class GanttView extends ItemView {
     private zoomLevel: "day" | "week" | "month" = "day";
 
     // Resizable layout
-    private leftColumnWidth: number = 300; // Default 300px
+    private leftColumnWidth: number;
+
+    // Clipboard for Cut/Copy/Paste
+    private clipboardTask: { task: PlannerTask; isCut: boolean } | null = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
         super(leaf);
         this.plugin = plugin;
-
-        // Load saved column width from localStorage
-        const saved = localStorage.getItem('planner-gantt-left-width');
-        if (saved) {
-            this.leftColumnWidth = parseInt(saved, 10);
-        }
+        // Load column width from settings
+        this.leftColumnWidth = plugin.settings.ganttLeftColumnWidth || 300;
     }
 
     getViewType() {
@@ -72,8 +71,20 @@ export class GanttView extends ItemView {
     }
 
     private getTaskRange(task: PlannerTask, todayMs: number): { start: number; end: number } {
-        let start = task.startDate ? new Date(task.startDate).getTime() : null;
-        let end = task.dueDate ? new Date(task.dueDate).getTime() : null;
+        let start: number | null = null;
+        let end: number | null = null;
+
+        if (task.startDate) {
+            const startDate = new Date(task.startDate);
+            startDate.setHours(0, 0, 0, 0);
+            start = startDate.getTime();
+        }
+
+        if (task.dueDate) {
+            const endDate = new Date(task.dueDate);
+            endDate.setHours(0, 0, 0, 0);
+            end = endDate.getTime();
+        }
 
         if (start === null && end !== null) start = end;
         if (end === null && start !== null) end = start;
@@ -95,18 +106,18 @@ export class GanttView extends ItemView {
     }
 
     private async updateTaskDates(taskId: string, startMs: number, endMs: number) {
-        await (this.plugin as any).taskStore.updateTask(taskId, {
+        await this.plugin.taskStore.updateTask(taskId, {
             startDate: this.toISODate(startMs),
             dueDate: this.toISODate(endMs)
         });
     }
 
     private async updateTaskTitle(taskId: string, title: string) {
-        await (this.plugin as any).taskStore.updateTask(taskId, { title });
+        await this.plugin.taskStore.updateTask(taskId, { title });
     }
 
     private async handleDrop(dragId: string, targetId: string, insertAfter: boolean) {
-        const tasks = (this.plugin as any).taskStore.getAll();
+        const tasks = this.plugin.taskStore.getAll();
         const dragTask = tasks.find((t: PlannerTask) => t.id === dragId);
         const targetTask = tasks.find((t: PlannerTask) => t.id === targetId);
 
@@ -241,6 +252,126 @@ export class GanttView extends ItemView {
             item.onClick(async () => await (this.plugin as any).openTaskDetail(task));
         });
 
+        menu.addSeparator();
+
+        // Cut
+        menu.addItem((item) => {
+            item.setTitle("Cut");
+            item.setIcon("scissors");
+            item.onClick(() => {
+                this.clipboardTask = { task: { ...task }, isCut: true };
+            });
+        });
+
+        // Copy
+        menu.addItem((item) => {
+            item.setTitle("Copy");
+            item.setIcon("copy");
+            item.onClick(() => {
+                this.clipboardTask = { task: { ...task }, isCut: false };
+            });
+        });
+
+        // Paste
+        menu.addItem((item) => {
+            item.setTitle("Paste");
+            item.setIcon("clipboard");
+            item.setDisabled(!this.clipboardTask);
+            item.onClick(async () => {
+                if (!this.clipboardTask) return;
+
+                const { task: clipTask, isCut } = this.clipboardTask;
+                const store = (this.plugin as any).taskStore;
+
+                if (isCut) {
+                    // Move the task by updating its parentId
+                    await store.updateTask(clipTask.id, {
+                        parentId: task.parentId,
+                    });
+                    this.clipboardTask = null;
+                } else {
+                    // Copy: create a duplicate task
+                    const newTask = await store.addTask(clipTask.title);
+                    await store.updateTask(newTask.id, {
+                        description: clipTask.description,
+                        status: clipTask.status,
+                        priority: clipTask.priority,
+                        startDate: clipTask.startDate,
+                        dueDate: clipTask.dueDate,
+                        tags: clipTask.tags ? [...clipTask.tags] : [],
+                        completed: clipTask.completed,
+                        parentId: task.parentId,
+                        bucketId: clipTask.bucketId,
+                        links: clipTask.links ? [...clipTask.links] : [],
+                        dependencies: [], // Don't copy dependencies
+                    });
+                }
+
+                this.render();
+            });
+        });
+
+        menu.addSeparator();
+
+        // Copy link to task
+        menu.addItem((item) => {
+            item.setTitle("Copy link to task");
+            item.setIcon("link");
+            item.onClick(async () => {
+                const projectId = this.plugin.settings.activeProjectId;
+                const uri = `obsidian://open-planner-task?id=${encodeURIComponent(
+                    task.id
+                )}&project=${encodeURIComponent(projectId)}`;
+
+                try {
+                    await navigator.clipboard.writeText(uri);
+                    new Notice("Task link copied to clipboard");
+                } catch (err) {
+                    console.error("Failed to copy link:", err);
+                    new Notice("Failed to copy link");
+                }
+            });
+        });
+
+        // Open Markdown task note
+        menu.addItem((item) => {
+            item.setTitle("Open Markdown task note");
+            item.setIcon("file-text");
+            item.setDisabled(!this.plugin.settings.enableMarkdownSync);
+            item.onClick(async () => {
+                if (!this.plugin.settings.enableMarkdownSync) return;
+
+                const projectId = this.plugin.settings.activeProjectId;
+                const project = this.plugin.settings.projects.find(
+                    (p) => p.id === projectId
+                );
+                if (!project) return;
+
+                // Use the same path as TaskSync
+                const filePath = this.plugin.taskSync.getTaskFilePath(task, project.name);
+
+                try {
+                    const file = this.app.vault.getAbstractFileByPath(filePath);
+                    if (file && file instanceof TFile) {
+                        await this.app.workspace.openLinkText(filePath, "", true);
+                    } else {
+                        // Note doesn't exist - create it
+                        new Notice("Creating task note...");
+                        await this.plugin.taskSync.syncTaskToMarkdown(task, projectId);
+                        // Wait a moment for the file to be created, then open it
+                        setTimeout(async () => {
+                            await this.app.workspace.openLinkText(filePath, "", true);
+                        }, 100);
+                    }
+                } catch (err) {
+                    console.error("Failed to open task note:", err);
+                    new Notice("Failed to open task note");
+                }
+            });
+        });
+
+        menu.addSeparator();
+
         menu.addItem((item) => {
             item.setTitle("Add new task above");
             item.setIcon("plus");
@@ -256,7 +387,7 @@ export class GanttView extends ItemView {
                     if (newIndex >= 0) {
                         const [moved] = reordered.splice(newIndex, 1);
                         reordered.splice(taskIndex, 0, moved);
-                        await store.reorder(reordered.map((t: PlannerTask) => t.id));
+                        await store.setOrder(reordered.map((t: PlannerTask) => t.id));
                     }
                 }
                 this.render();
@@ -781,7 +912,7 @@ export class GanttView extends ItemView {
 
         // Content area
         const content = container.createDiv("planner-gantt-content");
-        const allTasks: PlannerTask[] = (this.plugin as any).taskStore.getAll();
+        const allTasks: PlannerTask[] = this.plugin.taskStore.getAll();
 
         // Build hierarchical task list with filters
         const matchesFilter = new Map<string, boolean>();
@@ -857,8 +988,17 @@ export class GanttView extends ItemView {
         minTime -= paddingMultiplier * dayMs;
         maxTime += paddingMultiplier * dayMs;
 
+        // Normalize minTime and maxTime to midnight to ensure proper date alignment
+        const minDate = new Date(minTime);
+        minDate.setHours(0, 0, 0, 0);
+        minTime = minDate.getTime();
+
+        const maxDate = new Date(maxTime);
+        maxDate.setHours(0, 0, 0, 0);
+        maxTime = maxDate.getTime();
+
         // Calculate total days and timeline width
-        let totalDays = Math.round((maxTime - minTime) / dayMs) + 1;
+        let totalDays = Math.floor((maxTime - minTime) / dayMs) + 1;
         let timelineWidth = totalDays * dayWidth;
 
         // If timeline is still narrower than viewport, extend the date range further
@@ -867,8 +1007,9 @@ export class GanttView extends ItemView {
             const daysAfter = additionalDays;
 
             maxTime += daysAfter * dayMs;
-
-            totalDays = Math.round((maxTime - minTime) / dayMs) + 1;
+            
+            // Recalculate totalDays after extending maxTime
+            totalDays = Math.floor((maxTime - minTime) / dayMs) + 1;
             timelineWidth = totalDays * dayWidth;
         }
 
@@ -887,6 +1028,26 @@ export class GanttView extends ItemView {
         const resizer = layout.createDiv("planner-gantt-resizer");
         resizer.style.left = `${this.leftColumnWidth}px`;
         this.attachResizerHandlers(resizer, layout);
+
+        // Synchronize vertical scrolling between left and right columns
+        let isLeftScrolling = false;
+        let isRightScrolling = false;
+
+        leftCol.addEventListener('scroll', () => {
+            if (!isLeftScrolling) {
+                isRightScrolling = true;
+                rightColWrap.scrollTop = leftCol.scrollTop;
+                setTimeout(() => { isRightScrolling = false; }, 10);
+            }
+        });
+
+        rightColWrap.addEventListener('scroll', () => {
+            if (!isRightScrolling) {
+                isLeftScrolling = true;
+                leftCol.scrollTop = rightColWrap.scrollTop;
+                setTimeout(() => { isLeftScrolling = false; }, 10);
+            }
+        });
 
         // Two-tier date scale (like MS Planner)
         const scale = rightCol.createDiv("planner-gantt-scale");
@@ -987,7 +1148,7 @@ export class GanttView extends ItemView {
                 setIcon(toggle, t.collapsed ? "chevron-right" : "chevron-down");
                 toggle.onclick = async (e) => {
                     e.stopPropagation();
-                    await (this.plugin as any).taskStore.updateTask(t.id, {
+                    await this.plugin.taskStore.updateTask(t.id, {
                         collapsed: !t.collapsed
                     });
                 };
@@ -1017,7 +1178,7 @@ export class GanttView extends ItemView {
             checkbox.onclick = async (e) => {
                 e.stopPropagation();
                 const newStatus = t.status === "Completed" ? "Not Started" : "Completed";
-                await (this.plugin as any).taskStore.updateTask(t.id, { status: newStatus });
+                await this.plugin.taskStore.updateTask(t.id, { status: newStatus });
             };
 
             this.attachInlineTitle(rowLeft, t, vt.hasChildren);
@@ -1029,8 +1190,11 @@ export class GanttView extends ItemView {
             // Calculate bar position
             const clampedStart = Math.max(start, minTime);
             const clampedEnd = Math.min(end, maxTime);
-            const startDays = Math.max(0, Math.round((clampedStart - minTime) / dayMs));
-            const spanDays = Math.max(1, Math.round((clampedEnd - clampedStart) / dayMs) + 1);
+            
+            // Calculate exact day positions (dates are normalized to midnight)
+            const startDays = Math.floor((clampedStart - minTime) / dayMs);
+            const endDays = Math.floor((clampedEnd - minTime) / dayMs);
+            const spanDays = Math.max(1, endDays - startDays + 1);
 
             const bar = row.createDiv("planner-gantt-bar");
             bar.dataset.taskId = t.id;
@@ -1091,15 +1255,16 @@ export class GanttView extends ItemView {
             resizer.style.left = `${newWidth}px`;
         };
 
-        const onMouseUp = () => {
+        const onMouseUp = async () => {
             if (!isResizing) return;
 
             isResizing = false;
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
 
-            // Save to localStorage
-            localStorage.setItem('planner-gantt-left-width', this.leftColumnWidth.toString());
+            // Save to plugin settings
+            this.plugin.settings.ganttLeftColumnWidth = this.leftColumnWidth;
+            await this.plugin.saveSettings();
         };
 
         resizer.addEventListener('mousedown', onMouseDown);

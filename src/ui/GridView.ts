@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Menu, setIcon } from "obsidian";
+import { ItemView, WorkspaceLeaf, Menu, setIcon, Notice, TFile } from "obsidian";
 import type ProjectPlannerPlugin from "../main";
 import type { PlannerTask, TaskStatus } from "../types";
 import { TaskStore } from "../stores/taskStore";
@@ -48,6 +48,9 @@ export class GridView extends ItemView {
   // Column sizing + advanced sorting
   private columnWidths: Record<string, number> = {};
   private secondarySortKeys: SortKey[] = [];
+
+  // Clipboard for Cut/Copy/Paste
+  private clipboardTask: { task: PlannerTask; isCut: boolean } | null = null;
   private columnVisibility: Record<string, boolean> = {};
 
   constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
@@ -102,10 +105,9 @@ export class GridView extends ItemView {
     // -----------------------------------------------------------------------
     // Header
     // -----------------------------------------------------------------------
-    const pluginAny = this.plugin as any;
-    const settings = pluginAny.settings || {};
-    const projects = (settings.projects as { id: string; name: string }[]) || [];
-    let activeProjectId = settings.activeProjectId as string | undefined;
+    const settings = this.plugin.settings;
+    const projects = settings.projects || [];
+    let activeProjectId = settings.activeProjectId;
 
     const { actionsEl: headerActions } = renderPlannerHeader(wrapper, this.plugin, {
       active: "grid",
@@ -354,8 +356,7 @@ export class GridView extends ItemView {
       return;
     }
 
-    const pluginAny = this.plugin as any;
-    const settings = pluginAny.settings || {};
+    const settings = this.plugin.settings;
 
     // -----------------------------------------------------------------------
     // Build visible hierarchy (with filters)
@@ -815,7 +816,7 @@ export class GridView extends ItemView {
 
         indicator.onclick = () => {
           // Open task detail panel
-          (this.plugin as any).openTaskDetail(task);
+          this.plugin.openTaskDetail(task);
         };
       }
     }
@@ -885,6 +886,130 @@ export class GridView extends ItemView {
         .onClick(() => this.plugin.openTaskDetail(task))
     );
 
+    menu.addSeparator();
+
+    // Cut
+    menu.addItem((item) =>
+      item
+        .setTitle("Cut")
+        .setIcon("scissors")
+        .onClick(() => {
+          this.clipboardTask = { task: { ...task }, isCut: true };
+        })
+    );
+
+    // Copy
+    menu.addItem((item) =>
+      item
+        .setTitle("Copy")
+        .setIcon("copy")
+        .onClick(() => {
+          this.clipboardTask = { task: { ...task }, isCut: false };
+        })
+    );
+
+    // Paste
+    menu.addItem((item) =>
+      item
+        .setTitle("Paste")
+        .setIcon("clipboard")
+        .setDisabled(!this.clipboardTask)
+        .onClick(async () => {
+          if (!this.clipboardTask) return;
+
+          const { task: clipTask, isCut } = this.clipboardTask;
+
+          if (isCut) {
+            // Move the task by updating its parentId
+            await this.taskStore.updateTask(clipTask.id, {
+              parentId: task.parentId,
+            });
+            this.clipboardTask = null;
+          } else {
+            // Copy: create a duplicate task
+            const newTask = await this.taskStore.addTask(clipTask.title);
+            await this.taskStore.updateTask(newTask.id, {
+              description: clipTask.description,
+              status: clipTask.status,
+              priority: clipTask.priority,
+              startDate: clipTask.startDate,
+              dueDate: clipTask.dueDate,
+              tags: clipTask.tags ? [...clipTask.tags] : [],
+              completed: clipTask.completed,
+              parentId: task.parentId,
+              bucketId: clipTask.bucketId,
+              links: clipTask.links ? [...clipTask.links] : [],
+              dependencies: [], // Don't copy dependencies
+            });
+          }
+
+          this.render();
+        })
+    );
+
+    menu.addSeparator();
+
+    // Copy link to task
+    menu.addItem((item) =>
+      item
+        .setTitle("Copy link to task")
+        .setIcon("link")
+        .onClick(async () => {
+          const projectId = this.plugin.settings.activeProjectId;
+          const uri = `obsidian://open-planner-task?id=${encodeURIComponent(
+            task.id
+          )}&project=${encodeURIComponent(projectId)}`;
+
+          try {
+            await navigator.clipboard.writeText(uri);
+            new Notice("Task link copied to clipboard");
+          } catch (err) {
+            console.error("Failed to copy link:", err);
+            new Notice("Failed to copy link");
+          }
+        })
+    );
+
+    // Open Markdown task note
+    menu.addItem((item) =>
+      item
+        .setTitle("Open Markdown task note")
+        .setIcon("file-text")
+        .setDisabled(!this.plugin.settings.enableMarkdownSync)
+        .onClick(async () => {
+          if (!this.plugin.settings.enableMarkdownSync) return;
+
+          const projectId = this.plugin.settings.activeProjectId;
+          const project = this.plugin.settings.projects.find(
+            (p) => p.id === projectId
+          );
+          if (!project) return;
+
+          // Use the same path as TaskSync
+          const filePath = this.plugin.taskSync.getTaskFilePath(task, project.name);
+
+          try {
+            const file = this.app.vault.getAbstractFileByPath(filePath);
+            if (file && file instanceof TFile) {
+              await this.app.workspace.openLinkText(filePath, "", true);
+            } else {
+              // Note doesn't exist - create it
+              new Notice("Creating task note...");
+              await this.plugin.taskSync.syncTaskToMarkdown(task, projectId);
+              // Wait a moment for the file to be created, then open it
+              setTimeout(async () => {
+                await this.app.workspace.openLinkText(filePath, "", true);
+              }, 100);
+            }
+          } catch (err) {
+            console.error("Failed to open task note:", err);
+            new Notice("Failed to open task note");
+          }
+        })
+    );
+
+    menu.addSeparator();
+
     menu.addItem((item) =>
       item
         .setTitle("Add new task above")
@@ -951,6 +1076,130 @@ export class GridView extends ItemView {
         .setIcon("pencil")
         .onClick(() => this.plugin.openTaskDetail(task))
     );
+
+    menu.addSeparator();
+
+    // Cut
+    menu.addItem((item) =>
+      item
+        .setTitle("Cut")
+        .setIcon("scissors")
+        .onClick(() => {
+          this.clipboardTask = { task: { ...task }, isCut: true };
+        })
+    );
+
+    // Copy
+    menu.addItem((item) =>
+      item
+        .setTitle("Copy")
+        .setIcon("copy")
+        .onClick(() => {
+          this.clipboardTask = { task: { ...task }, isCut: false };
+        })
+    );
+
+    // Paste
+    menu.addItem((item) =>
+      item
+        .setTitle("Paste")
+        .setIcon("clipboard")
+        .setDisabled(!this.clipboardTask)
+        .onClick(async () => {
+          if (!this.clipboardTask) return;
+
+          const { task: clipTask, isCut } = this.clipboardTask;
+
+          if (isCut) {
+            // Move the task by updating its parentId
+            await this.taskStore.updateTask(clipTask.id, {
+              parentId: task.parentId,
+            });
+            this.clipboardTask = null;
+          } else {
+            // Copy: create a duplicate task
+            const newTask = await this.taskStore.addTask(clipTask.title);
+            await this.taskStore.updateTask(newTask.id, {
+              description: clipTask.description,
+              status: clipTask.status,
+              priority: clipTask.priority,
+              startDate: clipTask.startDate,
+              dueDate: clipTask.dueDate,
+              tags: clipTask.tags ? [...clipTask.tags] : [],
+              completed: clipTask.completed,
+              parentId: task.parentId,
+              bucketId: clipTask.bucketId,
+              links: clipTask.links ? [...clipTask.links] : [],
+              dependencies: [], // Don't copy dependencies
+            });
+          }
+
+          this.render();
+        })
+    );
+
+    menu.addSeparator();
+
+    // Copy link to task
+    menu.addItem((item) =>
+      item
+        .setTitle("Copy link to task")
+        .setIcon("link")
+        .onClick(async () => {
+          const projectId = this.plugin.settings.activeProjectId;
+          const uri = `obsidian://open-planner-task?id=${encodeURIComponent(
+            task.id
+          )}&project=${encodeURIComponent(projectId)}`;
+
+          try {
+            await navigator.clipboard.writeText(uri);
+            new Notice("Task link copied to clipboard");
+          } catch (err) {
+            console.error("Failed to copy link:", err);
+            new Notice("Failed to copy link");
+          }
+        })
+    );
+
+    // Open Markdown task note
+    menu.addItem((item) =>
+      item
+        .setTitle("Open Markdown task note")
+        .setIcon("file-text")
+        .setDisabled(!this.plugin.settings.enableMarkdownSync)
+        .onClick(async () => {
+          if (!this.plugin.settings.enableMarkdownSync) return;
+
+          const projectId = this.plugin.settings.activeProjectId;
+          const project = this.plugin.settings.projects.find(
+            (p) => p.id === projectId
+          );
+          if (!project) return;
+
+          // Use the same path as TaskSync
+          const filePath = this.plugin.taskSync.getTaskFilePath(task, project.name);
+
+          try {
+            const file = this.app.vault.getAbstractFileByPath(filePath);
+            if (file && file instanceof TFile) {
+              await this.app.workspace.openLinkText(filePath, "", true);
+            } else {
+              // Note doesn't exist - create it
+              new Notice("Creating task note...");
+              await this.plugin.taskSync.syncTaskToMarkdown(task, projectId);
+              // Wait a moment for the file to be created, then open it
+              setTimeout(async () => {
+                await this.app.workspace.openLinkText(filePath, "", true);
+              }, 100);
+            }
+          } catch (err) {
+            console.error("Failed to open task note:", err);
+            new Notice("Failed to open task note");
+          }
+        })
+    );
+
+    menu.addSeparator();
 
     menu.addItem((item) =>
       item

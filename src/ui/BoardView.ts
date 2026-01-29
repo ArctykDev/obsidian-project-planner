@@ -218,26 +218,40 @@ export class BoardView extends ItemView {
             columnHeader.draggable = true;
             columnHeader.setAttribute("data-bucket-id", bucket.id);
 
+            // Track if background is light or dark for button styling
+            let isDarkBackground = false;
+
             // Apply bucket color if set
             if (bucket.color) {
                 columnHeader.style.backgroundColor = bucket.color;
-                columnHeader.style.color = this.getContrastColor(bucket.color);
+                const contrastColor = this.getContrastColor(bucket.color);
+                columnHeader.style.color = contrastColor;
+                isDarkBackground = contrastColor === "#ffffff";
             }
 
             // Setup bucket drag events
             this.setupBucketDrag(columnHeader, column, bucket);
 
             const headerTitle = columnHeader.createDiv("planner-board-column-title");
-            headerTitle.textContent = bucket.name;
-            headerTitle.contentEditable = "false";
+            
+            // Create editable bucket name (same pattern as grid view task titles)
+            this.createEditableBucketName(headerTitle, bucket);
 
-            // Double-click to rename
-            headerTitle.ondblclick = (e) => {
-                e.stopPropagation();
-                this.startRenameBucket(headerTitle, bucket);
+            // 3-dots menu button (hover-visible)
+            const bucketMenuBtn = columnHeader.createEl("button", {
+                cls: "planner-bucket-menu",
+                text: "⋯",
+            });
+            // Set hover color on the button based on bucket background
+            if (bucket.color) {
+                bucketMenuBtn.style.setProperty('--hover-color', isDarkBackground ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)');
+            }
+            bucketMenuBtn.onclick = (evt) => {
+                evt.stopPropagation();
+                this.showBucketContextMenu(evt, bucket, columnHeader);
             };
 
-            // Context menu for bucket actions
+            // Context menu for bucket actions (right-click)
             columnHeader.oncontextmenu = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -600,14 +614,9 @@ export class BoardView extends ItemView {
         const columnHeader = column.createDiv("planner-board-column-header");
 
         const headerTitle = columnHeader.createDiv("planner-board-column-title");
-        headerTitle.textContent = bucketName;
-        headerTitle.contentEditable = "false";
-
-        // Double-click to rename
-        headerTitle.ondblclick = (e) => {
-            e.stopPropagation();
-            this.startRenameUnassignedBucket(headerTitle);
-        };
+        
+        // Create editable bucket name (same pattern as grid view task titles)
+        this.createEditableUnassignedBucketName(headerTitle);
 
         // Context menu for rename
         columnHeader.oncontextmenu = (e) => {
@@ -739,6 +748,130 @@ export class BoardView extends ItemView {
                 titleElement.blur();
             }
         };
+    }
+
+    private createEditableBucketName(container: HTMLElement, bucket: BoardBucket): void {
+        container.empty();
+        const span = container.createEl("span", { text: bucket.name });
+        span.classList.add("planner-editable");
+
+        const openEditor = (e: MouseEvent) => {
+            e.stopPropagation();
+            
+            span.contentEditable = "true";
+            span.classList.add("planner-editing");
+            
+            setTimeout(() => {
+                span.focus();
+                // Place cursor at end of text
+                const range = document.createRange();
+                range.selectNodeContents(span);
+                range.collapse(false); // false = collapse to end
+                const sel = window.getSelection();
+                sel?.removeAllRanges();
+                sel?.addRange(range);
+            }, 0);
+
+            const save = async () => {
+                const newValue = span.textContent?.trim() || bucket.name;
+                span.contentEditable = "false";
+                span.classList.remove("planner-editing");
+                
+                if (newValue !== bucket.name) {
+                    bucket.name = newValue;
+                    span.textContent = newValue;
+                    await this.saveBuckets();
+                } else {
+                    span.textContent = bucket.name;
+                }
+            };
+
+            const cancel = () => {
+                span.contentEditable = "false";
+                span.classList.remove("planner-editing");
+                span.textContent = bucket.name;
+            };
+
+            span.onblur = () => void save();
+            span.onkeydown = (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    span.blur();
+                }
+                if (e.key === "Escape") {
+                    e.preventDefault();
+                    cancel();
+                }
+            };
+        };
+
+        span.onclick = openEditor;
+    }
+
+    private createEditableUnassignedBucketName(container: HTMLElement): void {
+        const pluginAny = this.plugin as any;
+        const settings = pluginAny.settings || {};
+        const activeProjectId = settings.activeProjectId;
+        const projects = settings.projects || [];
+        const activeProject = projects.find((p: any) => p.id === activeProjectId);
+        let currentName = activeProject?.unassignedBucketName || "📋 Unassigned";
+
+        container.empty();
+        const span = container.createEl("span", { text: currentName });
+        span.classList.add("planner-editable");
+
+        const openEditor = (e: MouseEvent) => {
+            e.stopPropagation();
+            
+            span.contentEditable = "true";
+            span.classList.add("planner-editing");
+            
+            setTimeout(() => {
+                span.focus();
+                // Place cursor at end of text
+                const range = document.createRange();
+                range.selectNodeContents(span);
+                range.collapse(false); // false = collapse to end
+                const sel = window.getSelection();
+                sel?.removeAllRanges();
+                sel?.addRange(range);
+            }, 0);
+
+            const save = async () => {
+                const newValue = span.textContent?.trim() || currentName;
+                span.contentEditable = "false";
+                span.classList.remove("planner-editing");
+                
+                if (newValue !== currentName && activeProject) {
+                    activeProject.unassignedBucketName = newValue;
+                    await this.plugin.saveSettings();
+                    currentName = newValue;
+                    span.textContent = newValue;
+                } else {
+                    span.textContent = currentName;
+                }
+            };
+
+            const cancel = () => {
+                span.contentEditable = "false";
+                span.classList.remove("planner-editing");
+                span.textContent = currentName;
+            };
+
+            span.onblur = () => void save();
+            span.onkeydown = (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    span.blur();
+                }
+                if (e.key === "Escape") {
+                    e.preventDefault();
+                    cancel();
+                }
+            };
+        };
+
+        span.onclick = openEditor;
     }
 
     private showBucketContextMenu(e: MouseEvent, bucket: BoardBucket, header: HTMLElement) {

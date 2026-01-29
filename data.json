@@ -33,21 +33,23 @@
         },
         "unassignedBucketName": "Backlog",
         "createdDate": "2026-01-12T21:50:10.880Z",
-        "lastUpdatedDate": "2026-01-25T16:17:31.700Z"
+        "lastUpdatedDate": "2026-01-29T12:07:17.617Z"
       },
       {
         "id": "b11b178b-baf8-4c28-80db-4330a74c1d65",
         "name": "Tutorials",
         "createdDate": "2026-01-23T18:17:19.333Z",
-        "lastUpdatedDate": "2026-01-25T16:20:04.429Z",
+        "lastUpdatedDate": "2026-01-29T12:07:17.380Z",
         "buckets": [
           {
             "id": "afa26cb7-5d78-4581-94c4-65a965ef7a1e",
-            "name": "To Do"
+            "name": "To Do",
+            "color": "#0078d4"
           },
           {
             "id": "682eb1f0-f99c-4096-9025-a883bbf251f5",
-            "name": "In Progress"
+            "name": "In Progress",
+            "color": "#5c2d91"
           },
           {
             "id": "b985d8b1-da84-4431-96e8-f67c29df5f22",
@@ -96,6 +98,16 @@
         "id": "12bd3120-3aec-4bc7-a32f-7dfc49297c2d",
         "name": "update",
         "color": "#f73ba9"
+      },
+      {
+        "id": "e8ff7182-d676-44b2-a773-07749a6afbd9",
+        "name": "social",
+        "color": "#bb3bf7"
+      },
+      {
+        "id": "7989b925-1f23-4cad-bf87-22be40d1981a",
+        "name": "tutorial",
+        "color": "#483bf7"
       }
     ],
     "availableStatuses": [
@@ -155,12 +167,19 @@
     "dailyNoteTagPattern": "#planner",
     "dailyNoteScanFolders": [],
     "dailyNoteDefaultProject": "de2ed79d-b1f3-473d-a3dd-d3640cb89c54",
+    "ganttLeftColumnWidth": 380,
+    "showRibbonIconGrid": true,
+    "showRibbonIconDashboard": true,
+    "showRibbonIconBoard": true,
+    "showRibbonIconGraph": false,
+    "showRibbonIconDailyNoteScan": true,
     "gridViewColumnWidths": {
-      "status": 153,
-      "title": 328,
+      "status": 134,
+      "title": 305,
       "priority": 69,
       "tags": 76,
-      "bucket": 161
+      "bucket": 161,
+      "start": 101
     },
     "gridViewSortKey": "Manual",
     "gridViewSortDirection": "asc",
@@ -501,7 +520,7 @@
           "cfc49091-140c-4b0d-8d54-b812dbf02db5"
         ],
         "description": "---\n*Task from Project: Project Planner*",
-        "lastModifiedDate": "2026-01-24"
+        "lastModifiedDate": "2026-01-28"
       },
       {
         "id": "403083d7-f92a-4e64-af33-1601358e5aca",
@@ -1988,6 +2007,1094 @@
             "type": "obsidian"
           }
         ]
+      },
+      {
+        "id": "daily-task-0471371a-fa0b-4221-9d9e-da6821354d53",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-26",
+        "lastModifiedDate": "2026-01-26",
+        "links": [
+          {
+            "id": "f9b804a8-a9e9-4b4c-b76b-96fc8d93c9ed",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-01329e56-54af-4268-bc4c-c62287f25641",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-26",
+        "lastModifiedDate": "2026-01-26",
+        "links": [
+          {
+            "id": "e22387f8-9a0c-4fd2-b23f-4d5ee891445a",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-02ce483e-3a37-408b-a68c-c1123fa00ac4",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "4e1928b6-1d6a-40b7-9c84-7de12d3adeab",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-c3ac281e-2a15-420d-9567-f7b1f70bd889",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "fffc61bb-77c9-42ee-9f50-b9d26590cdfc",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-9270784d-10d2-4231-8ecd-ff3b2103afdf",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "def2e5e3-698d-4473-b860-5a4d86e98ccc",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-4427ab86-30e3-4acc-9c18-775c8c14c674",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "a1c35424-9624-4585-a08e-fe9821c13051",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-e27f5b0e-6a44-42ac-9d88-1ed1113b1031",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "5af2ca8a-24db-4271-9e2c-bf8fea386170",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-93dfd9d7-28a0-449f-bef3-b8793972c77e",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "b54a6c45-9d16-4bca-9fe8-6dfce3a12aa6",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-6a8b158b-3769-47c8-a6c4-46d6f0b1e0a2",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "634baf59-483d-4498-bb83-5ee26c403297",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-8435b068-6e25-4626-9e28-993e3f5319c0",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "e0bddfef-abe7-4177-9878-005fa327a137",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-bedce918-1398-43cc-81dc-ff12d1aeedea",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "119cda4c-4344-43a7-8c66-14b20c9b88ed",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-89916601-c770-47a3-9811-524fb2381926",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "97a3441a-e68e-4d46-93fa-000387206665",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-dbb68bba-32a6-4f00-8e7c-5b3b0d439b67",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "63bd39ef-1f97-45f4-8bd1-73c10da45d53",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-591ba87c-84d2-43da-82c8-241228ae183d",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "faf9678e-33f5-455a-975c-09595c447e7f",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-5a6d22de-c660-4e72-83c7-06e7dfaaa8d3",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "b1879885-3772-465f-b76a-384eda83f157",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-cc62b05a-24aa-465b-af06-834f2c4d7752",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "8de13d0d-5c19-4b53-ace1-d73571f19184",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-63a1a56b-79d6-4009-b646-22f3f5850d2f",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "ad6cb19f-b5bc-45cb-94c1-7b0ff3a564a6",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-87b0c06d-eb29-4575-876c-28cf1aa1543f",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "87eafcc2-2ccf-40ea-a247-3c825998da7b",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-aed36d37-3d86-4b2a-aa91-edbeabd353cb",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "5a8570c5-91a1-4a82-b787-27ebb496f92a",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-a4520607-c3dc-4e79-97cc-bfdfd308df33",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "083e7067-78ee-4dcf-b6ae-09c8328e8fa5",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-8db7bbec-2f55-440f-9b46-face607b882b",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "1e7afffe-0d69-4e0f-abbf-c73b4d9c3e39",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-9da96016-aef2-49f6-bf64-73c71f66abe0",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "3d680555-4b01-4462-8016-0b289864faf3",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-1bcb5503-15af-476a-9b46-8d5745671901",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "9e87a9ae-4339-4e82-8ff8-a74b1d7d014b",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-ff244c03-c4b3-45f2-a294-5c7cf4bfa63a",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "ae87a0b2-8798-4ddb-9115-649b285fe099",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-bb1c0dd6-04e2-4ca5-a93a-26c7999d7082",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "3546d419-df6b-4282-8df3-8ee5b299a9ed",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-862acaf5-533f-4ae7-b2b5-52e6f6e7967b",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "81fdb596-cb91-4b77-86f8-49d569567b10",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-6716fc8e-e9cf-47fa-86ee-74bc1cde42a2",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "0503078b-650a-4a44-aac5-f1aae3d954da",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-23fbf418-3cbd-4ece-872d-bdb3d8be185c",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "3bd251fa-7fbe-47a0-b39f-857fa4ede5b2",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-04298fae-e01a-4e8e-bc3c-74f28970ede8",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "5e8c59c7-15d8-4b8b-882f-d9123efc7730",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-0c0f8439-32a3-4480-a77a-4c6534079d7f",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "efb82856-0e0e-45b5-9c88-ac9911406cae",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-406b7f98-2e69-4da4-b718-8259dbcec730",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "a68d7359-caa8-4305-82f2-52a137a4810d",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-de28f552-3024-4596-a123-fdd293d80fa0",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "1e0a51cd-22fb-48ea-be6d-ab56aac5d08f",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-7d441166-9ea5-440e-95ba-aeb99d4e1672",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "64154a0c-e5e7-47ea-a943-302ac2dd83c1",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-d572fc4c-ab82-46e0-bba6-51290d8baf0b",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "23e0daeb-dd29-482f-924b-7b0e14a59ce1",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-330a1473-8053-46ef-a022-8b0af9e30662",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "4751a4ed-82e8-437c-8164-b12c110e5742",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-19b2e914-cc93-4a47-81b9-dd55d0c8ca4c",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "0a8c4c30-debf-41bb-a030-67e0ee845e5b",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-c910fcd4-cb56-4f5c-a1c2-9895fa3d9dba",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "caf5564c-facf-47f9-8fef-fce8e947ee32",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-0b2a61a1-f2c3-40d7-8fa0-4a11c1bbdb45",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "fa6ff96c-47a0-45aa-a409-44dd73bad69b",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-29a782be-1a99-436b-bbeb-dcb46eaf87dc",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "1d22d980-78c9-4252-89a1-2e69fa66f0a8",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-80762f4a-247c-4241-a173-e5f39793f3cc",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "85c6bd50-a289-4a27-8304-63c8801bc024",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-75e9dc98-5b01-4d82-8f3e-f434e972c9bd",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "54f7fe53-8cf6-46c7-9af0-8695041c9db6",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-67e7d471-765e-4471-a038-6a235b0a982e",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "047c99f2-717e-4a59-a16e-0a0b3b03e064",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-712cab11-3e3f-4402-9fb4-d376fe4cac4f",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "1edab877-07c0-40cb-96c3-4304ec035d10",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-f519d7bf-7225-475c-9a0f-ca179be784a5",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "b5afc2e0-8fb9-42a0-ae80-4c961b0e9b41",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-f524973d-620c-4301-8419-b43d356fd388",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "e9348b33-00fa-43c3-9c3e-887b142bd2cc",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-40c3c12f-c1ce-40b4-98c5-3b4629107acf",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "659e97b8-8a65-40b8-a873-8d24aae945a3",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-99d85131-be56-4383-9000-89d9b90fdda4",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "131975a4-4bb6-4c08-97d5-f85ecebb89e4",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-aacd90f9-e374-4f4e-a086-14fc40fc715a",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "197b99ff-f6bd-4c8d-a995-1739946f83d1",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-53c6b329-7266-4eda-8b64-f52a7db385c6",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "e229af15-3a62-48d4-a764-85f41292a6b3",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-ae36252b-f0f4-44bd-87e7-b9d6db8ee6ca",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "7a25c457-0ed8-4027-a6f0-85b629d9bf55",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-a08440ab-7789-4941-951b-03ceceaced8a",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "5e8ca90c-555d-4c50-a068-37fa29b79258",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-8ba76031-9a08-4f2d-845b-8bbc6789b3c3",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "8b537ccb-85a2-470e-8cc8-0b7b2ca56b04",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-e26b6ab7-0e3f-42cc-a210-09c4ec93274a",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "abad9a58-a85b-420b-95c8-d2ccf5d32180",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-65212fc5-1d79-456b-9256-a469f0f6a188",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "1c4164bf-521d-4ce3-b604-fa0eb86e2cb6",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-f8f5184e-e349-43bb-989a-3055b7253dda",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "fd78e0a5-072a-4b39-b3b6-24503f291323",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-13dc17e8-5a86-4794-b56d-562b225e003e",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "45c59f66-cc97-4e32-8319-c7453f6a70a4",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-dbabee16-afb6-4ace-af94-aace1b6ca532",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "50f6da22-753b-4b61-95d1-9e3e58efabe7",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-51e34b05-97f7-4c76-91f5-5a620dfdc84b",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "links": [
+          {
+            "id": "292237ce-ed3f-4fe0-9beb-d8b3e685d869",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-38a4974c-74d9-49fb-a2ef-21111e760a16",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-29",
+        "lastModifiedDate": "2026-01-29",
+        "links": [
+          {
+            "id": "9d204edf-29b9-41b2-9a8e-b4a594a012c6",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-a7da52cd-6de5-4535-936f-0868bb39c633",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-29",
+        "lastModifiedDate": "2026-01-29",
+        "links": [
+          {
+            "id": "c5df7301-eeea-4c31-89eb-c0cb09e7b41a",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-6c2c7f65-c85d-441d-95e9-b36bbce50cae",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-29",
+        "lastModifiedDate": "2026-01-29",
+        "links": [
+          {
+            "id": "9c668e00-3ad9-4f86-8a8c-681fc76c9501",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-3ab0763e-132d-439e-9f62-404c3cdf81b1",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-29",
+        "lastModifiedDate": "2026-01-29",
+        "links": [
+          {
+            "id": "d4e77a4d-97a9-4cba-9969-138482fa5f8f",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-72d49953-cf14-4a44-a803-5f51e459e6ec",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-29",
+        "lastModifiedDate": "2026-01-29",
+        "links": [
+          {
+            "id": "e2a8d484-3e00-42dd-a668-f56d30add2bd",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
+      },
+      {
+        "id": "daily-task-b48aecec-df4e-42a8-82b1-3bc38307fe00",
+        "title": "Configure domain to be used with GitHub Pages",
+        "completed": false,
+        "status": "Not Started",
+        "description": "Imported from: [[Domain]]",
+        "createdDate": "2026-01-29",
+        "lastModifiedDate": "2026-01-29",
+        "links": [
+          {
+            "id": "7c4838c6-9114-405e-a875-2e29216f51d6",
+            "title": "Domain",
+            "url": "Obsidian Project Planner/Domain.md",
+            "type": "obsidian"
+          }
+        ]
       }
     ],
     "bb29a79d-acfa-41cb-8ff7-5dda36ff6759": [
@@ -2040,7 +3147,7 @@
         "parentId": null,
         "collapsed": false,
         "createdDate": "2026-01-23",
-        "lastModifiedDate": "2026-01-24",
+        "lastModifiedDate": "2026-01-28",
         "startDate": "2026-01-23",
         "description": "---\n*Task from Project: Tutorials*",
         "dueDate": "2026-01-27"
@@ -2054,7 +3161,7 @@
         "parentId": "6c53ef3a-f438-492f-94ca-c790155e96c3",
         "collapsed": false,
         "createdDate": "2026-01-23",
-        "lastModifiedDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-28",
         "startDate": "2026-01-23",
         "description": "---\n*Task from Project: Tutorials*",
         "bucketId": "afa26cb7-5d78-4581-94c4-65a965ef7a1e"
@@ -2068,8 +3175,24 @@
         "parentId": null,
         "collapsed": false,
         "createdDate": "2026-01-23",
-        "lastModifiedDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-29",
         "startDate": "2026-01-23",
+        "description": "---\n*Task from Project: Tutorials*",
+        "tags": [
+          "cfc49091-140c-4b0d-8d54-b812dbf02db5"
+        ]
+      },
+      {
+        "id": "db66907a-b547-49c8-8e35-a4a99bb5c72b",
+        "title": "Change New Task",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": null,
+        "collapsed": false,
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "startDate": "2026-01-28",
         "description": "---\n*Task from Project: Tutorials*"
       },
       {
@@ -2081,7 +3204,7 @@
         "parentId": null,
         "collapsed": false,
         "createdDate": "2026-01-23",
-        "lastModifiedDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-28",
         "startDate": "2026-01-23",
         "description": "---\n*Task from Project: Tutorials*"
       },
@@ -2108,11 +3231,14 @@
         "parentId": "d895161b-c3c7-475d-9a91-662d1c07688a",
         "collapsed": false,
         "createdDate": "2026-01-25",
-        "lastModifiedDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-29",
         "startDate": "2026-01-25",
         "description": "A tutorial that shows the user how to rename and change the colour of a bucket.",
         "cardPreview": "description",
-        "bucketId": "afa26cb7-5d78-4581-94c4-65a965ef7a1e"
+        "bucketId": "afa26cb7-5d78-4581-94c4-65a965ef7a1e",
+        "tags": [
+          "7989b925-1f23-4cad-bf87-22be40d1981a"
+        ]
       },
       {
         "id": "43f6cc10-0840-449b-a909-15bbc7513360",
@@ -2123,7 +3249,7 @@
         "parentId": null,
         "collapsed": false,
         "createdDate": "2026-01-23",
-        "lastModifiedDate": "2026-01-23",
+        "lastModifiedDate": "2026-01-28",
         "startDate": "2026-01-23",
         "description": "---\n*Task from Project: Tutorials*"
       },
@@ -2169,19 +3295,19 @@
       {
         "id": "61d039de-c12b-4c26-9e7b-833a60e65b6f",
         "title": "YouTube Videos",
-        "status": "Not Started",
+        "status": "In Progress",
         "priority": "Medium",
         "completed": false,
         "parentId": null,
         "collapsed": false,
         "createdDate": "2026-01-25",
-        "lastModifiedDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-26",
         "startDate": "2026-01-25",
         "description": "YouTube videos that showcase Project Planner.",
         "cardPreview": "description",
         "links": [
           {
-            "id": "2c1ba241-5cf1-4534-9ae1-e79c5f321e08",
+            "id": "52c5e7e3-8933-4c55-a57a-4ce36ff380fe",
             "title": "https://youtube.com/@ArctykDev",
             "url": "https://youtube.com/@ArctykDev",
             "type": "external"
@@ -2191,19 +3317,19 @@
       {
         "id": "f3f88ef1-39cb-4688-9f54-1803ab739951",
         "title": "Setup Channel",
-        "status": "Not Started",
+        "status": "In Progress",
         "priority": "Medium",
         "completed": false,
         "parentId": "61d039de-c12b-4c26-9e7b-833a60e65b6f",
         "collapsed": false,
         "createdDate": "2026-01-25",
-        "lastModifiedDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-26",
         "startDate": "2026-01-25",
         "cardPreview": "description",
         "description": "Setup YouTube channel description, avatar, profile, etc.",
         "links": [
           {
-            "id": "388fd6e4-fc19-471c-800a-87443d303a76",
+            "id": "8e706301-5104-44d0-9939-5725d5f5e96e",
             "title": "https://youtube.com/@ArctykDev",
             "url": "https://youtube.com/@ArctykDev",
             "type": "external"
@@ -2211,29 +3337,102 @@
         ],
         "subtasks": [
           {
-            "id": "1fc8aacc-0a13-492d-9ca2-0d522e496632",
+            "id": "327ca626-d1f7-4218-8901-7da60d6dc9c0",
             "title": "Add channel description",
             "completed": false
           },
           {
-            "id": "04acc783-714c-4701-b624-dbfd78156006",
+            "id": "6d188072-076f-47f1-ad34-e619fae784ef",
             "title": "Add channel avatar",
             "completed": false
           }
         ],
-        "bucketId": "afa26cb7-5d78-4581-94c4-65a965ef7a1e"
+        "bucketId": "682eb1f0-f99c-4096-9025-a883bbf251f5",
+        "tags": [
+          "e8ff7182-d676-44b2-a773-07749a6afbd9"
+        ]
       },
       {
         "id": "e3746ab4-faea-4918-99f7-3e616fd3f295",
         "title": "Research and download screen recorder",
-        "status": "Not Started",
+        "status": "In Progress",
         "priority": "Medium",
         "completed": false,
         "parentId": "61d039de-c12b-4c26-9e7b-833a60e65b6f",
         "collapsed": false,
         "createdDate": "2026-01-25",
-        "lastModifiedDate": "2026-01-25",
+        "lastModifiedDate": "2026-01-28",
         "startDate": "2026-01-25",
+        "description": "Research, review and choose a screen recorder for showing desktop apps. \n\n**Criteria:**\n- Should be available on all Operating Systems\n- No watermarks\n- Show in-screen display for content and presenter\n- Open-source preferrable\n- No cost or low cost\n- Easy YouTube formats\n\nSee checklist for options.",
+        "cardPreview": "checklist",
+        "subtasks": [
+          {
+            "id": "68a213ce-96ee-40be-983c-b2a459362195",
+            "title": "Clip Champ",
+            "completed": false
+          },
+          {
+            "id": "6ed7a28c-b596-4e18-b42f-b8f250545366",
+            "title": "Snipping Tool & Game Bar",
+            "completed": false
+          },
+          {
+            "id": "77cd17e2-033f-4ad5-8340-428be6b8564d",
+            "title": "Boom",
+            "completed": false
+          },
+          {
+            "id": "2c88cb26-7043-4090-82dc-e0fe6ed97eef",
+            "title": "ShareX",
+            "completed": false
+          },
+          {
+            "id": "c6b0cc32-bb66-4bbc-92c7-effca928145b",
+            "title": "OBS Studio",
+            "completed": false
+          },
+          {
+            "id": "b7c7d7d5-d6cb-4d6b-9b2c-444cc580bcc3",
+            "title": "Debut",
+            "completed": false
+          },
+          {
+            "id": "8ba29c94-5f08-42e4-879c-5fd358c3b3a2",
+            "title": "Screenify",
+            "completed": false
+          }
+        ],
+        "bucketId": "682eb1f0-f99c-4096-9025-a883bbf251f5",
+        "tags": [
+          "e8ff7182-d676-44b2-a773-07749a6afbd9",
+          "7989b925-1f23-4cad-bf87-22be40d1981a"
+        ],
+        "links": [
+          {
+            "id": "51f39b2c-95e0-4beb-87d3-b2818dc8a08c",
+            "title": "https://obsproject.com/",
+            "url": "https://obsproject.com/",
+            "type": "external"
+          },
+          {
+            "id": "d552a81a-011a-49a3-b0ce-e249db2fecd7",
+            "title": "https://www.nchsoftware.com/capture/index.html",
+            "url": "https://www.nchsoftware.com/capture/index.html",
+            "type": "external"
+          }
+        ]
+      },
+      {
+        "id": "d1ebcee8-952a-4167-8186-2f5f7e763052",
+        "title": "New Task",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": null,
+        "collapsed": false,
+        "createdDate": "2026-01-28",
+        "lastModifiedDate": "2026-01-28",
+        "startDate": "2026-01-28",
         "description": "---\n*Task from Project: Tutorials*"
       }
     ]

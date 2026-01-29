@@ -22,7 +22,7 @@ export interface PlannerProject {
 export interface ProjectPlannerSettings {
   projects: PlannerProject[];
   activeProjectId: string;
-  defaultView: "grid" | "board" | "gantt";
+  defaultView: "grid" | "board" | "gantt" | "dashboard";
   showCompleted: boolean;
   openLinksInNewTab: boolean;
   openViewsInNewTab: boolean;
@@ -41,6 +41,16 @@ export interface ProjectPlannerSettings {
   dailyNoteTagPattern: string; // Tag pattern for identifying tasks (e.g., "#planner" or "#task/project")
   dailyNoteScanFolders: string[]; // Folders to scan for tagged tasks (empty = all notes)
   dailyNoteDefaultProject: string; // Default project ID for tasks without specific project tag
+
+  // View-specific settings
+  ganttLeftColumnWidth: number; // Width of left column in Gantt view (pixels)
+
+  // Ribbon icon visibility settings
+  showRibbonIconGrid: boolean; // Show ribbon icon for Grid view
+  showRibbonIconDashboard: boolean; // Show ribbon icon for Dashboard view
+  showRibbonIconBoard: boolean; // Show ribbon icon for Board view
+  showRibbonIconGraph: boolean; // Show ribbon icon for Dependency Graph view
+  showRibbonIconDailyNoteScan: boolean; // Show ribbon icon for Daily Note scanning
 }
 
 export const DEFAULT_SETTINGS: ProjectPlannerSettings = {
@@ -71,6 +81,12 @@ export const DEFAULT_SETTINGS: ProjectPlannerSettings = {
   dailyNoteTagPattern: "#planner",
   dailyNoteScanFolders: [],
   dailyNoteDefaultProject: "",
+  ganttLeftColumnWidth: 300,
+  showRibbonIconGrid: true,
+  showRibbonIconDashboard: false,
+  showRibbonIconBoard: false,
+  showRibbonIconGraph: false,
+  showRibbonIconDailyNoteScan: false,
 };
 
 export class ProjectPlannerSettingTab extends PluginSettingTab {
@@ -99,7 +115,7 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
     const changelogLink = versionEl.createEl("a", {
       text: "Changelog",
       cls: "planner-changelog-link",
-      href: "https://projectplanner.md/changelog"
+      href: "https://github.com/ArctykDev/obsidian-project-planner/releases"
     });
     changelogLink.setAttribute("target", "_blank");
     changelogLink.setAttribute("rel", "noopener noreferrer");
@@ -166,6 +182,7 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
           .addOption("grid", "Grid view")
           .addOption("board", "Board view")
           .addOption("gantt", "Timeline (Gantt) view")
+          .addOption("dashboard", "Dashboard view")
           .setValue(this.plugin.settings.defaultView)
           .onChange(async (value) => {
             this.plugin.settings.defaultView = value as any;
@@ -193,6 +210,75 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.openViewsInNewTab)
           .onChange(async (value) => {
             this.plugin.settings.openViewsInNewTab = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // -----------------------------------------------------------------------
+    // Ribbon Icons Section
+    // -----------------------------------------------------------------------
+    new Setting(containerEl).setName("Ribbon icons").setHeading();
+
+    new Setting(containerEl)
+      .setName("Ribbon icons visibility")
+      .setDesc("Choose which ribbon icons to display in the left sidebar. Changes require reloading Obsidian to take effect.");
+
+    new Setting(containerEl)
+      .setName("Grid view icon")
+      .setDesc("Show ribbon icon for opening Grid view")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showRibbonIconGrid)
+          .onChange(async (value) => {
+            this.plugin.settings.showRibbonIconGrid = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Dashboard view icon")
+      .setDesc("Show ribbon icon for opening Dashboard view")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showRibbonIconDashboard)
+          .onChange(async (value) => {
+            this.plugin.settings.showRibbonIconDashboard = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Board view icon")
+      .setDesc("Show ribbon icon for opening Board view")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showRibbonIconBoard)
+          .onChange(async (value) => {
+            this.plugin.settings.showRibbonIconBoard = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Dependency Graph icon")
+      .setDesc("Show ribbon icon for opening Dependency Graph view")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showRibbonIconGraph)
+          .onChange(async (value) => {
+            this.plugin.settings.showRibbonIconGraph = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Daily Note scan icon")
+      .setDesc("Show ribbon icon for scanning daily notes (only visible when daily note sync is enabled)")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showRibbonIconDailyNoteScan)
+          .onChange(async (value) => {
+            this.plugin.settings.showRibbonIconDailyNoteScan = value;
             await this.plugin.saveSettings();
           })
       );

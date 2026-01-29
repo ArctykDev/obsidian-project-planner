@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, Notice } from "obsidian";
+import { Plugin, WorkspaceLeaf, Notice, TFile } from "obsidian";
 
 import {
   ProjectPlannerSettingTab,
@@ -66,25 +66,33 @@ export default class ProjectPlannerPlugin extends Plugin {
       await this.initializeDailyNoteScanner();
     }
 
-    // Ribbon icons
-    this.addRibbonIcon("calendar-check", "Open Project Planner", async () => {
-      await this.activateView();
-    });
+    // Ribbon icons (conditionally added based on settings)
+    if (this.settings.showRibbonIconGrid) {
+      this.addRibbonIcon("calendar-check", "Open Project Planner", async () => {
+        await this.activateView();
+      });
+    }
 
-    this.addRibbonIcon("layout-dashboard", "Open Dashboard", async () => {
-      await this.activateDashboardView();
-    });
+    if (this.settings.showRibbonIconDashboard) {
+      this.addRibbonIcon("layout-dashboard", "Open Dashboard", async () => {
+        await this.activateDashboardView();
+      });
+    }
 
-    this.addRibbonIcon("layout-grid", "Open Board View", async () => {
-      await this.activateBoardView();
-    });
+    if (this.settings.showRibbonIconBoard) {
+      this.addRibbonIcon("layout-grid", "Open Board View", async () => {
+        await this.activateBoardView();
+      });
+    }
 
-    this.addRibbonIcon("git-fork", "Open Dependency Graph", async () => {
-      await this.openDependencyGraph();
-    });
+    if (this.settings.showRibbonIconGraph) {
+      this.addRibbonIcon("git-fork", "Open Dependency Graph", async () => {
+        await this.openDependencyGraph();
+      });
+    }
 
-    // Add ribbon icon for daily note scanning (if enabled)
-    if (this.settings.enableDailyNoteSync) {
+    // Add ribbon icon for daily note scanning (if enabled in both settings)
+    if (this.settings.enableDailyNoteSync && this.settings.showRibbonIconDailyNoteScan) {
       this.addRibbonIcon("scan", "Scan Daily Notes for Tasks", async () => {
         await this.dailyNoteScanner.quickScan();
       });
@@ -530,45 +538,51 @@ export default class ProjectPlannerPlugin extends Plugin {
 
     for (const task of tasks) {
       const fileName = `${folderPath}/${task.title.replace(/[\\/:*?"<>|]/g, '_')}.md`;
-      const existingFile = this.app.vault.getAbstractFileByPath(fileName);
+      
+      try {
+        const existingFile = this.app.vault.getAbstractFileByPath(fileName);
 
-      let content = `# ${task.title}\n\n`;
-      content += `**Status**: ${task.status}\n`;
-      if (task.priority) content += `**Priority**: ${task.priority}\n`;
-      if (task.startDate) content += `**Start Date**: ${task.startDate}\n`;
-      if (task.dueDate) content += `**Due Date**: ${task.dueDate}\n`;
-      content += `\n---\n\n`;
-      if (task.description) content += `${task.description}\n\n`;
+        let content = `# ${task.title}\n\n`;
+        content += `**Status**: ${task.status}\n`;
+        if (task.priority) content += `**Priority**: ${task.priority}\n`;
+        if (task.startDate) content += `**Start Date**: ${task.startDate}\n`;
+        if (task.dueDate) content += `**Due Date**: ${task.dueDate}\n`;
+        content += `\n---\n\n`;
+        if (task.description) content += `${task.description}\n\n`;
 
-      if (task.dependencies && task.dependencies.length > 0) {
-        content += `## Dependencies\n\n`;
-        task.dependencies.forEach(dep => {
-          const depTask = tasks.find(t => t.id === dep.predecessorId);
-          if (depTask) {
-            content += `- ${dep.type}: [[${depTask.title}]]\n`;
-          }
-        });
-        content += `\n`;
-      }
+        if (task.dependencies && task.dependencies.length > 0) {
+          content += `## Dependencies\n\n`;
+          task.dependencies.forEach(dep => {
+            const depTask = tasks.find(t => t.id === dep.predecessorId);
+            if (depTask) {
+              content += `- ${dep.type}: [[${depTask.title}]]\n`;
+            }
+          });
+          content += `\n`;
+        }
 
-      if (task.links && task.links.length > 0) {
-        content += `## Links\n\n`;
-        task.links.forEach(link => {
-          if (link.type === "obsidian") {
-            content += `- [[${link.url}]]\n`;
-          } else {
-            content += `- [${link.url}](${link.url})\n`;
-          }
-        });
-        content += `\n`;
-      }
+        if (task.links && task.links.length > 0) {
+          content += `## Links\n\n`;
+          task.links.forEach(link => {
+            if (link.type === "obsidian") {
+              content += `- [[${link.url}]]\n`;
+            } else {
+              content += `- [${link.url}](${link.url})\n`;
+            }
+          });
+          content += `\n`;
+        }
 
-      content += `\n---\n*Task from Project: ${activeProject.name}*\n`;
+        content += `\n---\n*Task from Project: ${activeProject.name}*\n`;
 
-      if (existingFile) {
-        await this.app.vault.modify(existingFile as any, content);
-      } else {
-        await this.app.vault.create(fileName, content);
+        if (existingFile instanceof TFile) {
+          await this.app.vault.modify(existingFile, content);
+        } else {
+          await this.app.vault.create(fileName, content);
+        }
+      } catch (error) {
+        console.error(`Failed to create/update task note: ${fileName}`, error);
+        new Notice(`Failed to create task note: ${task.title}`);
       }
     }
   }

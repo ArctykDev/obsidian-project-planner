@@ -22,17 +22,14 @@ export function renderPlannerHeader(
         cls: "planner-project-select",
     });
 
-    const settings: any = (plugin as any).settings || {};
-    const projects = (settings.projects as { id: string; name: string }[]) || [];
-    let activeProjectId = settings.activeProjectId as string | undefined;
+    const settings = plugin.settings;
+    const projects = settings.projects || [];
+    let activeProjectId = settings.activeProjectId;
 
     if (!activeProjectId && projects.length > 0) {
         activeProjectId = projects[0].id;
         settings.activeProjectId = activeProjectId;
-        (plugin as any).settings = settings;
-        if (typeof (plugin as any).saveSettings === "function") {
-            void (plugin as any).saveSettings();
-        }
+        void plugin.saveSettings();
     }
 
     if (projects.length === 0) {
@@ -47,13 +44,8 @@ export function renderPlannerHeader(
         projectSelect.onchange = async () => {
             const newId = projectSelect.value;
             settings.activeProjectId = newId;
-            (plugin as any).settings = settings;
-            if (typeof (plugin as any).saveSettings === "function") {
-                await (plugin as any).saveSettings();
-            }
-            if ((plugin as any).taskStore) {
-                await (plugin as any).taskStore.load();
-            }
+            await plugin.saveSettings();
+            await plugin.taskStore.load();
             if (typeof options.onProjectChange === "function") {
                 await options.onProjectChange();
             }
@@ -67,31 +59,31 @@ export function renderPlannerHeader(
         cls: `planner-view-btn${options.active === "dashboard" ? " planner-view-btn-active" : ""}`,
         text: "Dashboard",
     });
-    dashboardViewBtn.onclick = async () => await (plugin as any).activateDashboardView();
+    dashboardViewBtn.onclick = async () => await plugin.activateDashboardView();
 
     const gridViewBtn = viewSwitcher.createEl("button", {
         cls: `planner-view-btn${options.active === "grid" ? " planner-view-btn-active" : ""}`,
         text: "Grid",
     });
-    gridViewBtn.onclick = async () => await (plugin as any).activateView();
+    gridViewBtn.onclick = async () => await plugin.activateView();
 
     const boardViewBtn = viewSwitcher.createEl("button", {
         cls: `planner-view-btn${options.active === "board" ? " planner-view-btn-active" : ""}`,
         text: "Board",
     });
-    boardViewBtn.onclick = async () => await (plugin as any).activateBoardView();
+    boardViewBtn.onclick = async () => await plugin.activateBoardView();
 
     const ganttViewBtn = viewSwitcher.createEl("button", {
         cls: `planner-view-btn${options.active === "gantt" ? " planner-view-btn-active" : ""}`,
         text: "Timeline",
     });
-    ganttViewBtn.onclick = async () => await (plugin as any).activateGanttView();
+    ganttViewBtn.onclick = async () => await plugin.activateGanttView();
 
     const graphViewBtn = viewSwitcher.createEl("button", {
         cls: `planner-view-btn${options.active === "graph" ? " planner-view-btn-active" : ""}`,
         text: "Graph",
     });
-    graphViewBtn.onclick = async () => await (plugin as any).openDependencyGraph();
+    graphViewBtn.onclick = async () => await plugin.openDependencyGraph();
 
     // Header actions (Add task, extra, Project Hub, Settings)
     const headerActions = header.createDiv("planner-header-actions");
@@ -101,7 +93,7 @@ export function renderPlannerHeader(
         text: "Add Task",
     });
     addBtn.onclick = async () => {
-        await (plugin as any).taskStore.addTask("New Task");
+        await plugin.taskStore.addTask("New Task");
     };
 
     if (options.buildExtraActions) {

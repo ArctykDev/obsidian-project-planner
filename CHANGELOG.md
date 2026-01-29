@@ -2,6 +2,149 @@
 
 All notable changes to Obsidian Project Planner will be documented in this file.
 
+## [0.6.7] - 2026-01-28
+
+### Added
+
+#### Board View Enhancements
+- **Bucket Menu Button**: Hover over any bucket header to reveal a "..." menu button
+  - Quick access to bucket actions (rename, change color, add bucket, delete)
+  - Matches Grid View's inline menu button pattern
+  - Right-click context menu still available for keyboard-free workflow
+- **Inline Bucket Editing**: Double-click bucket names to edit them inline
+  - Press Enter to save, Escape to cancel
+  - Works for both regular buckets and the Unassigned bucket
+  - Real-time updates with automatic save
+
+#### Enhanced Context Menu Functionality
+- **Cut, Copy, Paste Operations**: Task context menu now supports clipboard operations
+  - **Cut**: Mark a task for moving to a new location (right-click → Cut)
+  - **Copy**: Duplicate a task with all properties (right-click → Copy)
+  - **Paste**: Insert cut/copied task below current task (right-click → Paste)
+  - Cut tasks are moved and clipboard is cleared after paste
+  - Copied tasks create duplicates with all properties except dependencies
+  - Clipboard state persists across right-clicks until paste is performed
+- **Copy Link to Task**: Generate deep links to tasks
+  - Creates `obsidian://` URI for opening specific tasks
+  - Links include task ID and project ID for precise navigation
+  - Automatically copies link to clipboard with confirmation notice
+  - Works across all devices with same vault
+- **Open Markdown Task Note**: Quick access to task markdown files
+  - Opens the corresponding markdown note for synced tasks
+  - Only enabled when markdown sync is active
+  - **Auto-creates note if it doesn't exist** - no more "note not found" errors
+  - Automatically generates markdown file with full task metadata
+  - Shows "Creating task note..." notification during creation
+  - Follows project folder structure (ProjectName/TaskTitle.md)
+- **Available in Multiple Views**: Context menu enhancements available in:
+  - Grid View (hierarchical task list)
+  - Timeline/Gantt View (timeline bars and task list)
+
+#### Ribbon Icon Customization
+- **Configurable Ribbon Icons**: Users can now choose which ribbon icons to display
+  - Settings panel to toggle visibility for each view's ribbon icon
+  - Grid view icon (enabled by default)
+  - Dashboard view icon (disabled by default)
+  - Board view icon (disabled by default)
+  - Dependency Graph icon (disabled by default)
+  - Daily Note scan icon (disabled by default, requires daily note sync to be enabled)
+  - Changes take effect after reloading Obsidian
+  - Reduces sidebar clutter by hiding unused view shortcuts
+
+### Fixed
+
+#### Code Quality & Plugin Compliance
+- **Memory Leak Prevention**: Fixed memory leak in Dependency Graph View
+  - Added proper cleanup of window resize event listener
+  - Animation frame now properly cancelled and nullified on view close
+  - Event handlers use class properties instead of `(this as any)` pattern
+- **Type Safety Improvements**: Removed unsafe type assertions throughout codebase
+  - Eliminated all `(plugin as any)` assertions in Header.ts, DependencyGraphView.ts, and GanttView.ts
+  - Direct property access now enforces TypeScript strict mode checking
+  - Better IDE autocomplete and compile-time error detection
+- **Data Persistence**: Gantt view column width now uses plugin settings instead of localStorage
+  - Added `ganttLeftColumnWidth` to plugin settings
+  - Column width syncs across devices with Obsidian Sync
+  - Removed reliance on browser localStorage API
+- **Error Handling**: Added proper error handling for vault operations
+  - File creation/modification wrapped in try/catch blocks
+  - Type checking with `instanceof TFile` before modifying files
+  - User-friendly error notices instead of silent failures
+- **External Links**: Updated changelog link to GitHub releases page
+  - No longer points to non-existent projectplanner.md domain
+  - Links directly to plugin repository releases
+
+#### Timeline View Improvements
+- **Synchronized Scrolling**: Task list and timeline now scroll together vertically
+  - Scrolling the task list automatically scrolls the timeline to match
+  - Scrolling the timeline automatically scrolls the task list to match
+  - Smooth synchronized scrolling with no lag or jumping
+- **Proper Height Constraints**: Timeline view now respects viewport height
+  - Maximum height set to prevent overflow outside view
+  - Both task list and timeline scroll independently when content exceeds view height
+  - Horizontal scrolling preserved for wide timelines
+- **Improved Scrollbar Styling**: Consistent thin scrollbars across both columns
+  - Custom styled scrollbars for better visual consistency
+  - Hover effects for better interactivity
+
+### Technical Improvements
+- **Obsidian API Compliance**: All file operations use proper Obsidian vault API
+- **TypeScript Strict Mode**: Full compliance with TypeScript strict type checking
+- **Resource Cleanup**: Proper cleanup of event listeners and animation frames
+- **Build Verification**: All code compiles without errors or warnings
+
+## [0.6.6] - 2026-01-25
+
+### Added
+
+#### Settings
+- **Projects Base Path Setting**: New setting to control where project folders are created
+  - Defaults to "Project Planner"
+  - Allows organizing all projects under a common parent folder
+  - Configurable per vault
+
+### Fixed
+
+#### Dashboard View
+- **Completed Task Filtering**: Fixed completed tasks appearing in non-Completed cards
+  - Critical Priority card now excludes completed tasks
+  - High Priority stats now exclude completed tasks
+  - Overdue, Due Today, and Due This Week cards properly filter completed tasks
+- **All Projects Display**: Fixed "Show All Projects" toggle not displaying tasks
+  - Added `getAllForProject()` method to TaskStore
+  - Each project now correctly displays its own tasks when viewing all projects
+- **Bottom Stats Cards**: Converted static stats to clickable KPI cards
+  - High Priority, Has Dependencies, and Not Started are now clickable
+  - Each opens a modal showing the filtered tasks
+  - All exclude completed tasks (except Not Started which shows by status)
+- **Task Status Updates**: Added status badges to task modals with real-time updates
+  - Checking/unchecking tasks immediately updates status badge
+  - Strike-through toggles instantly
+  - Status badge uses same styling as Grid/Board views
+
+#### Grid View
+- **Subtask Indentation**: Fixed inconsistent indentation for subtasks
+  - Removed CSS override that was conflicting with JavaScript-calculated indentation
+  - Indentation now consistent at all nesting levels (8px base + 20px per level)
+  - Fixed indentation breaking when column width is reduced
+  - Added `white-space: nowrap` and proper vertical alignment
+
+#### Markdown Sync
+- **Auto-Create Task Notes**: Fixed task notes not being created automatically
+  - Added sync call to `updateTask()` method (was only in `addTask()`)
+  - Added error handling with console logging for sync failures
+  - Task notes now create/update in real-time for both new and modified tasks
+- **Folder Creation**: Fixed ENOENT errors when creating task notes
+  - Plugin now automatically creates parent folders if they don't exist
+  - No manual folder setup required
+- **Bidirectional Sync**: Fixed markdown changes not syncing back to plugin
+  - File watchers now use `projectsBasePath` setting
+  - Changes to task notes (priority, status, etc.) now sync back immediately
+  - `initialSync`, `watchProjectFolder`, and related methods updated
+- **Template Cleanup**: Removed duplicate newline before footer separator
+  - Cleaner markdown output
+  - Footer now appears as single instance
+
 ## [0.6.5] - 2026-01-22
 
 ### Added
