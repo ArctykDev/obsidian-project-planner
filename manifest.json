@@ -1,7 +1,7 @@
 {
   "id": "obsidian-project-planner",
   "name": "Project Planner",
-  "version": "0.6.7",
+  "version": "0.6.8",
   "minAppVersion": "1.5.0",
   "description": "A Microsoft Planner–style project management plugin for Obsidian with grid, board, and timeline views.",
   "author": "James Hawkins",
