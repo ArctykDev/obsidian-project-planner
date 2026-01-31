@@ -222,6 +222,10 @@ export class TaskStore {
     const task = this.tasks.find((t) => t.id === id);
     if (!task) return;
 
+    // Track old title for file rename detection
+    const oldTitle = task.title;
+    const titleChanged = partial.title !== undefined && partial.title !== oldTitle;
+
     // Bidirectional sync: status takes precedence
     if (partial.status !== undefined) {
       partial.completed = partial.status === "Completed";
@@ -239,7 +243,12 @@ export class TaskStore {
     // Sync to markdown if enabled
     if (this.plugin.settings.enableMarkdownSync && this.plugin.settings.autoCreateTaskNotes) {
       try {
-        await this.plugin.taskSync.syncTaskToMarkdown(task, this.activeProjectId);
+        // If title changed, delete old file and create new one
+        if (titleChanged) {
+          await this.plugin.taskSync.handleTaskRename(task, oldTitle, this.activeProjectId);
+        } else {
+          await this.plugin.taskSync.syncTaskToMarkdown(task, this.activeProjectId);
+        }
       } catch (error) {
         console.error("Failed to sync task to markdown:", error);
       }

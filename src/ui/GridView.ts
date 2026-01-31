@@ -44,6 +44,8 @@ export class GridView extends ItemView {
   // manual-dnd state
   private dragTargetTaskId: string | null = null;
   private dragInsertAfter: boolean = false;
+  private dragDropOnto: boolean = false; // true when dropping onto task to make it a child
+  private lastTargetRow: HTMLTableRowElement | null = null; // Track for cleanup
 
   // Column sizing + advanced sorting
   private columnWidths: Record<string, number> = {};
@@ -532,6 +534,7 @@ export class GridView extends ItemView {
         this.currentDragId = task.id;
         this.dragTargetTaskId = null;
         this.dragInsertAfter = false;
+        this.dragDropOnto = false;
 
         row.classList.add("planner-row-dragging");
         document.body.style.userSelect = "none";
@@ -558,22 +561,73 @@ export class GridView extends ItemView {
           if (!targetRow || !targetRow.dataset.taskId) {
             indicator.style.display = "none";
             this.dragTargetTaskId = null;
+            // Remove hover class from last target
+            if (this.lastTargetRow) {
+              this.lastTargetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
+              this.lastTargetRow = null;
+            }
             return;
           }
 
           const targetRect = targetRow.getBoundingClientRect();
-          const before =
-            moveEvt.clientY < targetRect.top + targetRect.height / 2;
-
-          indicator.style.display = "block";
-          indicator.style.left = `${targetRect.left}px`;
-          indicator.style.width = `${targetRect.width}px`;
-          indicator.style.top = before
-            ? `${targetRect.top}px`
-            : `${targetRect.bottom}px`;
+          const relativeY = moveEvt.clientY - targetRect.top;
+          const height = targetRect.height;
+          
+          // Divide into three zones: top 25%, middle 50%, bottom 25%
+          const topZone = height * 0.25;
+          const bottomZone = height * 0.75;
+          
+          let dropOnto = false;
+          let before = false;
+          
+          if (relativeY < topZone) {
+            // Top zone - insert before
+            before = true;
+            dropOnto = false;
+          } else if (relativeY > bottomZone) {
+            // Bottom zone - insert after
+            before = false;
+            dropOnto = false;
+          } else {
+            // Middle zone - drop onto (make child)
+            dropOnto = true;
+          }
 
           this.dragTargetTaskId = targetRow.dataset.taskId;
           this.dragInsertAfter = !before;
+          this.dragDropOnto = dropOnto;
+
+          // Update row highlighting
+          if (this.lastTargetRow !== targetRow) {
+            if (this.lastTargetRow) {
+              this.lastTargetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
+            }
+            this.lastTargetRow = targetRow;
+          }
+          
+          targetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
+          targetRow.classList.add("planner-row-drop-target");
+          if (dropOnto) {
+            targetRow.classList.add("planner-row-drop-onto");
+          }
+
+          if (dropOnto) {
+            // Hide the line indicator for "make child" - row border is enough
+            indicator.style.display = "none";
+          } else {
+            // Show thin line indicator for insert before/after (MS Planner style)
+            indicator.style.display = "block";
+            indicator.style.left = `${targetRect.left}px`;
+            indicator.style.width = `${targetRect.width}px`;
+            indicator.style.height = "2px";
+            indicator.style.top = before
+              ? `${targetRect.top - 1}px`
+              : `${targetRect.bottom - 1}px`;
+            indicator.style.backgroundColor = "var(--interactive-accent)";
+            indicator.style.border = "none";
+            indicator.style.borderRadius = "0";
+            indicator.style.opacity = "1";
+          }
         };
 
         const onUp = async (upEvt: PointerEvent) => {
@@ -589,17 +643,25 @@ export class GridView extends ItemView {
           document.body.style.userSelect = "";
           (document.body.style as any).webkitUserSelect = "";
           document.body.style.cursor = "";
+          
+          // Remove hover classes from target row
+          if (this.lastTargetRow) {
+            this.lastTargetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
+            this.lastTargetRow = null;
+          }
 
           const dragId = this.currentDragId;
           const targetId = this.dragTargetTaskId;
           const insertAfter = this.dragInsertAfter;
+          const dropOnto = this.dragDropOnto;
 
           this.currentDragId = null;
           this.dragTargetTaskId = null;
           this.dragInsertAfter = false;
+          this.dragDropOnto = false;
 
           if (dragId && targetId && dragId !== targetId) {
-            await this.handleDrop(dragId, targetId, insertAfter);
+            await this.handleDrop(dragId, targetId, insertAfter, dropOnto);
           }
         };
 
@@ -1347,7 +1409,8 @@ export class GridView extends ItemView {
   private async handleDrop(
     dragId: string,
     targetId: string,
-    insertAfter: boolean
+    insertAfter: boolean,
+    dropOnto: boolean = false
   ) {
     const tasks = this.taskStore.getAll();
     const dragTask = tasks.find((t) => t.id === dragId);
@@ -1356,7 +1419,68 @@ export class GridView extends ItemView {
     if (!dragTask || !targetTask) return;
     if (dragTask.id === targetTask.id) return;
 
+    // Prevent dropping onto own child (circular reference)
+    if (dropOnto && dragTask.id === targetTask.parentId) return;
+    
+    // Prevent dropping parent onto its own descendant
+    if (dropOnto && !dragTask.parentId) {
+      const isDescendant = (taskId: string): boolean => {
+        const children = tasks.filter(t => t.parentId === taskId);
+        if (children.some(c => c.id === targetTask.id)) return true;
+        return children.some(c => isDescendant(c.id));
+      };
+      if (isDescendant(dragTask.id)) return;
+    }
+
     const ids = tasks.map((t) => t.id);
+
+    // Handle dropping onto a task (make it a child)
+    if (dropOnto) {
+      // If dragging a parent task, move it with all its children
+      if (!dragTask.parentId) {
+        const blockIds: string[] = [];
+        blockIds.push(dragTask.id);
+        for (const t of tasks) {
+          if (t.parentId === dragTask.id) {
+            blockIds.push(t.id);
+          }
+        }
+        
+        // Remove block from current position
+        const firstIdx = ids.indexOf(blockIds[0]);
+        if (firstIdx === -1) return;
+        ids.splice(firstIdx, blockIds.length);
+        
+        // Find position: right after target task (as first child)
+        const targetIndex = ids.indexOf(targetId);
+        if (targetIndex === -1) return;
+        
+        ids.splice(targetIndex + 1, 0, ...blockIds);
+        
+        // Update parent relationship for the dragged task only
+        await this.taskStore.updateTask(dragId, { parentId: targetId });
+        await this.taskStore.setOrder(ids);
+        this.render();
+        return;
+      } else {
+        // Dragging a child task - move just this task
+        const fromIndex = ids.indexOf(dragId);
+        if (fromIndex === -1) return;
+        ids.splice(fromIndex, 1);
+
+        // Find position: right after target task (as first child)
+        const targetIndex = ids.indexOf(targetId);
+        if (targetIndex === -1) return;
+        
+        ids.splice(targetIndex + 1, 0, dragId);
+        
+        // Update parent relationship
+        await this.taskStore.updateTask(dragId, { parentId: targetId });
+        await this.taskStore.setOrder(ids);
+        this.render();
+        return;
+      }
+    }
 
     // Parent drag: move parent + its children as a contiguous block
     if (!dragTask.parentId) {
@@ -1422,22 +1546,34 @@ export class GridView extends ItemView {
     ids.splice(insertIndex, 0, dragId);
 
     // Determine new parent based on drop location
-    // Look at what task comes before the drag task in the new position
     let newParentId: string | null = null;
 
-    if (insertIndex > 0) {
-      const taskBeforeId = ids[insertIndex - 1];
-      const taskBefore = tasks.find(t => t.id === taskBeforeId);
-
-      if (taskBefore) {
-        // If the task before has a parent, use that same parent
-        if (taskBefore.parentId) {
-          newParentId = taskBefore.parentId;
+    // If dropping on/near the target task
+    if (targetTask.parentId) {
+      // Target is a child - use target's parent
+      newParentId = targetTask.parentId;
+    } else {
+      // Target is a root task
+      if (insertAfter) {
+        // Dropping after a root - check if there's a task after target
+        // If next task is a child of target, adopt target as parent
+        // Otherwise, become a root
+        const targetIndex = ids.indexOf(targetId);
+        if (targetIndex !== -1 && targetIndex + 1 < ids.length) {
+          const nextTaskId = ids[targetIndex + 1];
+          const nextTask = tasks.find(t => t.id === nextTaskId);
+          if (nextTask?.parentId === targetId) {
+            // Inserting as first child of target
+            newParentId = targetId;
+          }
+          // else: becomes root (newParentId stays null)
         }
-        // Otherwise, taskBefore is a root - don't set parent (dragTask becomes root)
+        // else: end of list, becomes root
+      } else {
+        // Dropping before a root - becomes root
+        newParentId = null;
       }
     }
-    // If insertIndex is 0, dragTask becomes a root task (newParentId stays null)
 
     // Update the task's parent if it changed
     if (dragTask.parentId !== newParentId) {

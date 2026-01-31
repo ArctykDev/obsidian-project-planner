@@ -2,6 +2,34 @@
 
 All notable changes to Obsidian Project Planner will be documented in this file.
 
+## [0.6.9] - 2026-01-31
+
+### Fixed
+
+#### Markdown Sync Improvements
+- **Task Rename Handling**: Fixed duplicate markdown notes being created when renaming tasks
+  - Old task file is now properly deleted when task title changes
+  - New file created with updated title in one atomic operation
+  - Prevents orphaned markdown files in vault
+- **Bidirectional Title Sync**: Fixed task title changes in markdown files not syncing back to plugin
+  - Changing `title:` in markdown frontmatter now updates task in plugin
+  - Markdown file is automatically renamed to match new title
+  - Full bidirectional sync for task titles now working correctly
+
+#### Grid View Enhancements
+- **Show Completed Tasks Toggle**: Fixed toggle in settings not actually filtering tasks
+  - Setting now properly hides completed tasks when disabled
+  - Only affects Grid View as intended (Board, Timeline, Dashboard unaffected)
+  - Updated setting description to clarify Grid View-only behavior
+- **Horizontal Scrolling**: Enabled horizontal scrolling for Grid View
+  - Table now scrolls horizontally when many columns are visible
+  - Prevents column overflow and data truncation
+  - Both vertical and horizontal scrolling now work correctly
+- **Subtask Drag-and-Drop**: Fixed subtasks being pushed out of parent when reordering
+  - Reordering subtasks within their parent now preserves parent-child relationship
+  - Dragging subtask to another parent's children correctly adopts new parent
+  - Improved parent determination logic based on drop target context
+
 ## [0.6.7] - 2026-01-28
 
 ### Added

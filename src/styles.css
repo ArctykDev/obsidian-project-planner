@@ -22,7 +22,7 @@
 .planner-grid-wrapper {
   height: 100%;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
   box-sizing: border-box;
   padding: 12px 18px 24px 18px;
   font-size: 14px;
@@ -637,11 +637,16 @@
   border: 1px dashed var(--interactive-accent);
 }
 
-/* Drop target row */
+/* Drop target row - subtle highlight for insert before/after */
 .planner-row-drop-target {
-  background-color: var(--background-modifier-active-hover);
-  outline: 2px solid var(--interactive-accent);
-  outline-offset: -2px;
+  background-color: rgba(0, 120, 212, 0.05);
+}
+
+/* Drop onto target (make child) - left border like MS Planner */
+.planner-row-drop-onto {
+  background-color: rgba(0, 120, 212, 0.08) !important;
+  border-left: 5px solid var(--interactive-accent) !important;
+  padding-left: 3px !important; /* Adjust for border */
 }
 
 /* Thin insertion line shown above target row */

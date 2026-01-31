@@ -266,6 +266,32 @@ export class TaskSync {
     }
 
     /**
+     * Handle task rename by deleting old file and creating new one
+     */
+    async handleTaskRename(task: PlannerTask, oldTitle: string, projectId: string): Promise<void> {
+        const project = this.plugin.settings.projects.find(p => p.id === projectId);
+        if (!project) return;
+
+        // Get old file path using old title
+        const oldTask = { ...task, title: oldTitle };
+        const oldFilePath = this.getTaskFilePath(oldTask, project.name);
+        
+        // Delete old file if it exists
+        const oldFile = this.app.vault.getAbstractFileByPath(oldFilePath);
+        if (oldFile instanceof TFile) {
+            try {
+                await this.app.vault.delete(oldFile);
+                console.log(`[TaskSync] Deleted old task file: ${oldFilePath}`);
+            } catch (error) {
+                console.error(`[TaskSync] Failed to delete old file: ${oldFilePath}`, error);
+            }
+        }
+
+        // Create new file with updated title
+        await this.syncTaskToMarkdown(task, projectId);
+    }
+
+    /**
      * Sync a task from JSON to markdown (create or update the note)
      */
     async syncTaskToMarkdown(task: PlannerTask, projectId: string): Promise<void> {
@@ -316,10 +342,30 @@ export class TaskSync {
             const existingTask = this.plugin.taskStore.getTaskById(task.id);
 
             if (existingTask) {
+                // Check if title changed in markdown - if so, rename the file
+                const titleChanged = existingTask.title !== task.title;
+                
                 // Update existing task (always update to ensure markdown is source of truth)
                 // Don't use updateTask as it triggers lastModifiedDate change
                 // Instead use addTaskFromObject which handles merging
                 await this.plugin.taskStore.addTaskFromObject(task);
+                
+                // If title changed, rename the markdown file to match new title
+                if (titleChanged) {
+                    const project = this.plugin.settings.projects.find(p => p.id === projectId);
+                    if (project) {
+                        const newFilePath = this.getTaskFilePath(task, project.name);
+                        // Only rename if the file path actually changed
+                        if (file.path !== newFilePath) {
+                            try {
+                                await this.app.fileManager.renameFile(file, newFilePath);
+                                console.log(`[TaskSync] Renamed task file from ${file.path} to ${newFilePath}`);
+                            } catch (error) {
+                                console.error(`[TaskSync] Failed to rename file:`, error);
+                            }
+                        }
+                    }
+                }
             } else {
                 // Task doesn't exist in JSON - new task created via markdown
                 await this.plugin.taskStore.addTaskFromObject(task);
