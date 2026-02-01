@@ -46,6 +46,8 @@ export class GridView extends ItemView {
   private dragInsertAfter: boolean = false;
   private dragDropOnto: boolean = false; // true when dropping onto task to make it a child
   private lastTargetRow: HTMLTableRowElement | null = null; // Track for cleanup
+  private pendingNewTaskId: string | null = null; // Track new task for animation
+  private isEditingInline: boolean = false; // Track active inline editing to prevent re-renders
 
   // Column sizing + advanced sorting
   private columnWidths: Record<string, number> = {};
@@ -54,6 +56,9 @@ export class GridView extends ItemView {
   // Clipboard for Cut/Copy/Paste
   private clipboardTask: { task: PlannerTask; isCut: boolean } | null = null;
   private columnVisibility: Record<string, boolean> = {};
+  
+  // Scroll position preservation
+  private savedScrollTop: number | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
     super(leaf);
@@ -64,13 +69,19 @@ export class GridView extends ItemView {
   // Allow plugin / detail view to update tasks
   public async updateTask(id: string, fields: Partial<PlannerTask>) {
     await this.taskStore.updateTask(id, fields);
-    this.render();
+    // Don't call render() - TaskStore subscription handles it
   }
 
   async onOpen() {
     this.loadGridViewSettings();
     await this.taskStore.ensureLoaded();
-    this.unsubscribe = this.taskStore.subscribe(() => this.render());
+    this.unsubscribe = this.taskStore.subscribe(() => {
+      // Don't re-render while user is actively editing inline
+      if (this.isEditingInline) {
+        return;
+      }
+      this.render();
+    });
     this.render();
   }
 
@@ -100,9 +111,26 @@ export class GridView extends ItemView {
 
   render() {
     const container = this.containerEl;
+    
+    // Save scroll position before clearing (if wrapper exists)
+    const existingWrapper = container.querySelector('.planner-grid-wrapper') as HTMLElement;
+    if (existingWrapper && this.savedScrollTop === null) {
+      // Only save if we haven't explicitly saved already (for operations that need it)
+      this.savedScrollTop = existingWrapper.scrollTop;
+    }
+    
     container.empty();
 
     const wrapper = container.createDiv("planner-grid-wrapper");
+    
+    // Restore scroll position after wrapper is created
+    if (this.savedScrollTop !== null) {
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        wrapper.scrollTop = this.savedScrollTop!;
+        this.savedScrollTop = null; // Clear after restoring
+      });
+    }
 
     // -----------------------------------------------------------------------
     // Header
@@ -474,6 +502,16 @@ export class GridView extends ItemView {
 
     row.dataset.taskId = task.id;
     row.dataset.rowIndex = String(index);
+    
+    // Add animation class for newly created tasks
+    if (this.pendingNewTaskId === task.id) {
+      row.classList.add("planner-row-new");
+      // Remove animation class after animation completes
+      setTimeout(() => {
+        row.classList.remove("planner-row-new");
+        this.pendingNewTaskId = null;
+      }, 400); // Match CSS animation duration
+    }
 
     // Right–click context menu
     row.oncontextmenu = (evt) => {
@@ -507,10 +545,11 @@ export class GridView extends ItemView {
         ghost.style.width = `${rowRect.width}px`;
         ghost.style.pointerEvents = "none";
         ghost.style.zIndex = "9998";
-        ghost.style.opacity = "0.9";
+        ghost.style.opacity = "0";
         ghost.style.background =
           getComputedStyle(row).backgroundColor || "var(--background-primary)";
         ghost.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.25)";
+        ghost.style.transition = "opacity 0.1s ease-out";
 
         const inner = row.cloneNode(true) as HTMLElement;
         inner.classList.remove("planner-row-dragging");
@@ -527,9 +566,15 @@ export class GridView extends ItemView {
         indicator.style.left = `${rowRect.left}px`;
         indicator.style.width = `${rowRect.width}px`;
         indicator.style.display = "none";
+        indicator.style.transition = "top 0.1s ease-out, opacity 0.1s ease-out";
 
         document.body.appendChild(ghost);
         document.body.appendChild(indicator);
+
+        // Fade in ghost element smoothly
+        requestAnimationFrame(() => {
+          ghost.style.opacity = "0.9";
+        });
 
         this.currentDragId = task.id;
         this.dragTargetTaskId = null;
@@ -542,12 +587,73 @@ export class GridView extends ItemView {
         document.body.style.cursor = "grabbing";
 
         const offsetY = evt.clientY - rowRect.top;
+        
+        // Throttle drop zone calculations for better performance
+        let lastTargetCheck = 0;
+        const TARGET_CHECK_INTERVAL = 16; // ~60fps
+        
+        // Auto-scroll when dragging near viewport edges
+        let autoScrollInterval: number | null = null;
+        const AUTO_SCROLL_THRESHOLD = 80; // pixels from edge
+        const AUTO_SCROLL_SPEED = 10; // pixels per frame
+        
+        const updateAutoScroll = (clientY: number) => {
+          const viewportHeight = window.innerHeight;
+          const scrollContainer = this.containerEl.querySelector('.planner-grid-scroll-container') as HTMLElement;
+          
+          if (!scrollContainer) {
+            if (autoScrollInterval !== null) {
+              cancelAnimationFrame(autoScrollInterval);
+              autoScrollInterval = null;
+            }
+            return;
+          }
+          
+          // Check if near top edge
+          if (clientY < AUTO_SCROLL_THRESHOLD) {
+            if (autoScrollInterval === null) {
+              const scroll = () => {
+                scrollContainer.scrollTop -= AUTO_SCROLL_SPEED;
+                autoScrollInterval = requestAnimationFrame(scroll);
+              };
+              autoScrollInterval = requestAnimationFrame(scroll);
+            }
+          }
+          // Check if near bottom edge
+          else if (clientY > viewportHeight - AUTO_SCROLL_THRESHOLD) {
+            if (autoScrollInterval === null) {
+              const scroll = () => {
+                scrollContainer.scrollTop += AUTO_SCROLL_SPEED;
+                autoScrollInterval = requestAnimationFrame(scroll);
+              };
+              autoScrollInterval = requestAnimationFrame(scroll);
+            }
+          }
+          // Not near edges - stop auto-scroll
+          else {
+            if (autoScrollInterval !== null) {
+              cancelAnimationFrame(autoScrollInterval);
+              autoScrollInterval = null;
+            }
+          }
+        };
 
         const onMove = (moveEvt: PointerEvent) => {
           moveEvt.preventDefault();
 
+          // Update ghost position immediately for smooth following
           const y = moveEvt.clientY - offsetY;
           ghost.style.top = `${y}px`;
+          
+          // Handle auto-scroll when near viewport edges
+          updateAutoScroll(moveEvt.clientY);
+
+          // Throttle expensive drop zone calculations
+          const now = Date.now();
+          if (now - lastTargetCheck < TARGET_CHECK_INTERVAL) {
+            return;
+          }
+          lastTargetCheck = now;
 
           const targetEl = document.elementFromPoint(
             moveEvt.clientX,
@@ -597,26 +703,41 @@ export class GridView extends ItemView {
           this.dragInsertAfter = !before;
           this.dragDropOnto = dropOnto;
 
-          // Update row highlighting
+          // Update row highlighting only if target changed
           if (this.lastTargetRow !== targetRow) {
             if (this.lastTargetRow) {
               this.lastTargetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
             }
             this.lastTargetRow = targetRow;
-          }
-          
-          targetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
-          targetRow.classList.add("planner-row-drop-target");
-          if (dropOnto) {
-            targetRow.classList.add("planner-row-drop-onto");
+            
+            targetRow.classList.add("planner-row-drop-target");
+            if (dropOnto) {
+              targetRow.classList.add("planner-row-drop-onto");
+            }
+          } else {
+            // Same target row but zone might have changed
+            targetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
+            targetRow.classList.add("planner-row-drop-target");
+            if (dropOnto) {
+              targetRow.classList.add("planner-row-drop-onto");
+            }
           }
 
           if (dropOnto) {
             // Hide the line indicator for "make child" - row border is enough
-            indicator.style.display = "none";
+            indicator.style.opacity = "0";
+            requestAnimationFrame(() => {
+              indicator.style.display = "none";
+            });
           } else {
             // Show thin line indicator for insert before/after (MS Planner style)
-            indicator.style.display = "block";
+            if (indicator.style.display === "none") {
+              indicator.style.display = "block";
+              indicator.style.opacity = "0";
+              requestAnimationFrame(() => {
+                indicator.style.opacity = "1";
+              });
+            }
             indicator.style.left = `${targetRect.left}px`;
             indicator.style.width = `${targetRect.width}px`;
             indicator.style.height = "2px";
@@ -626,7 +747,6 @@ export class GridView extends ItemView {
             indicator.style.backgroundColor = "var(--interactive-accent)";
             indicator.style.border = "none";
             indicator.style.borderRadius = "0";
-            indicator.style.opacity = "1";
           }
         };
 
@@ -635,9 +755,21 @@ export class GridView extends ItemView {
 
           window.removeEventListener("pointermove", onMove, true);
           window.removeEventListener("pointerup", onUp, true);
+          
+          // Stop auto-scroll
+          if (autoScrollInterval !== null) {
+            cancelAnimationFrame(autoScrollInterval);
+            autoScrollInterval = null;
+          }
 
-          ghost.remove();
-          indicator.remove();
+          // Smooth fade-out of ghost and indicator before removal
+          ghost.style.opacity = "0";
+          indicator.style.opacity = "0";
+          
+          setTimeout(() => {
+            ghost.remove();
+            indicator.remove();
+          }, 100); // Match transition duration
 
           row.classList.remove("planner-row-dragging");
           document.body.style.userSelect = "";
@@ -689,12 +821,13 @@ export class GridView extends ItemView {
 
       checkbox.onchange = async (ev) => {
         ev.stopPropagation();
+        this.saveScrollPosition(); // Preserve scroll for checkbox toggle
         const isDone = checkbox.checked;
         await this.taskStore.updateTask(task.id, {
           completed: isDone,
           status: isDone ? "Completed" : "Not Started",
         });
-        this.render();
+        // Don't call render() - TaskStore subscription handles it
       };
     }
 
@@ -719,8 +852,9 @@ export class GridView extends ItemView {
         });
         caret.onclick = async (evt) => {
           evt.stopPropagation();
+          this.saveScrollPosition(); // Preserve scroll for collapse toggle
           await this.taskStore.toggleCollapsed(task.id);
-          this.render();
+          // Don't call render() - TaskStore subscription handles it
         };
       } else {
         titleCell.createSpan({
@@ -735,8 +869,9 @@ export class GridView extends ItemView {
         titleInner,
         task.title,
         async (value) => {
+          this.saveScrollPosition(); // Preserve scroll during title update
           await this.taskStore.updateTask(task.id, { title: value });
-          this.render();
+          // Don't call render() - TaskStore subscription handles it
         }
       );
 
@@ -775,11 +910,10 @@ export class GridView extends ItemView {
         task.status,
         statusNames,
         async (value) => {
+          this.saveScrollPosition(); // Preserve scroll for status change
           // Update directly via TaskStore for GridView
           await this.taskStore.updateTask(task.id, { status: value });
-
-          // Re-render using the updated in-memory list from TaskStore
-          this.render();
+          // Don't call render() - TaskStore subscription handles it
         },
         (val, target) => this.createStatusPill(val, target)
       );
@@ -802,7 +936,7 @@ export class GridView extends ItemView {
         priorityNames,
         async (value) => {
           await this.taskStore.updateTask(task.id, { priority: value });
-          this.render();
+          // Don't call render() - TaskStore subscription handles it
         },
         (val, target) => this.createPriorityPill(val, target)
       );
@@ -839,6 +973,7 @@ export class GridView extends ItemView {
           currentBucketName,
           bucketNames,
           async (value) => {
+            this.saveScrollPosition(); // Preserve scroll for bucket change
             if (value === "Unassigned") {
               await this.taskStore.updateTask(task.id, { bucketId: undefined });
             } else {
@@ -847,7 +982,7 @@ export class GridView extends ItemView {
                 await this.taskStore.updateTask(task.id, { bucketId: selectedBucket.id });
               }
             }
-            this.render();
+            // Don't call render() - TaskStore subscription handles it
           }
         );
       }
@@ -901,7 +1036,7 @@ export class GridView extends ItemView {
         task.startDate || "",
         async (value) => {
           await this.taskStore.updateTask(task.id, { startDate: value });
-          this.render();
+          // Don't call render() - TaskStore subscription handles it
         }
       );
     }
@@ -916,8 +1051,9 @@ export class GridView extends ItemView {
         task.dueDate || "",
         async (value) => {
           await this.taskStore.updateTask(task.id, { dueDate: value });
-          this.render();
-        }
+          // Don't call render() - TaskStore subscription handles it
+        },
+        true // Enable conditional formatting for due dates
       );
     }
 
@@ -1013,7 +1149,7 @@ export class GridView extends ItemView {
             });
           }
 
-          this.render();
+          // Don't call render() - TaskStore subscription handles it
         })
     );
 
@@ -1102,7 +1238,7 @@ export class GridView extends ItemView {
           );
           if (rowIndex <= 0) return;
           await this.handleMakeSubtask(task, rowIndex);
-          this.render();
+          // Don't call render() - TaskStore subscription handles it
         })
     );
 
@@ -1114,7 +1250,7 @@ export class GridView extends ItemView {
         .onClick(async () => {
           if (!task.parentId) return;
           await this.taskStore.promoteSubtask(task.id);
-          this.render();
+          // Don't call render() - TaskStore subscription handles it
         })
     );
 
@@ -1126,7 +1262,7 @@ export class GridView extends ItemView {
         .setIcon("trash")
         .onClick(async () => {
           await this.taskStore.deleteTask(task.id);
-          this.render();
+          // Don't call render() - TaskStore subscription handles it
         })
     );
 
@@ -1204,7 +1340,7 @@ export class GridView extends ItemView {
             });
           }
 
-          this.render();
+          // Don't call render() - TaskStore subscription handles it
         })
     );
 
@@ -1291,7 +1427,7 @@ export class GridView extends ItemView {
         .onClick(async () => {
           if (!canMakeSubtask) return;
           await this.handleMakeSubtask(task, rowIndex);
-          this.render();
+          // Don't call render() - TaskStore subscription handles it
         })
     );
 
@@ -1303,7 +1439,7 @@ export class GridView extends ItemView {
         .onClick(async () => {
           if (!canPromote) return;
           await this.taskStore.promoteSubtask(task.id);
-          this.render();
+          // Don't call render() - TaskStore subscription handles it
         })
     );
 
@@ -1315,7 +1451,7 @@ export class GridView extends ItemView {
         .setIcon("trash")
         .onClick(async () => {
           await this.taskStore.deleteTask(task.id);
-          this.render();
+          // Don't call render() - TaskStore subscription handles it
         })
     );
 
@@ -1361,6 +1497,9 @@ export class GridView extends ItemView {
 
     // Create as root-level first
     const newTask = await this.taskStore.addTask("New Task");
+    
+    // Mark as pending for animation
+    this.pendingNewTaskId = newTask.id;
 
     // If the existing task is a subtask, assign the new task the same parent
     if (task.parentId) {
@@ -1385,21 +1524,43 @@ export class GridView extends ItemView {
 
     await this.taskStore.setOrder(updatedIds);
 
-    this.render();
+    // Don't call render() here - TaskStore.setOrder() triggers emit() which re-renders via subscription
+    // Focus with timing optimized for smooth animation
     this.focusNewTaskTitleImmediate(newTask.id);
   }
 
   // Helper: Focus the title input of the newly created task
   private focusNewTaskTitleImmediate(taskId: string) {
+    // Delay to ensure row animation starts before activating editor for smooth transition
     setTimeout(() => {
       const titleEl = this.containerEl.querySelector(
         `tr[data-task-id="${taskId}"] .planner-title-inner .planner-editable`
       ) as HTMLElement | null;
 
       if (titleEl) {
-        titleEl.click(); // activates inline editing
+        // Smooth activation of inline editor
+        titleEl.click();
+        
+        // Ensure input field is selected after editor opens
+        requestAnimationFrame(() => {
+          const inputEl = this.containerEl.querySelector(
+            `tr[data-task-id="${taskId}"] .planner-input`
+          ) as HTMLInputElement | null;
+          
+          if (inputEl) {
+            inputEl.select();
+          }
+        });
       }
-    }, 30);
+    }, 150); // Coordinate with row slide-in animation
+  }
+
+  // Helper: Save current scroll position for restoration after re-render
+  private saveScrollPosition() {
+    const wrapper = this.containerEl.querySelector('.planner-grid-wrapper') as HTMLElement;
+    if (wrapper) {
+      this.savedScrollTop = wrapper.scrollTop;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -1412,6 +1573,9 @@ export class GridView extends ItemView {
     insertAfter: boolean,
     dropOnto: boolean = false
   ) {
+    // Save scroll position before drag-drop operations that will trigger re-render
+    this.saveScrollPosition();
+    
     const tasks = this.taskStore.getAll();
     const dragTask = tasks.find((t) => t.id === dragId);
     const targetTask = tasks.find((t) => t.id === targetId);
@@ -1460,7 +1624,7 @@ export class GridView extends ItemView {
         // Update parent relationship for the dragged task only
         await this.taskStore.updateTask(dragId, { parentId: targetId });
         await this.taskStore.setOrder(ids);
-        this.render();
+        // Don't call render() - TaskStore subscription handles it
         return;
       } else {
         // Dragging a child task - move just this task
@@ -1477,7 +1641,7 @@ export class GridView extends ItemView {
         // Update parent relationship
         await this.taskStore.updateTask(dragId, { parentId: targetId });
         await this.taskStore.setOrder(ids);
-        this.render();
+        // Don't call render() - TaskStore subscription handles it
         return;
       }
     }
@@ -1527,7 +1691,7 @@ export class GridView extends ItemView {
 
       ids.splice(targetRootIndex, 0, ...blockIds);
       await this.taskStore.setOrder(ids);
-      this.render();
+      // Don't call render() - TaskStore subscription handles it
       return;
     }
 
@@ -1581,7 +1745,7 @@ export class GridView extends ItemView {
     }
 
     await this.taskStore.setOrder(ids);
-    this.render();
+    // Don't call render() - TaskStore subscription handles it
   }
 
   // ---------------------------------------------------------------------------
@@ -1710,33 +1874,77 @@ export class GridView extends ItemView {
     span.classList.add("planner-editable");
 
     const openEditor = () => {
+      // Mark that we're editing to prevent re-renders
+      this.isEditingInline = true;
+      
       const input = container.createEl("input", {
         attr: { type: "text" },
       });
       input.value = value;
       input.classList.add("planner-input");
+      
+      // Smooth fade-in transition for input
+      input.style.opacity = "0";
       span.replaceWith(input);
-
-      setTimeout(() => {
+      
+      requestAnimationFrame(() => {
+        input.style.opacity = "1";
         input.focus();
         input.select();
-      }, 0);
+      });
 
       const save = async () => {
         const newValue = input.value.trim();
-        await onSave(newValue);
-
-        value = newValue;
+        
+        // Create new span with updated value immediately (optimistic update)
         const newSpan = container.createEl("span", { text: newValue });
         newSpan.classList.add("planner-editable");
         newSpan.onclick = openEditor;
-        input.replaceWith(newSpan);
+        
+        // Smooth fade transition
+        input.style.opacity = "0";
+        newSpan.style.opacity = "0";
+        
+        setTimeout(() => {
+          input.replaceWith(newSpan);
+          requestAnimationFrame(() => {
+            newSpan.style.opacity = "1";
+          });
+        }, 150);
+        
+        // Save in background
+        await onSave(newValue);
+        
+        // Re-enable renders after a brief delay to ensure smooth transition completes
+        setTimeout(() => {
+          this.isEditingInline = false;
+          // Trigger a render to sync any other changes
+          this.render();
+        }, 200);
+      };
+
+      const cancel = () => {
+        // Re-enable renders immediately on cancel
+        this.isEditingInline = false;
+        
+        // Smooth fade transition on cancel
+        input.style.opacity = "0";
+        setTimeout(() => {
+          input.replaceWith(span);
+          span.style.opacity = "1";
+        }, 150);
       };
 
       input.onblur = () => void save();
       input.onkeydown = (e) => {
-        if (e.key === "Enter") void save();
-        if (e.key === "Escape") input.replaceWith(span);
+        if (e.key === "Enter") {
+          e.preventDefault();
+          void save();
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          cancel();
+        }
       };
     };
 
@@ -1797,7 +2005,8 @@ export class GridView extends ItemView {
   private createEditableDateOnlyCell(
     container: HTMLElement,
     value: string,
-    onSave: (value: string) => Promise<void> | void
+    onSave: (value: string) => Promise<void> | void,
+    applyConditionalFormatting: boolean = false
   ) {
     // Normalize to YYYY-MM-DD if we were given an ISO datetime
     let rawValue = value || "";
@@ -1831,7 +2040,7 @@ export class GridView extends ItemView {
 
     let pillClass = "planner-date-pill-neutral";
 
-    if (!isEmpty) {
+    if (applyConditionalFormatting && !isEmpty) {
       const d = getCompareDate(rawValue);
       if (d) {
         const cmp = d.getTime() - today.getTime();
@@ -1884,7 +2093,7 @@ export class GridView extends ItemView {
           span.classList.add("planner-date-pill-neutral");
         } else {
           const d = getCompareDate(rawValue);
-          if (d) {
+          if (applyConditionalFormatting && d) {
             if (d.getTime() < today.getTime()) {
               span.classList.add("planner-date-pill-overdue");
             } else if (d.getTime() === today.getTime()) {
@@ -2145,7 +2354,7 @@ export class GridView extends ItemView {
             e.stopPropagation();
             const newTags = taskTags.filter(id => id !== tagId);
             await this.taskStore.updateTask(task.id, { tags: newTags });
-            this.render();
+            // Don't call render() - TaskStore subscription handles it
           };
         }
       });
@@ -2188,7 +2397,7 @@ export class GridView extends ItemView {
           item.onClick(async () => {
             const newTags = [...taskTags, tag.id];
             await this.taskStore.updateTask(task.id, { tags: newTags });
-            this.render();
+            // Don't call render() - TaskStore subscription handles it
           });
         });
       });
