@@ -75,13 +75,17 @@ export class GanttView extends ItemView {
         let end: number | null = null;
 
         if (task.startDate) {
-            const startDate = new Date(task.startDate);
+            // Parse date correctly to avoid timezone issues (YYYY-MM-DD format)
+            const parts = task.startDate.split("-");
+            const startDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
             startDate.setHours(0, 0, 0, 0);
             start = startDate.getTime();
         }
 
         if (task.dueDate) {
-            const endDate = new Date(task.dueDate);
+            // Parse date correctly to avoid timezone issues (YYYY-MM-DD format)
+            const parts = task.dueDate.split("-");
+            const endDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
             endDate.setHours(0, 0, 0, 0);
             end = endDate.getTime();
         }

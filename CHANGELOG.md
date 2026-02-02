@@ -2,7 +2,40 @@
 
 All notable changes to Obsidian Project Planner will be documented in this file.
 
+## [0.6.11] - 2026-02-02
+
+### Added
+
+#### Board View Card Reordering
+- **Drag-and-Drop Within Buckets**: Enabled precise card reordering within the same bucket
+  - **Visual Drop Indicators**: Blue line appears above or below cards showing exact drop position
+  - **Smart Position Detection**: Automatically detects top half (before) or bottom half (after) based on cursor
+  - **Task Order Persistence**: Reordered cards maintain their position through TaskStore order updates
+  - **Cross-Bucket Support**: Seamlessly handles both reordering within bucket and moving between buckets
+  - **Smooth Animations**: Drop indicator has subtle glow effect for clear visual feedback
+  - Preserves all existing drag-to-bucket-column functionality
+
+### Improved
+
+#### Task Details Panel Layout
+- **Reorganized Field Order**: Improved task details layout for better workflow
+  - **Description Promoted**: Moved Description to appear directly after Task Title (before Status)
+  - **Checklist Repositioned**: Moved Checklist between Tags and Card Preview for easier access
+  - New order: Title → Description → Status → Priority → Tags → Checklist → Card Preview → Bucket → Dates → Dependencies → Links
+  - More logical grouping of related fields for faster task management
+
 ## [0.6.10] - 2026-02-01
+
+### Fixed
+
+#### Date Display Timezone Issue
+- **Board View**: Fixed due dates displaying as one day earlier than set
+  - Corrected date parsing to avoid UTC timezone conversion issues
+  - Dates now parse correctly by splitting "YYYY-MM-DD" string and creating Date with explicit values
+  - Ensures dates display consistently across all timezones
+- **Gantt/Timeline View**: Fixed start and due dates displaying incorrectly due to timezone conversion
+  - Applied same date parsing fix to prevent off-by-one-day errors
+  - Timeline bars now position correctly based on actual date values
 
 ### Improved
 

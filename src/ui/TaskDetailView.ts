@@ -158,6 +158,18 @@ export class TaskDetailView extends ItemView {
     });
 
     //
+    // DESCRIPTION (with Markdown support)
+    //
+    container.createEl("h3", { text: "Description" });
+    this.createEditableMarkdown(
+      container,
+      task.description || "",
+      async (val) => {
+        await this.update({ description: val });
+      }
+    );
+
+    //
     // STATUS — dropdown
     //
     container.createEl("h3", { text: "Status" });
@@ -191,6 +203,46 @@ export class TaskDetailView extends ItemView {
     //
     container.createEl("h3", { text: "Tags" });
     this.renderTagSelector(container, task);
+
+    //
+    // CHECKLIST / SUBTASKS
+    //
+    container.createEl("h3", { text: "Checklist" });
+
+    const checklistWrapper = container.createDiv("planner-subtask-list");
+    const subtasks = task.subtasks ?? [];
+
+    if (subtasks.length === 0) {
+      checklistWrapper.createEl("div", {
+        text: "No checklist items. Use the button below to add one.",
+        cls: "planner-subtask-empty",
+      });
+    } else {
+      for (let i = 0; i < subtasks.length; i++) {
+        this.renderSubtaskRow(checklistWrapper, subtasks[i].id, i);
+      }
+    }
+
+    const addBtn = container.createEl("button", {
+      cls: "planner-subtask-add",
+      text: "Add checklist item",
+    });
+
+    addBtn.onclick = async () => {
+      if (!this.task) return;
+
+      const current = this.task.subtasks ?? [];
+      const newSubtasks = [
+        ...current,
+        {
+          id: this.createSubtaskId(),
+          title: "New checklist item",
+          completed: false,
+        },
+      ];
+
+      await this.update({ subtasks: newSubtasks });
+    };
 
     //
     // CARD PREVIEW — what to show on board card
@@ -266,18 +318,6 @@ export class TaskDetailView extends ItemView {
     });
 
     //
-    // DESCRIPTION (with Markdown support)
-    //
-    container.createEl("h3", { text: "Description" });
-    this.createEditableMarkdown(
-      container,
-      task.description || "",
-      async (val) => {
-        await this.update({ description: val });
-      }
-    );
-
-    //
     // DEPENDENCIES
     //
     container.createEl("h3", { text: "Dependencies" });
@@ -288,46 +328,6 @@ export class TaskDetailView extends ItemView {
     //
     container.createEl("h3", { text: "Links & Attachments" });
     this.renderLinks(container, task);
-
-    //
-    // CHECKLIST / SUBTASKS
-    //
-    container.createEl("h3", { text: "Checklist" });
-
-    const checklistWrapper = container.createDiv("planner-subtask-list");
-    const subtasks = task.subtasks ?? [];
-
-    if (subtasks.length === 0) {
-      checklistWrapper.createEl("div", {
-        text: "No checklist items. Use the button below to add one.",
-        cls: "planner-subtask-empty",
-      });
-    } else {
-      for (let i = 0; i < subtasks.length; i++) {
-        this.renderSubtaskRow(checklistWrapper, subtasks[i].id, i);
-      }
-    }
-
-    const addBtn = container.createEl("button", {
-      cls: "planner-subtask-add",
-      text: "Add checklist item",
-    });
-
-    addBtn.onclick = async () => {
-      if (!this.task) return;
-
-      const current = this.task.subtasks ?? [];
-      const newSubtasks = [
-        ...current,
-        {
-          id: this.createSubtaskId(),
-          title: "New checklist item",
-          completed: false,
-        },
-      ];
-
-      await this.update({ subtasks: newSubtasks });
-    };
   }
 
   // ---------------------------------------------------------------------------

@@ -1887,6 +1887,41 @@
   cursor: grabbing;
 }
 
+/* Drop indicators for card reordering */
+.planner-board-card-drop-before {
+  position: relative;
+}
+
+.planner-board-card-drop-before::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--interactive-accent);
+  border-radius: 2px;
+  z-index: 10;
+  box-shadow: 0 0 4px rgba(0, 120, 212, 0.5);
+}
+
+.planner-board-card-drop-after {
+  position: relative;
+}
+
+.planner-board-card-drop-after::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--interactive-accent);
+  border-radius: 2px;
+  z-index: 10;
+  box-shadow: 0 0 4px rgba(0, 120, 212, 0.5);
+}
+
 /* Card header with checkbox, title, and menu on same row */
 .planner-board-card-header {
   display: flex;

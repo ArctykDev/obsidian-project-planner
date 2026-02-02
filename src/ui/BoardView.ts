@@ -13,6 +13,8 @@ export class BoardView extends ItemView {
     private unsubscribe: (() => void) | null = null;
     private draggedTaskId: string | null = null;
     private draggedBucketId: string | null = null;
+    private dropTargetCardId: string | null = null;
+    private dropPosition: "before" | "after" | null = null;
     private buckets: BoardBucket[] = [];
     private completedSectionsCollapsed: { [bucketId: string]: boolean } = {};
 
@@ -335,6 +337,84 @@ export class BoardView extends ItemView {
         card.ondragend = () => {
             this.draggedTaskId = null;
             card.classList.remove("planner-board-card-dragging");
+            // Clear drop indicators
+            document.querySelectorAll(".planner-board-card-drop-before, .planner-board-card-drop-after").forEach(el => {
+                el.classList.remove("planner-board-card-drop-before", "planner-board-card-drop-after");
+            });
+        };
+
+        // Drag over card - determine drop position (before/after)
+        card.ondragover = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (!this.draggedTaskId || this.draggedTaskId === task.id) return;
+
+            const rect = card.getBoundingClientRect();
+            const midpoint = rect.top + rect.height / 2;
+            const dropBefore = e.clientY < midpoint;
+
+            // Clear previous indicators
+            document.querySelectorAll(".planner-board-card-drop-before, .planner-board-card-drop-after").forEach(el => {
+                el.classList.remove("planner-board-card-drop-before", "planner-board-card-drop-after");
+            });
+
+            // Add indicator
+            if (dropBefore) {
+                card.classList.add("planner-board-card-drop-before");
+                this.dropPosition = "before";
+            } else {
+                card.classList.add("planner-board-card-drop-after");
+                this.dropPosition = "after";
+            }
+            this.dropTargetCardId = task.id;
+        };
+
+        // Drop on card - reorder within bucket or move between buckets
+        card.ondrop = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Clear indicators
+            document.querySelectorAll(".planner-board-card-drop-before, .planner-board-card-drop-after").forEach(el => {
+                el.classList.remove("planner-board-card-drop-before", "planner-board-card-drop-after");
+            });
+
+            if (!this.draggedTaskId || !this.dropTargetCardId || this.draggedTaskId === this.dropTargetCardId) return;
+
+            const draggedTask = this.taskStore.getAll().find(t => t.id === this.draggedTaskId);
+            const targetTask = this.taskStore.getAll().find(t => t.id === this.dropTargetCardId);
+
+            if (!draggedTask || !targetTask) return;
+
+            // Update bucket if moving between buckets
+            const targetBucketId = targetTask.bucketId || undefined;
+            if (draggedTask.bucketId !== targetBucketId) {
+                await this.taskStore.updateTask(this.draggedTaskId, { bucketId: targetBucketId });
+            }
+
+            // Reorder tasks
+            const allTasks = this.taskStore.getAll();
+            const taskIds = allTasks.map(t => t.id);
+
+            // Remove dragged task from its current position
+            const draggedIndex = taskIds.indexOf(this.draggedTaskId);
+            if (draggedIndex !== -1) {
+                taskIds.splice(draggedIndex, 1);
+            }
+
+            // Find target position and insert
+            const targetIndex = taskIds.indexOf(this.dropTargetCardId);
+            if (targetIndex !== -1) {
+                const insertIndex = this.dropPosition === "before" ? targetIndex : targetIndex + 1;
+                taskIds.splice(insertIndex, 0, this.draggedTaskId);
+            }
+
+            // Update order
+            await this.taskStore.setOrder(taskIds);
+
+            this.dropTargetCardId = null;
+            this.dropPosition = null;
         };
 
         // Click card body to open details
@@ -448,7 +528,13 @@ export class BoardView extends ItemView {
         // Due date
         if (task.dueDate) {
             const dueDate = footer.createDiv("planner-board-card-date");
-            const date = new Date(task.dueDate);
+            
+            // Parse date correctly to avoid timezone issues
+            // Date is stored as "YYYY-MM-DD" string
+            const parts = task.dueDate.split("-");
+            const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+            date.setHours(0, 0, 0, 0);
+            
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
