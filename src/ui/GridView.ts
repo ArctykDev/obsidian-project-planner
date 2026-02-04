@@ -112,25 +112,16 @@ export class GridView extends ItemView {
   render() {
     const container = this.containerEl;
     
-    // Save scroll position before clearing (if wrapper exists)
-    const existingWrapper = container.querySelector('.planner-grid-wrapper') as HTMLElement;
-    if (existingWrapper && this.savedScrollTop === null) {
+    // Save scroll position before clearing (if content exists)
+    const existingContent = container.querySelector('.planner-grid-content') as HTMLElement;
+    if (existingContent && this.savedScrollTop === null) {
       // Only save if we haven't explicitly saved already (for operations that need it)
-      this.savedScrollTop = existingWrapper.scrollTop;
+      this.savedScrollTop = existingContent.scrollTop;
     }
     
     container.empty();
 
     const wrapper = container.createDiv("planner-grid-wrapper");
-    
-    // Restore scroll position after wrapper is created
-    if (this.savedScrollTop !== null) {
-      // Use requestAnimationFrame to ensure DOM is ready
-      requestAnimationFrame(() => {
-        wrapper.scrollTop = this.savedScrollTop!;
-        this.savedScrollTop = null; // Clear after restoring
-      });
-    }
 
     // -----------------------------------------------------------------------
     // Header
@@ -335,15 +326,28 @@ export class GridView extends ItemView {
     this.visibleRows = visibleRows;
 
     // -----------------------------------------------------------------------
-    // Grid table
+    // Grid table (wrapped in scrollable content area)
     // -----------------------------------------------------------------------
-    const table = wrapper.createEl("table", {
+    const content = wrapper.createDiv("planner-grid-content");
+    
+    // Restore scroll position after content is created
+    if (this.savedScrollTop !== null) {
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        content.scrollTop = this.savedScrollTop!;
+        this.savedScrollTop = null; // Clear after restoring
+      });
+    }
+    
+    const table = content.createEl("table", {
       cls: "planner-grid-table",
     });
 
     this.tableElement = table;
 
-    const headerRow = table.createEl("tr");
+    // Create thead for sticky header
+    const thead = table.createEl("thead");
+    const headerRow = thead.createEl("tr");
 
     const columns = this.getColumnDefinitions();
     const visibleColumns = columns.filter((c) => this.isColumnVisible(c.key));
@@ -366,6 +370,9 @@ export class GridView extends ItemView {
       visibleIndex++;
     });
 
+    // Create tbody for table rows
+    const tbody = table.createEl("tbody");
+
     // -------------------------------------------------------
     // Generate Planner-style numbering (1, 2, 3, ...)
     // -------------------------------------------------------
@@ -379,7 +386,7 @@ export class GridView extends ItemView {
     this.numberingMap = numberingMap;
 
     visibleRows.forEach((r, i) =>
-      this.renderTaskRow(table, r.task, r.isChild, r.hasChildren, i, r.depth)
+      this.renderTaskRow(tbody, r.task, r.isChild, r.hasChildren, i, r.depth)
     );
   }
 
@@ -467,18 +474,18 @@ export class GridView extends ItemView {
 
     this.numberingMap = numberingMap;
 
-    // Remove all existing rows except the header
-    const rows = Array.from(this.tableElement.querySelectorAll('tr'));
-    rows.forEach((row, index) => {
-      // Keep the first row (header)
-      if (index > 0) {
-        row.remove();
-      }
-    });
+    // Get or create tbody
+    let tbody = this.tableElement.querySelector('tbody');
+    if (!tbody) {
+      tbody = this.tableElement.createEl('tbody');
+    } else {
+      // Clear existing rows in tbody
+      tbody.empty();
+    }
 
     // Add new rows
     visibleRows.forEach((r, i) =>
-      this.renderTaskRow(this.tableElement!, r.task, r.isChild, r.hasChildren, i, r.depth)
+      this.renderTaskRow(tbody!, r.task, r.isChild, r.hasChildren, i, r.depth)
     );
   }
 
@@ -487,14 +494,14 @@ export class GridView extends ItemView {
   // ---------------------------------------------------------------------------
 
   private renderTaskRow(
-    table: HTMLTableElement,
+    parent: HTMLElement,
     task: PlannerTask,
     isChild: boolean,
     hasChildren: boolean,
     index: number,
     depth: number
   ) {
-    const row = table.createEl("tr", {
+    const row = parent.createEl("tr", {
       cls: isChild
         ? "planner-row planner-row-child"
         : "planner-row planner-row-parent",
@@ -1557,9 +1564,9 @@ export class GridView extends ItemView {
 
   // Helper: Save current scroll position for restoration after re-render
   private saveScrollPosition() {
-    const wrapper = this.containerEl.querySelector('.planner-grid-wrapper') as HTMLElement;
-    if (wrapper) {
-      this.savedScrollTop = wrapper.scrollTop;
+    const content = this.containerEl.querySelector('.planner-grid-content') as HTMLElement;
+    if (content) {
+      this.savedScrollTop = content.scrollTop;
     }
   }
 
@@ -2021,8 +2028,19 @@ export class GridView extends ItemView {
       const parts = dateStr.split("-");
       if (parts.length !== 3) return "Set date";
       const [y, m, d] = parts;
-      // Pure Planner-style MM/DD/YYYY
-      return `${m}/${d}/${y}`;
+      
+      // Use the configured date format
+      const dateFormat = this.plugin.settings.dateFormat || "iso";
+      switch (dateFormat) {
+        case "iso":
+          return `${y}-${m}-${d}`;
+        case "us":
+          return `${m}/${d}/${y}`;
+        case "uk":
+          return `${d}/${m}/${y}`;
+        default:
+          return `${m}/${d}/${y}`;
+      }
     };
 
     const today = new Date();

@@ -547,10 +547,28 @@ export class BoardView extends ItemView {
                 dueDate.classList.add("planner-board-card-date-today");
             }
 
-            const formatted = date.toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric",
-            });
+            // Format date based on user preference
+            const dateFormat = this.plugin.settings.dateFormat || "iso";
+            let formatted: string;
+            
+            switch (dateFormat) {
+                case "iso":
+                    formatted = task.dueDate; // YYYY-MM-DD
+                    break;
+                case "us":
+                    formatted = `${parts[1]}/${parts[2]}/${parts[0]}`; // MM/DD/YYYY
+                    break;
+                case "uk":
+                    formatted = `${parts[2]}/${parts[1]}/${parts[0]}`; // DD/MM/YYYY
+                    break;
+                default:
+                    // Fallback to locale-based short format
+                    formatted = date.toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                    });
+            }
+            
             dueDate.textContent = `📅 ${formatted}`;
         }
 

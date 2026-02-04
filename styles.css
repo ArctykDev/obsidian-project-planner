@@ -21,21 +21,23 @@
 
 .planner-grid-wrapper {
   height: 100%;
-  overflow-y: auto;
-  overflow-x: auto;
+  display: flex;
+  flex-direction: column;
   box-sizing: border-box;
-  padding: 12px 18px 24px 18px;
+  padding: 12px 18px 0 18px;
   font-size: 14px;
   color: var(--text-normal);
+  overflow: hidden;
 }
 
 .planner-grid-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
   padding-bottom: 16px;
+  margin-bottom: 16px;
   border-bottom: 1px solid var(--background-modifier-border);
+  flex-shrink: 0;
 }
 
 .planner-project-switcher {
@@ -187,6 +189,13 @@
 /* TABLE LAYOUT                                                              */
 /* ========================================================================= */
 
+.planner-grid-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  padding-bottom: 24px;
+}
+
 .planner-grid-table {
   min-width: 100%;
   width: max-content;
@@ -200,7 +209,8 @@
   font-weight: 600;
   padding: 8px 4px;
   color: var(--text-muted);
-  border-bottom: 1px solid var(--background-modifier-border);
+  border-bottom: 2px solid var(--background-modifier-border);
+  background: var(--background-primary);
 }
 
 .planner-grid-table td {
@@ -470,8 +480,9 @@
   display: flex;
   gap: 10px;
   align-items: center;
-  padding: 0 0 18px 0;
-  margin-bottom: 4px;
+  padding: 0 0 16px 0;
+  margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .planner-filter-group {

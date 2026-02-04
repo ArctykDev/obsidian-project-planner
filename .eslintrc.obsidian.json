@@ -1,0 +1,39 @@
+{
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2020,
+    "sourceType": "module"
+  },
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    
+    // Obsidian-specific patterns
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "CallExpression[callee.property.name='innerHTML']",
+        "message": "Avoid innerHTML for security. Use createEl() or textContent instead."
+      },
+      {
+        "selector": "NewExpression[callee.name='XMLHttpRequest']",
+        "message": "Use requestUrl() from Obsidian API instead of XMLHttpRequest."
+      }
+    ],
+    
+    // Memory leak prevention
+    "no-restricted-properties": [
+      "error",
+      {
+        "object": "workspace",
+        "property": "on",
+        "message": "Register event with this.registerEvent() to auto-cleanup on unload."
+      }
+    ]
+  }
+}

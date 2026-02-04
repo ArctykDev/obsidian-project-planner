@@ -15,7 +15,7 @@ export class DailyNoteTaskScanner {
     private app: App;
     private plugin: ProjectPlannerPlugin;
     private processedTasks = new Set<string>(); // Track task IDs to avoid duplicates
-    private scanTimeout: number | null = null;
+    private scanTimeout: ReturnType<typeof setTimeout> | null = null;
     private pendingScans = new Set<string>(); // Track files pending scan
     // Map: "filePath:lineNumber" -> taskId to track task locations
     private taskLocationMap = new Map<string, string>();
@@ -34,9 +34,9 @@ export class DailyNoteTaskScanner {
      */
     private extractProjectFromTag(tag: string): string | null {
         const basePattern = this.plugin.settings.dailyNoteTagPattern.replace('#', '');
-        // Match either format: #planner/Project-Name or #planner/Project Name
-        // Captures until end of tag (next # or end of string/whitespace followed by non-alphanumeric)
-        const regex = new RegExp(`#${basePattern}/([^#\\n\\r]+?)(?=\\s|$|#)`, 'i');
+        // Match format: #planner/Project-Name (hyphens for spaces)
+        // Captures non-whitespace characters after the slash (tag ends at whitespace)
+        const regex = new RegExp(`#${basePattern}/([^\\s#]+)`, 'i');
         const match = tag.match(regex);
         if (!match) return null;
 

@@ -126,6 +126,11 @@ export class TaskStore {
     }
   }
 
+  // Public method to manually trigger view updates (e.g., after settings change)
+  refresh() {
+    this.emit();
+  }
+
   async addTask(title: string): Promise<PlannerTask> {
     const today = getTodayDate();
     const task: PlannerTask = {

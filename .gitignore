@@ -1,5 +1,5 @@
 # ========================================
-# Obsidian Calendar Events Plugin
+# Obsidian Project Planner Plugin
 # ========================================
 
 # Node.js dependencies
@@ -17,6 +17,11 @@ main.js.map
 
 # TypeScript cache
 *.tsbuildinfo
+
+# Test output and coverage reports
+coverage/
+*.lcov
+.nyc_output/
 
 # Internal Docs
 BOARD_VIEW.md

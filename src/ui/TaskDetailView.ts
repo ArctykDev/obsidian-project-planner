@@ -859,13 +859,9 @@ export class TaskDetailView extends ItemView {
   }
 
   private getAllTasks(): PlannerTask[] {
-    const leaf = this.app.workspace.getLeavesOfType("project-planner-view")[0];
-    if (!leaf) return [];
-
-    const grid: any = leaf.view;
-    if (!grid || !grid.taskStore) return [];
-
-    return grid.taskStore.getAll();
+    // Get tasks directly from the plugin's TaskStore (single source of truth)
+    // This works regardless of which view is open (Grid, Timeline, Board, etc.)
+    return this.plugin.taskStore.getAll();
   }
 
   private wouldCreateCircularDependency(taskId: string, predecessorId: string): boolean {

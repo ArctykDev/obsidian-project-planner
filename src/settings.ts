@@ -2,6 +2,71 @@ import { App, PluginSettingTab, Setting } from "obsidian";
 import type ProjectPlannerPlugin from "./main";
 import type { PlannerTag, PlannerStatus, PlannerPriority } from "./types";
 
+/**
+ * Date formatting utilities
+ */
+export function formatDateForDisplay(dateStr: string | undefined, format: "iso" | "us" | "uk"): string {
+  if (!dateStr) return "Set date";
+  
+  // Handle both YYYY-MM-DD and ISO datetime format
+  const normalized = dateStr.includes('T') ? dateStr.slice(0, 10) : dateStr;
+  const parts = normalized.split("-");
+  if (parts.length !== 3) return "Set date";
+  
+  const [y, m, d] = parts;
+  
+  switch (format) {
+    case "iso":
+      return `${y}-${m}-${d}`;
+    case "us":
+      return `${m}/${d}/${y}`;
+    case "uk":
+      return `${d}/${m}/${y}`;
+    default:
+      return `${y}-${m}-${d}`;
+  }
+}
+
+export function parseDateInput(input: string, format: "iso" | "us" | "uk"): string {
+  if (!input || input.trim() === "") return "";
+  
+  // If it's already in ISO format (YYYY-MM-DD), return as-is
+  if (/^\d{4}-\d{2}-\d{2}$/.test(input)) {
+    return input;
+  }
+  
+  // Parse based on format
+  const parts = input.split(/[\/\-]/);
+  if (parts.length !== 3) return "";
+  
+  let year: string, month: string, day: string;
+  
+  switch (format) {
+    case "iso":
+      [year, month, day] = parts;
+      break;
+    case "us":
+      [month, day, year] = parts;
+      break;
+    case "uk":
+      [day, month, year] = parts;
+      break;
+    default:
+      [year, month, day] = parts;
+  }
+  
+  // Pad month and day with zeros if needed
+  month = month.padStart(2, '0');
+  day = day.padStart(2, '0');
+  
+  // Handle 2-digit years (assume 20xx)
+  if (year.length === 2) {
+    year = '20' + year;
+  }
+  
+  return `${year}-${month}-${day}`;
+}
+
 export interface BoardBucket {
   id: string;
   name: string;
@@ -42,6 +107,9 @@ export interface ProjectPlannerSettings {
   dailyNoteScanFolders: string[]; // Folders to scan for tagged tasks (empty = all notes)
   dailyNoteDefaultProject: string; // Default project ID for tasks without specific project tag
 
+  // Date format settings
+  dateFormat: "iso" | "us" | "uk"; // ISO (YYYY-MM-DD), US (MM/DD/YYYY), UK (DD/MM/YYYY)
+
   // View-specific settings
   ganttLeftColumnWidth: number; // Width of left column in Gantt view (pixels)
 
@@ -81,6 +149,7 @@ export const DEFAULT_SETTINGS: ProjectPlannerSettings = {
   dailyNoteTagPattern: "#planner",
   dailyNoteScanFolders: [],
   dailyNoteDefaultProject: "",
+  dateFormat: "iso",
   ganttLeftColumnWidth: 300,
   showRibbonIconGrid: true,
   showRibbonIconDashboard: false,
@@ -215,6 +284,28 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       );
 
     // -----------------------------------------------------------------------
+    // Date Format Section
+    // -----------------------------------------------------------------------
+    new Setting(containerEl).setName("Date format").setHeading();
+
+    new Setting(containerEl)
+      .setName("Date display format")
+      .setDesc("Choose how dates are displayed throughout the app. Dates are always stored internally as YYYY-MM-DD.")
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("iso", "ISO (YYYY-MM-DD)")
+          .addOption("us", "US (MM/DD/YYYY)")
+          .addOption("uk", "UK (DD/MM/YYYY)")
+          .setValue(this.plugin.settings.dateFormat)
+          .onChange(async (value) => {
+            this.plugin.settings.dateFormat = value as "iso" | "us" | "uk";
+            await this.plugin.saveSettings();
+            // Trigger re-render of all views
+            this.plugin.taskStore.refresh();
+          })
+      );
+
+    // -----------------------------------------------------------------------
     // Ribbon Icons Section
     // -----------------------------------------------------------------------
     new Setting(containerEl).setName("Ribbon icons").setHeading();
@@ -303,6 +394,19 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
             if (value) {
               this.plugin.initializeTaskSync();
             }
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Projects base folder")
+      .setDesc("Base folder path where project folders will be created (e.g., 'Projects', 'Work/Planning'). Folder will be created if it doesn't exist.")
+      .addText((text) =>
+        text
+          .setPlaceholder("Project Planner")
+          .setValue(this.plugin.settings.projectsBasePath)
+          .onChange(async (value) => {
+            this.plugin.settings.projectsBasePath = value.trim() || "Project Planner";
+            await this.plugin.saveSettings();
           })
       );
 
