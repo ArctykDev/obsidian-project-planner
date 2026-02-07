@@ -1,38 +1,55 @@
 # Obsidian Project Planner
 
-![Obsidian](https://img.shields.io/badge/Obsidian-Plugin-7C3AED?logo=obsidian&logoColor=white)
+![Obsidian](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/ArctykDev/obsidian-project-planner/main/manifest.json&query=$.minAppVersion&label=Obsidian%20Min%20Version&prefix=%3E%3D&color=7C3AED&logo=obsidian&logoColor=white)
 ![Release](https://img.shields.io/github/v/release/ArctykDev/obsidian-project-planner?color=blue)
 ![Build](https://img.shields.io/github/actions/workflow/status/ArctykDev/obsidian-project-planner/build.yml?branch=main)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 A full-featured project planner for [Obsidian](https://obidian.md) based on [Microsoft Premium Planner](https://support.microsoft.com/en-us/planner).
 
----
+
 
 ## Features
 
-| Feature              | Description                                     | Version |
-| -------------------- | ----------------------------------------------- | ------- |
-| Core Task Management | Table view of tasks and sub tasks               | v0.5.0  |
-| Timeline View        | Gantt style view of all tasks and subtasks      | v0.6.0  |
-| Dashboard & KPIs     | Basic dashboard view with KPIs                  | v0.7.0  |
-| Integrations         | Integration with core Obsidian plugins          | v0.8.0  |
-| UX/UI Refinement     | Polish UX/UI, plugin settings                   | v0.9.0  |
-| Official Release     | The first official release                      | v1.0.0  |
-| Plugin Refinements   | Bug fixes, patches, basic improvemnts           | v1.0.0+ |
-| Feature Enhancements | New features, enhancements to existing features | v1.1.0  |
+- Hierarchical task table with subtasks (Grid view)
+- Kanban board with custom buckets and drag-and-drop
+- Gantt-style timeline view
+- Dashboard with project KPIs
+- Task detail panel with status, priority, dates, tags, links, and dependencies
+- Dependency graph visualization
+- Project hub notes and task notes for graph navigation
+- Bidirectional markdown sync between tasks and notes
+- Deep links to tasks via Obsidian URI protocol
 
----
+
 
 ## Screen shots
 
-![Grid View](assets/project-planner-grid-view-v0-4-0.png)
+### Dashboard view [v0.6.7]
+
+![Dashboard](assets/version-0-6-7-dashboard-view.png)
+
+### Grid view [v0.6.7]
+
+![Grid View](assets/version-0-6-7-grid-view.png)
+
+### Board view [v0.6.7]
+
+![Board view](assets/version-0-6-7-board-view.png)
+
+### Timeline view [v0.6.7]
+
+![Timeline view](assets/version-0-6-7-timeline-view.png)
+
+### Task details - [v0.4.0]
 
 ![Task Details](assets/project-planner-task-details-v0-4-0.png)
 
+### Plugin settings - [v0.4.0]
+
 ![Plugin Settings](assets/project-planner-settings-v0-4-0.png)
 
----
+
 
 ## Documentation
 
