@@ -1,4 +1,4 @@
-import { App, TFile, Notice } from "obsidian";
+import { App, TFile, Notice, normalizePath } from "obsidian";
 import type ProjectPlannerPlugin from "../main";
 import { PlannerTask } from "../types";
 
@@ -17,12 +17,70 @@ export class DailyNoteTaskScanner {
     private processedTasks = new Set<string>(); // Track task IDs to avoid duplicates
     private scanTimeout: ReturnType<typeof setTimeout> | null = null;
     private pendingScans = new Set<string>(); // Track files pending scan
-    // Map: "filePath:lineNumber" -> taskId to track task locations
+    // Map: "filePath:lineNumber" -> taskId to track task locations (persisted to settings)
     private taskLocationMap = new Map<string, string>();
 
     constructor(app: App, plugin: ProjectPlannerPlugin) {
         this.app = app;
         this.plugin = plugin;
+        this.loadTaskLocationMap();
+    }
+
+    /**
+     * Load taskLocationMap from persisted settings
+     */
+    private loadTaskLocationMap() {
+        const saved = this.plugin.settings.dailyNoteTaskLocations;
+        if (saved) {
+            this.taskLocationMap = new Map(Object.entries(saved));
+        }
+    }
+
+    /**
+     * Save taskLocationMap to persisted settings
+     */
+    private async saveTaskLocationMap() {
+        this.plugin.settings.dailyNoteTaskLocations = Object.fromEntries(this.taskLocationMap);
+        await this.plugin.saveSettings();
+    }
+
+    /**
+     * Generate a stable hash-based ID for a task
+     * Uses file path + normalized content for deterministic ID generation
+     */
+    private generateStableTaskId(file: TFile, taskContent: string): string {
+        // Normalize content: remove extra spaces, lowercase, trim
+        const normalized = taskContent.trim().toLowerCase().replace(/\s+/g, ' ');
+        // Create a simple hash (good enough for collision avoidance)
+        const hashStr = `${file.path}|${normalized}`;
+        let hash = 0;
+        for (let i = 0; i < hashStr.length; i++) {
+            const char = hashStr.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32-bit integer
+        }
+        const hashHex = Math.abs(hash).toString(16).padStart(8, '0');
+        return `daily-task-${hashHex}`;
+    }
+
+    /**
+     * Find existing task by content similarity to avoid duplicates
+     */
+    private findDuplicateTaskByContent(title: string, projectId: string): PlannerTask | null {
+        // Get all tasks from TaskStore (across all projects)
+        const allTasks = this.plugin.taskStore.getAll();
+        const normalizedTitle = title.trim().toLowerCase();
+        
+        // Find tasks with matching title that were imported from daily notes
+        // Note: Since TaskStore.getAll() returns tasks from active project only,
+        // we can assume any daily-task- ID found is in the current project
+        const duplicates = allTasks.filter(t => {
+            if (!t.id.startsWith('daily-task-')) return false;
+            if (t.title.trim().toLowerCase() !== normalizedTitle) return false;
+            return true;
+        });
+        
+        return duplicates.length > 0 ? duplicates[0] : null;
     }
 
     /**
@@ -74,7 +132,7 @@ export class DailyNoteTaskScanner {
     /**
      * Parse a tagged task line into a PlannerTask object
      */
-    private parseTaskLine(line: string, file: TFile, lineNumber: number): { task: PlannerTask, locationKey: string } | null {
+    private async parseTaskLine(line: string, file: TFile, lineNumber: number): Promise<{ task: PlannerTask, locationKey: string } | null> {
         const taskRegex = /^[\s]*-\s+\[([ xX])\]\s+(.+)/;
         const match = line.match(taskRegex);
 
@@ -157,29 +215,44 @@ export class DailyNoteTaskScanner {
             }
         }
 
-        // Generate location key for tracking
+        // Generate location key for tracking (file path + line number)
         const locationKey = `${file.path}:${lineNumber}`;
 
         // Check if we already have a task at this location
         let taskId = this.taskLocationMap.get(locationKey);
-        const isNewTask = !taskId;
+        let isNewTask = !taskId;
 
-        // If no existing task, generate new ID
+        // If no existing task at this location, try to find by content hash
         if (!taskId) {
-            taskId = `daily-task-${crypto.randomUUID()}`;
+            // Generate stable ID based on file path and task content
+            taskId = this.generateStableTaskId(file, title);
+            
+            // Check if this task ID already exists (content-based deduplication)
+            const existingById = this.plugin.taskStore.getTaskById(taskId);
+            if (!existingById) {
+                isNewTask = true;
+            } else {
+                isNewTask = false;
+                // Task exists, just update location mapping
+            }
+            
+            // Always update location map for future lookups
             this.taskLocationMap.set(locationKey, taskId);
+            await this.saveTaskLocationMap().catch(err => {
+                console.warn('[DailyNoteScanner] Failed to save location map:', err);
+            });
         }
 
         // Get today's date in YYYY-MM-DD format
         const today = new Date().toISOString().slice(0, 10);
 
-        // Create the task object
+        // Create the task object with source tracking
         const task: PlannerTask = {
             id: taskId,
             title: title,
             completed: isCompleted,
             status: isCompleted ? "Completed" : "Not Started",
-            description: `Imported from: [[${file.basename}]]`,
+            description: `Imported from: [[${file.basename}]]\nLine: ${lineNumber + 1}`,
         };
 
         // Set timestamps
@@ -247,7 +320,7 @@ export class DailyNoteTaskScanner {
         for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
             const line = lines[lineNumber];
             if (this.isTaggedTask(line)) {
-                const result = this.parseTaskLine(line, file, lineNumber);
+                const result = await this.parseTaskLine(line, file, lineNumber);
                 if (result) {
                     const { task, locationKey } = result;
 
@@ -270,13 +343,25 @@ export class DailyNoteTaskScanner {
                         continue;
                     }
 
-                    // Check if task already exists
+                    // Check if task already exists by ID
                     const existingTask = this.plugin.taskStore.getTaskById(task.id);
 
                     if (!existingTask) {
-                        // Add new task
-                        await this.plugin.taskStore.addTaskToProject(task, projectId);
-                        this.processedTasks.add(task.id);
+                        // Double-check for content-based duplicates before adding
+                        const contentDuplicate = this.findDuplicateTaskByContent(task.title, projectId);
+                        if (contentDuplicate) {
+                            console.log(`[DailyNoteScanner] Found duplicate by content, updating existing task: ${task.title}`);
+                            // Update the existing duplicate instead of creating new task
+                            await this.plugin.taskStore.updateTask(contentDuplicate.id, task);
+                            // Update location map to point to existing task
+                            this.taskLocationMap.set(locationKey, contentDuplicate.id);
+                            await this.saveTaskLocationMap();
+                            this.processedTasks.add(contentDuplicate.id);
+                        } else {
+                            // No duplicates found, add new task
+                            await this.plugin.taskStore.addTaskToProject(task, projectId);
+                            this.processedTasks.add(task.id);
+                        }
                     } else {
                         // Update existing task (content may have changed)
                         await this.plugin.taskStore.updateTask(task.id, task);
@@ -288,11 +373,23 @@ export class DailyNoteTaskScanner {
 
         // Clean up location map entries for tasks that were removed from this file
         const allKeysForFile = Array.from(this.taskLocationMap.keys()).filter(key => key.startsWith(`${file.path}:`));
+        let removedCount = 0;
         for (const key of allKeysForFile) {
             if (!currentFileTasks.has(key)) {
                 // Task was removed from this location
+                const removedTaskId = this.taskLocationMap.get(key);
                 this.taskLocationMap.delete(key);
+                removedCount++;
+                
+                // Optionally: Delete task from TaskStore if it no longer exists in any file
+                // (only if we're confident about this - could be handled by user manually)
+                // await this.plugin.taskStore.deleteTask(removedTaskId);
             }
+        }
+        
+        // Save location map if any changes were made
+        if (removedCount > 0) {
+            await this.saveTaskLocationMap();
         }
     }
 
@@ -336,6 +433,73 @@ export class DailyNoteTaskScanner {
                 }
             })
         );
+
+        // Watch for file deletions to clean up location map
+        this.plugin.registerEvent(
+            this.app.vault.on('delete', (file) => {
+                if (file instanceof TFile) {
+                    this.handleFileDelete(file);
+                }
+            })
+        );
+
+        // Watch for file renames to update location map
+        this.plugin.registerEvent(
+            this.app.vault.on('rename', (file, oldPath) => {
+                if (file instanceof TFile) {
+                    this.handleFileRename(file, oldPath);
+                }
+            })
+        );
+    }
+
+    /**
+     * Handle file deletion - clean up location map
+     */
+    private async handleFileDelete(file: TFile) {
+        const keysToDelete = Array.from(this.taskLocationMap.keys())
+            .filter(key => key.startsWith(`${file.path}:`));
+        
+        if (keysToDelete.length > 0) {
+            keysToDelete.forEach(key => this.taskLocationMap.delete(key));
+            await this.saveTaskLocationMap();
+            console.log(`[DailyNoteScanner] Cleaned up ${keysToDelete.length} location entries for deleted file: ${file.path}`);
+        }
+    }
+
+    /**
+     * Handle file rename - update location map with new paths
+     */
+    private async handleFileRename(file: TFile, oldPath: string) {
+        const oldKeys = Array.from(this.taskLocationMap.keys())
+            .filter(key => key.startsWith(`${oldPath}:`));
+        
+        if (oldKeys.length > 0) {
+            const updates: [string, string][] = [];
+            
+            // Create new keys with updated file path
+            oldKeys.forEach(oldKey => {
+                const taskId = this.taskLocationMap.get(oldKey);
+                if (taskId) {
+                    // Extract line number from old key
+                    const lineNumber = oldKey.split(':')[1];
+                    const newKey = `${file.path}:${lineNumber}`;
+                    updates.push([oldKey, newKey]);
+                }
+            });
+            
+            // Apply updates
+            updates.forEach(([oldKey, newKey]) => {
+                const taskId = this.taskLocationMap.get(oldKey);
+                if (taskId) {
+                    this.taskLocationMap.delete(oldKey);
+                    this.taskLocationMap.set(newKey, taskId);
+                }
+            });
+            
+            await this.saveTaskLocationMap();
+            console.log(`[DailyNoteScanner] Updated ${updates.length} location entries for renamed file: ${oldPath} → ${file.path}`);
+        }
     }
 
     /**

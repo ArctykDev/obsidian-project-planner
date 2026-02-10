@@ -57,6 +57,11 @@ export class GridView extends ItemView {
   private clipboardTask: { task: PlannerTask; isCut: boolean } | null = null;
   private columnVisibility: Record<string, boolean> = {};
   
+  // Column reordering (drag and drop)
+  private columnOrder: string[] = [];
+  private draggedColumnKey: string | null = null;
+  private dropTargetColumnKey: string | null = null;
+  
   // Scroll position preservation
   private savedScrollTop: number | null = null;
 
@@ -356,10 +361,18 @@ export class GridView extends ItemView {
     visibleColumns.forEach((col) => {
       const th = headerRow.createEl("th");
       th.style.position = "relative";
+      th.setAttribute("data-column-key", col.key);
 
       // Apply saved width if any
       if (this.columnWidths[col.key] != null) {
         th.style.width = `${this.columnWidths[col.key]}px`;
+      }
+
+      // Make header draggable if reorderable
+      if ((col as any).reorderable) {
+        th.draggable = true;
+        th.classList.add("planner-column-draggable");
+        this.setupColumnDrag(th, col.key, headerRow);
       }
 
       // Label
@@ -2139,21 +2152,42 @@ export class GridView extends ItemView {
   // ---------------------------------------------------------------------------
 
   private getColumnDefinitions() {
-    return [
-      { key: "drag", label: "", hideable: false },
-      { key: "number", label: "#", hideable: false },
-      { key: "check", label: "", hideable: false },
-      { key: "title", label: "Title", hideable: true },
-      { key: "status", label: "Status", hideable: true },
-      { key: "priority", label: "Priority", hideable: true },
-      { key: "bucket", label: "Bucket", hideable: true },
-      { key: "tags", label: "Tags", hideable: true },
-      { key: "dependencies", label: "Deps", hideable: true },
-      { key: "start", label: "Start Date", hideable: true },
-      { key: "due", label: "Due Date", hideable: true },
-      { key: "created", label: "Created", hideable: true },
-      { key: "modified", label: "Modified", hideable: true },
+    const allColumns = [
+      { key: "drag", label: "", hideable: false, reorderable: false },
+      { key: "number", label: "#", hideable: false, reorderable: false },
+      { key: "check", label: "", hideable: false, reorderable: false },
+      { key: "title", label: "Title", hideable: true, reorderable: true },
+      { key: "status", label: "Status", hideable: true, reorderable: true },
+      { key: "priority", label: "Priority", hideable: true, reorderable: true },
+      { key: "bucket", label: "Bucket", hideable: true, reorderable: true },
+      { key: "tags", label: "Tags", hideable: true, reorderable: true },
+      { key: "dependencies", label: "Deps", hideable: true, reorderable: true },
+      { key: "start", label: "Start Date", hideable: true, reorderable: true },
+      { key: "due", label: "Due Date", hideable: true, reorderable: true },
+      { key: "created", label: "Created", hideable: true, reorderable: true },
+      { key: "modified", label: "Modified", hideable: true, reorderable: true },
     ];
+    
+    // Apply custom column order if available
+    if (this.columnOrder.length > 0) {
+      // Separate non-reorderable columns (drag, number, check)
+      const nonReorderable = allColumns.filter(c => !c.reorderable);
+      const reorderable = allColumns.filter(c => c.reorderable);
+      
+      // Sort reorderable columns by custom order
+      const orderedReorderable = this.columnOrder
+        .map(key => reorderable.find(c => c.key === key))
+        .filter(c => c !== undefined) as typeof allColumns;
+      
+      // Add any new columns that aren't in the saved order
+      const missingColumns = reorderable.filter(
+        c => !this.columnOrder.includes(c.key)
+      );
+      
+      return [...nonReorderable, ...orderedReorderable, ...missingColumns];
+    }
+    
+    return allColumns;
   }
 
   private isColumnVisible(key: string): boolean {
@@ -2254,6 +2288,97 @@ export class GridView extends ItemView {
   }
 
   // ---------------------------------------------------------------------------
+  // Column drag and drop for reordering
+  // ---------------------------------------------------------------------------
+
+  private setupColumnDrag(th: HTMLTableCellElement, columnKey: string, headerRow: HTMLTableRowElement) {
+    // Drag start
+    th.ondragstart = (e) => {
+      this.draggedColumnKey = columnKey;
+      th.classList.add("planner-column-dragging");
+      e.dataTransfer!.effectAllowed = "move";
+      e.dataTransfer!.setData("text/plain", columnKey);
+    };
+
+    // Drag end
+    th.ondragend = () => {
+      this.draggedColumnKey = null;
+      th.classList.remove("planner-column-dragging");
+      // Remove all dragover states
+      document.querySelectorAll(".planner-column-dragover").forEach(el => {
+        el.classList.remove("planner-column-dragover");
+      });
+    };
+
+    // Drag over - allow drop
+    th.ondragover = (e) => {
+      if (!this.draggedColumnKey) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer!.dropEffect = "move";
+
+      if (this.draggedColumnKey !== columnKey) {
+        th.classList.add("planner-column-dragover");
+      }
+    };
+
+    // Drag leave
+    th.ondragleave = (e) => {
+      if (!this.draggedColumnKey) return;
+
+      // Only remove highlight if we're actually leaving the column
+      const rect = th.getBoundingClientRect();
+      const x = e.clientX;
+      const y = e.clientY;
+
+      if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
+        th.classList.remove("planner-column-dragover");
+      }
+    };
+
+    // Drop - reorder columns
+    th.ondrop = async (e) => {
+      if (!this.draggedColumnKey) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      th.classList.remove("planner-column-dragover");
+
+      const draggedKey = this.draggedColumnKey;
+      const targetKey = columnKey;
+
+      if (draggedKey === targetKey) return;
+
+      // Get all reorderable columns
+      const allColumns = this.getColumnDefinitions();
+      const reorderableColumns = allColumns.filter((c: any) => c.reorderable);
+      
+      // Initialize columnOrder if empty
+      if (this.columnOrder.length === 0) {
+        this.columnOrder = reorderableColumns.map(c => c.key);
+      }
+
+      // Find indices in the order array
+      const draggedIndex = this.columnOrder.indexOf(draggedKey);
+      const targetIndex = this.columnOrder.indexOf(targetKey);
+
+      if (draggedIndex === -1 || targetIndex === -1) return;
+
+      // Reorder columns array
+      const newOrder = [...this.columnOrder];
+      const [draggedColumn] = newOrder.splice(draggedIndex, 1);
+      newOrder.splice(targetIndex, 0, draggedColumn);
+
+      this.columnOrder = newOrder;
+
+      // Save new order and re-render
+      this.saveGridViewSettings();
+      this.render();
+    };
+  }
+
+  // ---------------------------------------------------------------------------
   // Sort indicators
   // ---------------------------------------------------------------------------
 
@@ -2303,6 +2428,10 @@ export class GridView extends ItemView {
     if (settings.gridViewVisibleColumns) {
       this.columnVisibility = { ...settings.gridViewVisibleColumns };
     }
+    
+    if (settings.gridViewColumnOrder) {
+      this.columnOrder = [...settings.gridViewColumnOrder];
+    }
 
     // Ensure non-hideable columns stay visible and defaults exist for new columns
     this.getColumnDefinitions().forEach((col) => {
@@ -2330,6 +2459,7 @@ export class GridView extends ItemView {
     settings.gridViewSortKey = this.currentFilters.sortKey;
     settings.gridViewSortDirection = this.currentFilters.sortDirection;
     settings.gridViewVisibleColumns = { ...this.columnVisibility };
+    settings.gridViewColumnOrder = [...this.columnOrder];
 
     if (typeof pluginAny.saveSettings === "function") {
       void pluginAny.saveSettings();

@@ -2,6 +2,119 @@
 
 All notable changes to Obsidian Project Planner will be documented in this file.
 
+## [0.6.13] - 2026-02-10
+
+### Added
+
+#### Grid View Column Reordering
+- **Drag-and-Drop Column Headers**: Reorder columns in Grid View with Microsoft Planner-style interactions
+  - **Reorderable Columns**: All hideable columns (Title, Status, Priority, Bucket, Tags, Dependencies, Dates) can be reordered
+  - **Locked Columns**: Drag handle, Row number, and Checkbox remain fixed in position
+  - **Visual Feedback**: Dragged column fades to 40% opacity, drop target shows accent outline
+  - **Cursor States**: Grab cursor on hover, grabbing cursor during drag
+  - **Order Persistence**: Column arrangement saved to `gridViewColumnOrder` setting and preserved across sessions
+  - **Smart Ordering**: Automatically handles new columns not in saved order by appending them
+  - Consistent behavior with BoardView bucket reordering for intuitive UX
+
+#### Header View Switcher Icons
+- **Icon-Based Navigation**: View switcher buttons now use Obsidian icons instead of text labels
+  - **Dashboard**: `layout-dashboard` icon
+  - **Grid**: `table` icon  
+  - **Board**: `layout-list` icon
+  - **Timeline**: `calendar-range` icon
+  - **Graph**: `git-fork` icon
+  - Tooltips show view names on hover for clarity
+  - Cleaner, more compact header design matching Obsidian's interface patterns
+
+### Fixed
+
+#### DailyNoteTaskScanner Deduplication System
+- **Critical Fix: Task Duplication Prevention** - Comprehensive overhaul to prevent duplicate tasks with Obsidian Sync
+  
+  **Persisted Location Tracking**:
+  - Task location map now saved to plugin settings (`dailyNoteTaskLocations`)
+  - Survives plugin reloads and syncs across devices via Obsidian Sync
+  - Previously: in-memory only, lost on every restart → duplicates on reload
+  
+  **Content-Based Stable IDs**:
+  - Replaced random UUIDs with deterministic content hashing
+  - Hash formula: `file path + normalized task content`
+  - Same task content = same ID across all devices
+  - Prevents sync conflict duplicates between devices
+  
+  **Duplicate Detection**:
+  - Added `findDuplicateTaskByContent()` to catch existing tasks before import
+  - Checks title match + `daily-task-*` ID pattern
+  - Updates existing task instead of creating duplicate
+  
+  **File Operation Tracking**:
+  - File rename watcher updates location map keys automatically
+  - File deletion watcher cleans up orphaned location entries
+  - Tasks preserve IDs when daily notes are reorganized
+  
+  **Enhanced Metadata**:
+  - Task descriptions now include source line number
+  - Format: `Imported from: [[filename]]\nLine: 42`
+  - Easier tracking of task origin in daily notes
+
+### Documentation
+
+- **DAILY_NOTE_SCANNER_AUDIT.md**: Comprehensive security audit documenting all duplication issues and fixes
+  - Identified 5 critical/medium severity duplication vectors
+  - Documented cross-device sync protection mechanisms
+  - Testing checklist for Obsidian Sync scenarios
+  - Impact analysis: ~100% duplication rate → near zero with fixes
+
+## [0.6.12] - 2026-02-04
+
+### Added
+
+#### Comprehensive Test Suite
+- **313 Automated Tests (98.4% passing)**: Complete test coverage for all core functionality
+  - **Unit Tests (214)**: TaskStore, TaskSync, UUID, DailyNoteTaskScanner, Main Plugin, ProjectPlannerSettingTab
+  - **Integration Tests (13)**: End-to-end task workflows across components
+  - **Utility Tests (99)**: Date formatting, settings utilities, helper functions
+  - **Compliance Tests (32)**: Obsidian plugin manifest and lifecycle validation
+
+#### Test Organization
+- **TaskStore Tests (37)**: Core operations, hierarchy, multi-project support, state management, legacy migration
+- **TaskSync Tests (41)**: Bidirectional markdown sync, file operations, error handling, sync lock prevention
+- **DailyNoteTaskScanner Tests (61)**: Tag extraction, task parsing, priority/due date detection, file scanning
+- **ProjectPlannerSettingTab Tests (37)**: Settings UI validation, project management, sync configuration
+- **Main Plugin Tests (30)**: Plugin lifecycle, view management, URI protocol, settings persistence
+- **UUID Tests (8)**: Generation, validation, uniqueness (100% coverage)
+- **Compliance Tests (32)**: Manifest validation, lifecycle methods, data safety, performance benchmarks
+
+#### Test Infrastructure
+- **Jest Framework**: TypeScript support with ts-jest, JSDOM environment for browser API simulation
+- **Obsidian API Mocks**: Complete mock suite in `tests/__mocks__/obsidian.ts`
+- **Custom DOM Helpers**: Extended HTMLElement methods (createDiv, createEl, empty) for UI testing
+- **Test Documentation**: Comprehensive TESTING.md guide with examples and best practices
+- **ESLint Rules**: `.eslintrc.obsidian.json` with Obsidian-specific patterns and security rules
+
+### Fixed
+
+#### DailyNoteTaskScanner Project Name Parsing
+- **Multi-Word Projects**: Fixed regex to properly handle project names with hyphens
+  - **Before**: `([^#\\n\\r]+?)(?=\\s|$|#)` - stopped at first space
+  - **After**: `([^\\s#]+)` - correctly captures hyphenated names
+  - **Convention**: Multi-word projects use hyphens in tags (e.g., `#planner/Work-Project`)
+  - Added 13 edge case tests for project name extraction
+
+### Improved
+
+#### Code Quality & Reliability
+- **Bug Prevention**: Automated tests catch regressions before they reach users
+- **Documentation**: Tests serve as executable examples of how code should behave
+- **Contributor Confidence**: Easy onboarding with comprehensive test suite
+- **CI/CD Ready**: GitHub Actions can run `npm test` for automated validation
+
+#### Compliance Validation
+- **Manifest Checks**: Validates all required fields, version format, ID conventions
+- **Lifecycle Checks**: Ensures proper onload/onunload, resource cleanup, error handling
+- **Performance Checks**: Validates plugin loads within 1 second
+- **Data Safety**: Tests prevent settings data loss, validate error recovery
+
 ## [0.6.11] - 2026-02-02
 
 ### Added

@@ -57,32 +57,37 @@ export function renderPlannerHeader(
 
     const dashboardViewBtn = viewSwitcher.createEl("button", {
         cls: `planner-view-btn${options.active === "dashboard" ? " planner-view-btn-active" : ""}`,
-        text: "Dashboard",
+        title: "Dashboard",
     });
+    setIcon(dashboardViewBtn, "layout-dashboard");
     dashboardViewBtn.onclick = async () => await plugin.activateDashboardView();
 
     const gridViewBtn = viewSwitcher.createEl("button", {
         cls: `planner-view-btn${options.active === "grid" ? " planner-view-btn-active" : ""}`,
-        text: "Grid",
+        title: "Grid",
     });
+    setIcon(gridViewBtn, "table");
     gridViewBtn.onclick = async () => await plugin.activateView();
 
     const boardViewBtn = viewSwitcher.createEl("button", {
         cls: `planner-view-btn${options.active === "board" ? " planner-view-btn-active" : ""}`,
-        text: "Board",
+        title: "Board",
     });
+    setIcon(boardViewBtn, "layout-list");
     boardViewBtn.onclick = async () => await plugin.activateBoardView();
 
     const ganttViewBtn = viewSwitcher.createEl("button", {
         cls: `planner-view-btn${options.active === "gantt" ? " planner-view-btn-active" : ""}`,
-        text: "Timeline",
+        title: "Timeline",
     });
+    setIcon(ganttViewBtn, "calendar-range");
     ganttViewBtn.onclick = async () => await plugin.activateGanttView();
 
     const graphViewBtn = viewSwitcher.createEl("button", {
         cls: `planner-view-btn${options.active === "graph" ? " planner-view-btn-active" : ""}`,
-        text: "Graph",
+        title: "Graph",
     });
+    setIcon(graphViewBtn, "git-fork");
     graphViewBtn.onclick = async () => await plugin.openDependencyGraph();
 
     // Header actions (Add task, extra, Project Hub, Settings)

@@ -70,7 +70,7 @@ export function parseDateInput(input: string, format: "iso" | "us" | "uk"): stri
 export interface BoardBucket {
   id: string;
   name: string;
-  color?: string; // Column header color (Microsoft Planner style)
+  color?: string; 
 }
 
 export interface PlannerProject {
@@ -79,7 +79,7 @@ export interface PlannerProject {
   createdDate?: string;
   lastUpdatedDate?: string;
   lastSyncTimestamp?: number; // Unix timestamp of last successful sync
-  buckets?: BoardBucket[]; // Board view buckets (independent of statuses)
+  buckets?: BoardBucket[]; // Board view buckets
   unassignedBucketName?: string; // Custom name for unassigned bucket
   completedSectionsCollapsed?: { [bucketId: string]: boolean }; // Track collapsed state per bucket
 }
@@ -99,13 +99,14 @@ export interface ProjectPlannerSettings {
   enableMarkdownSync: boolean; // Enable sync between JSON and markdown notes
   autoCreateTaskNotes: boolean; // Auto-create/update markdown notes when tasks change
   syncOnStartup: boolean; // Perform initial sync when plugin loads
-  projectsBasePath: string; // Base folder path for project folders (e.g., "Project Planner")
-
+  projectsBasePath: string; // Base folder path for project folders
+  
   // Daily note task tagging settings
   enableDailyNoteSync: boolean; // Enable scanning daily notes for tagged tasks
   dailyNoteTagPattern: string; // Tag pattern for identifying tasks (e.g., "#planner" or "#task/project")
   dailyNoteScanFolders: string[]; // Folders to scan for tagged tasks (empty = all notes)
   dailyNoteDefaultProject: string; // Default project ID for tasks without specific project tag
+  dailyNoteTaskLocations?: Record<string, string>; // Persisted map: "filePath:lineNumber" -> taskId
 
   // Date format settings
   dateFormat: "iso" | "us" | "uk"; // ISO (YYYY-MM-DD), US (MM/DD/YYYY), UK (DD/MM/YYYY)

@@ -213,6 +213,26 @@
   background: var(--background-primary);
 }
 
+/* Column drag and drop for reordering */
+.planner-grid-table th.planner-column-draggable {
+  cursor: grab;
+  user-select: none;
+}
+
+.planner-grid-table th.planner-column-draggable:active {
+  cursor: grabbing;
+}
+
+.planner-grid-table th.planner-column-dragging {
+  opacity: 0.4;
+}
+
+.planner-grid-table th.planner-column-dragover {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: -2px;
+  background: var(--background-modifier-hover);
+}
+
 .planner-grid-table td {
   padding: 10px 4px;
   border-bottom: 1px solid var(--background-modifier-border);
