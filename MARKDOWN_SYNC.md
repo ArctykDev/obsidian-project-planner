@@ -42,6 +42,9 @@ priority: High
 bucketId: bucket-1
 startDate: 2026-01-10
 dueDate: 2026-01-20
+effortCompleted: 4
+effortRemaining: 6
+percentComplete: 40
 tags:
   - frontend
   - authentication
@@ -89,6 +92,9 @@ _Task from Project: My Project_
 - `dueDate` - ISO 8601 date string
 - `tags` - Array of tag IDs
 - `collapsed` - Boolean for collapsing child tasks in grid view
+- `effortCompleted` - Hours of effort completed (number)
+- `effortRemaining` - Hours of effort remaining (number)
+- `percentComplete` - Calculated completion percentage (auto-derived from effort values)
 - `dependencies` - Array of dependency strings in format `{TYPE}:{TASK_ID}`
   - Types: `FS` (Finish-to-Start), `SS` (Start-to-Start), `FF` (Finish-to-Finish), `SF` (Start-to-Finish)
 

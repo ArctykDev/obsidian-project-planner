@@ -80,4 +80,9 @@ export interface PlannerTask {
 
   // Card preview setting (what to show on board card)
   cardPreview?: "none" | "checklist" | "description";
+
+  // Effort tracking (Microsoft Planner / Jira style)
+  effortCompleted?: number; // Completed hours
+  effortRemaining?: number; // Remaining hours
+  percentComplete?: number; // 0–100 completion percentage
 }

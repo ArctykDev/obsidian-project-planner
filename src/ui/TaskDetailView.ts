@@ -318,6 +318,22 @@ export class TaskDetailView extends ItemView {
     });
 
     //
+    // DURATION (auto-calculated from start/due dates)
+    //
+    this.renderDurationRow(container, task);
+
+    //
+    // % COMPLETE
+    //
+    container.createEl("h3", { text: "% Complete" });
+    this.renderPercentComplete(container, task);
+
+    //
+    // EFFORT
+    //
+    this.renderEffortSection(container, task);
+
+    //
     // DEPENDENCIES
     //
     container.createEl("h3", { text: "Dependencies" });
@@ -1094,6 +1110,131 @@ export class TaskDetailView extends ItemView {
 
   // Helpers
   // ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
+  // Duration (auto-calculated read-only)
+  // ---------------------------------------------------------------------------
+
+  private renderDurationRow(container: HTMLElement, task: PlannerTask) {
+    const wrapper = container.createDiv("planner-duration-row");
+    const label = wrapper.createEl("h3", { text: "Duration" });
+
+    const durationValue = wrapper.createDiv("planner-duration-value");
+
+    if (task.startDate && task.dueDate) {
+      const start = new Date(task.startDate);
+      const end = new Date(task.dueDate);
+      const diffMs = end.getTime() - start.getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+      if (diffDays >= 0) {
+        durationValue.textContent = diffDays === 1 ? "1 day" : `${diffDays} days`;
+      } else {
+        durationValue.textContent = "Invalid range";
+        durationValue.classList.add("planner-duration-invalid");
+      }
+    } else {
+      durationValue.textContent = "Set start & due dates";
+      durationValue.classList.add("planner-duration-placeholder");
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // % Complete
+  // ---------------------------------------------------------------------------
+
+  private renderPercentComplete(container: HTMLElement, task: PlannerTask) {
+    const wrapper = container.createDiv("planner-percent-complete-wrapper");
+
+    const display = wrapper.createDiv({
+      cls: "planner-percent-display",
+      text: String(task.percentComplete ?? 0)
+    });
+
+    wrapper.createSpan({ text: "%", cls: "planner-percent-suffix" });
+
+    const hint = wrapper.createSpan({
+      text: "(calculated from effort)",
+      cls: "planner-percent-hint"
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Effort section (Completed + Remaining = Total)
+  // ---------------------------------------------------------------------------
+
+  private renderEffortSection(container: HTMLElement, task: PlannerTask) {
+    const section = container.createDiv("planner-effort-section");
+    section.createEl("h3", { text: "Effort" });
+
+    const grid = section.createDiv("planner-effort-grid");
+
+    // Completed
+    const completedCol = grid.createDiv("planner-effort-col");
+    completedCol.createDiv({ text: "Completed", cls: "planner-effort-label" });
+    const completedInput = completedCol.createEl("input", {
+      attr: { type: "number", min: "0", step: "0.5", placeholder: "0" },
+      cls: "planner-effort-input"
+    });
+    completedInput.value = task.effortCompleted ? String(task.effortCompleted) : "";
+
+    // Plus sign
+    const plusCol = grid.createDiv("planner-effort-operator");
+    plusCol.createSpan({ text: "+" });
+
+    // Remaining
+    const remainingCol = grid.createDiv("planner-effort-col");
+    remainingCol.createDiv({ text: "Remaining", cls: "planner-effort-label" });
+    const remainingInput = remainingCol.createEl("input", {
+      attr: { type: "number", min: "0", step: "0.5", placeholder: "0" },
+      cls: "planner-effort-input"
+    });
+    remainingInput.value = task.effortRemaining ? String(task.effortRemaining) : "";
+
+    // Equals sign
+    const equalsCol = grid.createDiv("planner-effort-operator");
+    equalsCol.createSpan({ text: "=" });
+
+    // Total (read-only)
+    const totalCol = grid.createDiv("planner-effort-col");
+    totalCol.createDiv({ text: "Total", cls: "planner-effort-label" });
+    const totalInput = totalCol.createEl("input", {
+      attr: { type: "number", readonly: "true" },
+      cls: "planner-effort-input planner-effort-total"
+    });
+    const completed = task.effortCompleted ?? 0;
+    const remaining = task.effortRemaining ?? 0;
+    totalInput.value = (completed + remaining) > 0 ? String(completed + remaining) : "";
+
+    // Unit label
+    const unitLabel = grid.createDiv("planner-effort-unit");
+    unitLabel.createSpan({ text: "hours" });
+
+    // Event handlers
+    // Microsoft Planner style: changing completed auto-adjusts remaining from total
+    const commitCompleted = async () => {
+      const c = parseFloat(completedInput.value) || 0;
+      const total = (task.effortCompleted ?? 0) + (task.effortRemaining ?? 0);
+      const r = Math.max(0, total - c);
+      remainingInput.value = r > 0 ? String(r) : "";
+      totalInput.value = (c + r) > 0 ? String(c + r) : "";
+      await this.update({ effortCompleted: c });
+    };
+
+    // Changing remaining adjusts the total (completed stays fixed)
+    const commitRemaining = async () => {
+      const c = parseFloat(completedInput.value) || 0;
+      const r = parseFloat(remainingInput.value) || 0;
+      totalInput.value = (c + r) > 0 ? String(c + r) : "";
+      await this.update({ effortRemaining: r });
+    };
+
+    completedInput.onblur = commitCompleted;
+    completedInput.onkeydown = (e) => { if (e.key === "Enter") void commitCompleted(); };
+
+    remainingInput.onblur = commitRemaining;
+    remainingInput.onkeydown = (e) => { if (e.key === "Enter") void commitRemaining(); };
+  }
 
   private createSubtaskId(): string {
     if (typeof crypto !== "undefined" && "randomUUID" in crypto) {

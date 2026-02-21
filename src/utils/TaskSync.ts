@@ -38,6 +38,11 @@ export class TaskSync {
         if (task.tags && task.tags.length > 0) yaml.tags = task.tags;
         if (task.collapsed !== undefined) yaml.collapsed = task.collapsed;
 
+        // Effort tracking
+        if (task.effortCompleted != null && task.effortCompleted > 0) yaml.effortCompleted = task.effortCompleted;
+        if (task.effortRemaining != null && task.effortRemaining > 0) yaml.effortRemaining = task.effortRemaining;
+        if (task.percentComplete != null && task.percentComplete > 0) yaml.percentComplete = task.percentComplete;
+
         // Dependencies
         if (task.dependencies && task.dependencies.length > 0) {
             yaml.dependencies = task.dependencies.map(d => `${d.type}:${d.predecessorId}`);
@@ -130,6 +135,11 @@ export class TaskSync {
         if (fm.lastModifiedDate) task.lastModifiedDate = fm.lastModifiedDate;
         if (fm.tags) task.tags = Array.isArray(fm.tags) ? fm.tags : [fm.tags];
         if (fm.collapsed !== undefined) task.collapsed = fm.collapsed;
+
+        // Effort tracking
+        if (fm.effortCompleted != null) task.effortCompleted = Number(fm.effortCompleted) || 0;
+        if (fm.effortRemaining != null) task.effortRemaining = Number(fm.effortRemaining) || 0;
+        if (fm.percentComplete != null) task.percentComplete = Number(fm.percentComplete) || 0;
 
         // Dependencies
         if (fm.dependencies && Array.isArray(fm.dependencies)) {

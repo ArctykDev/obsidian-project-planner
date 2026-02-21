@@ -238,6 +238,46 @@ export class TaskStore {
       partial.status = partial.completed ? "Completed" : task.status || "Not Started";
     }
 
+    // Effort sync: Microsoft Planner style
+    // - When completed hours change, remaining auto-decreases from total
+    // - When remaining changes directly, total adjusts
+    // - When task is marked Completed, remaining → 0, completed = total
+    const oldCompleted = task.effortCompleted ?? 0;
+    const oldRemaining = task.effortRemaining ?? 0;
+    const oldTotal = oldCompleted + oldRemaining;
+
+    if (partial.status === "Completed" || partial.completed === true) {
+      // Move all remaining into completed
+      if (oldTotal > 0) {
+        partial.effortCompleted = oldTotal;
+        partial.effortRemaining = 0;
+      }
+    } else if (partial.effortCompleted !== undefined && partial.effortRemaining === undefined) {
+      // User changed completed hours only → auto-adjust remaining from total
+      partial.effortRemaining = Math.max(0, oldTotal - partial.effortCompleted);
+    }
+
+    // Auto-calculate percentComplete from effort values
+    const finalCompleted = partial.effortCompleted ?? task.effortCompleted ?? 0;
+    const finalRemaining = partial.effortRemaining ?? task.effortRemaining ?? 0;
+    const totalEffortCalc = finalCompleted + finalRemaining;
+    if (totalEffortCalc > 0) {
+      partial.percentComplete = Math.round((finalCompleted / totalEffortCalc) * 100);
+      // Auto-sync status based on calculated percent
+      if (partial.percentComplete === 100 && (partial.status ?? task.status) !== "Completed") {
+        partial.status = "Completed";
+        partial.completed = true;
+      } else if (partial.percentComplete < 100 && (partial.status ?? task.status) === "Completed") {
+        partial.status = "In Progress";
+        partial.completed = false;
+      }
+    } else {
+      // No effort data — keep percentComplete as-is (or 0)
+      if (partial.effortCompleted !== undefined || partial.effortRemaining !== undefined) {
+        partial.percentComplete = 0;
+      }
+    }
+
     // Set last modified timestamp
     partial.lastModifiedDate = getTodayDate();
 

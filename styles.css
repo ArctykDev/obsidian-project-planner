@@ -3239,3 +3239,161 @@
   transform: translateY(-2px);
   opacity: 0.9;
 }
+
+/* ========================================================================= */
+/* EFFORT TRACKING                                                           */
+/* ========================================================================= */
+
+/* Task Detail View – Duration row */
+.planner-duration-row {
+  margin-bottom: 4px;
+}
+
+.planner-duration-value {
+  padding: 6px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  font-size: 13px;
+}
+
+.planner-duration-placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.planner-duration-invalid {
+  color: var(--text-error, #d70022);
+}
+
+/* Task Detail View – % Complete */
+.planner-percent-complete-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.planner-percent-input {
+  width: 80px;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  font-size: 14px;
+  text-align: right;
+}
+
+.planner-percent-suffix {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.planner-percent-display {
+  font-size: 16px;
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.planner-percent-hint {
+  color: var(--text-faint);
+  font-size: 11px;
+  margin-left: 6px;
+}
+
+.planner-percent-cell {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* Task Detail View – Effort section */
+.planner-effort-section {
+  margin-bottom: 12px;
+}
+
+.planner-effort-grid {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.planner-effort-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 70px;
+}
+
+.planner-effort-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.planner-effort-input {
+  width: 100%;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  font-size: 13px;
+  text-align: right;
+}
+
+.planner-effort-input.planner-effort-total {
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.planner-effort-operator {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 8px;
+  color: var(--text-muted);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.planner-effort-unit {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* Grid View – Effort cells */
+.planner-effort-cell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.planner-inline-number-input {
+  width: 60px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  font-size: 12px;
+  text-align: right;
+}
+
+.planner-inline-number-input:focus {
+  border-color: var(--interactive-accent);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb, 10, 132, 255), 0.2);
+}
+
+.planner-effort-total-cell {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.planner-duration-cell {
+  color: var(--text-muted);
+  font-size: 12px;
+}

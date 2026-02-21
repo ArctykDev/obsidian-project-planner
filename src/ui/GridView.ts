@@ -539,562 +539,294 @@ export class GridView extends ItemView {
       this.showTaskMenu(task, index, evt);
     };
 
-    // ---------------------------------------------------------------------
-    // Drag handle cell — FIRST column
-    // ---------------------------------------------------------------------
-    if (this.isColumnVisible("drag")) {
-      const dragCell = row.createEl("td", { cls: "planner-drag-cell" });
+    // Build a map of column key → cell render function
+    // Then iterate in getColumnDefinitions() order so reordering works
+    const cellRenderers: Record<string, () => void> = {
 
-      const dragHandle = dragCell.createSpan({
-        cls: "planner-drag-handle",
-        text: "⋮⋮",
-      });
-
-      dragHandle.onpointerdown = (evt: PointerEvent) => {
-        evt.preventDefault();
-        evt.stopPropagation();
-
-        const rowRect = row.getBoundingClientRect();
-
-        // Create ghost row
-        const ghost = document.createElement("div");
-        ghost.className = "planner-row-ghost";
-        ghost.style.position = "fixed";
-        ghost.style.left = `${rowRect.left}px`;
-        ghost.style.top = `${rowRect.top}px`;
-        ghost.style.width = `${rowRect.width}px`;
-        ghost.style.pointerEvents = "none";
-        ghost.style.zIndex = "9998";
-        ghost.style.opacity = "0";
-        ghost.style.background =
-          getComputedStyle(row).backgroundColor || "var(--background-primary)";
-        ghost.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.25)";
-        ghost.style.transition = "opacity 0.1s ease-out";
-
-        const inner = row.cloneNode(true) as HTMLElement;
-        inner.classList.remove("planner-row-dragging");
-        ghost.appendChild(inner);
-
-        // Create drop indicator line
-        const indicator = document.createElement("div");
-        indicator.className = "planner-drop-indicator";
-        indicator.style.position = "fixed";
-        indicator.style.height = "2px";
-        indicator.style.backgroundColor = "var(--interactive-accent)";
-        indicator.style.pointerEvents = "none";
-        indicator.style.zIndex = "9999";
-        indicator.style.left = `${rowRect.left}px`;
-        indicator.style.width = `${rowRect.width}px`;
-        indicator.style.display = "none";
-        indicator.style.transition = "top 0.1s ease-out, opacity 0.1s ease-out";
-
-        document.body.appendChild(ghost);
-        document.body.appendChild(indicator);
-
-        // Fade in ghost element smoothly
-        requestAnimationFrame(() => {
-          ghost.style.opacity = "0.9";
+      drag: () => {
+        const dragCell = row.createEl("td", { cls: "planner-drag-cell" });
+        const dragHandle = dragCell.createSpan({
+          cls: "planner-drag-handle",
+          text: "⋮⋮",
         });
-
-        this.currentDragId = task.id;
-        this.dragTargetTaskId = null;
-        this.dragInsertAfter = false;
-        this.dragDropOnto = false;
-
-        row.classList.add("planner-row-dragging");
-        document.body.style.userSelect = "none";
-        (document.body.style as any).webkitUserSelect = "none";
-        document.body.style.cursor = "grabbing";
-
-        const offsetY = evt.clientY - rowRect.top;
-        
-        // Throttle drop zone calculations for better performance
-        let lastTargetCheck = 0;
-        const TARGET_CHECK_INTERVAL = 16; // ~60fps
-        
-        // Auto-scroll when dragging near viewport edges
-        let autoScrollInterval: number | null = null;
-        const AUTO_SCROLL_THRESHOLD = 80; // pixels from edge
-        const AUTO_SCROLL_SPEED = 10; // pixels per frame
-        
-        const updateAutoScroll = (clientY: number) => {
-          const viewportHeight = window.innerHeight;
-          const scrollContainer = this.containerEl.querySelector('.planner-grid-scroll-container') as HTMLElement;
-          
-          if (!scrollContainer) {
-            if (autoScrollInterval !== null) {
-              cancelAnimationFrame(autoScrollInterval);
-              autoScrollInterval = null;
-            }
-            return;
-          }
-          
-          // Check if near top edge
-          if (clientY < AUTO_SCROLL_THRESHOLD) {
-            if (autoScrollInterval === null) {
-              const scroll = () => {
-                scrollContainer.scrollTop -= AUTO_SCROLL_SPEED;
-                autoScrollInterval = requestAnimationFrame(scroll);
-              };
-              autoScrollInterval = requestAnimationFrame(scroll);
-            }
-          }
-          // Check if near bottom edge
-          else if (clientY > viewportHeight - AUTO_SCROLL_THRESHOLD) {
-            if (autoScrollInterval === null) {
-              const scroll = () => {
-                scrollContainer.scrollTop += AUTO_SCROLL_SPEED;
-                autoScrollInterval = requestAnimationFrame(scroll);
-              };
-              autoScrollInterval = requestAnimationFrame(scroll);
-            }
-          }
-          // Not near edges - stop auto-scroll
-          else {
-            if (autoScrollInterval !== null) {
-              cancelAnimationFrame(autoScrollInterval);
-              autoScrollInterval = null;
-            }
-          }
+        dragHandle.onpointerdown = (evt: PointerEvent) => {
+          this.handleRowDragStart(evt, row, task);
         };
+      },
 
-        const onMove = (moveEvt: PointerEvent) => {
-          moveEvt.preventDefault();
+      number: () => {
+        const numberCell = row.createEl("td", { cls: "planner-num-cell" });
+        numberCell.setText(String(this.numberingMap.get(task.id) || ""));
+      },
 
-          // Update ghost position immediately for smooth following
-          const y = moveEvt.clientY - offsetY;
-          ghost.style.top = `${y}px`;
-          
-          // Handle auto-scroll when near viewport edges
-          updateAutoScroll(moveEvt.clientY);
-
-          // Throttle expensive drop zone calculations
-          const now = Date.now();
-          if (now - lastTargetCheck < TARGET_CHECK_INTERVAL) {
-            return;
-          }
-          lastTargetCheck = now;
-
-          const targetEl = document.elementFromPoint(
-            moveEvt.clientX,
-            moveEvt.clientY
-          ) as HTMLElement | null;
-
-          const targetRow = targetEl?.closest("tr.planner-row") as
-            | HTMLTableRowElement
-            | null;
-
-          if (!targetRow || !targetRow.dataset.taskId) {
-            indicator.style.display = "none";
-            this.dragTargetTaskId = null;
-            // Remove hover class from last target
-            if (this.lastTargetRow) {
-              this.lastTargetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
-              this.lastTargetRow = null;
-            }
-            return;
-          }
-
-          const targetRect = targetRow.getBoundingClientRect();
-          const relativeY = moveEvt.clientY - targetRect.top;
-          const height = targetRect.height;
-          
-          // Divide into three zones: top 25%, middle 50%, bottom 25%
-          const topZone = height * 0.25;
-          const bottomZone = height * 0.75;
-          
-          let dropOnto = false;
-          let before = false;
-          
-          if (relativeY < topZone) {
-            // Top zone - insert before
-            before = true;
-            dropOnto = false;
-          } else if (relativeY > bottomZone) {
-            // Bottom zone - insert after
-            before = false;
-            dropOnto = false;
-          } else {
-            // Middle zone - drop onto (make child)
-            dropOnto = true;
-          }
-
-          this.dragTargetTaskId = targetRow.dataset.taskId;
-          this.dragInsertAfter = !before;
-          this.dragDropOnto = dropOnto;
-
-          // Update row highlighting only if target changed
-          if (this.lastTargetRow !== targetRow) {
-            if (this.lastTargetRow) {
-              this.lastTargetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
-            }
-            this.lastTargetRow = targetRow;
-            
-            targetRow.classList.add("planner-row-drop-target");
-            if (dropOnto) {
-              targetRow.classList.add("planner-row-drop-onto");
-            }
-          } else {
-            // Same target row but zone might have changed
-            targetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
-            targetRow.classList.add("planner-row-drop-target");
-            if (dropOnto) {
-              targetRow.classList.add("planner-row-drop-onto");
-            }
-          }
-
-          if (dropOnto) {
-            // Hide the line indicator for "make child" - row border is enough
-            indicator.style.opacity = "0";
-            requestAnimationFrame(() => {
-              indicator.style.display = "none";
-            });
-          } else {
-            // Show thin line indicator for insert before/after (MS Planner style)
-            if (indicator.style.display === "none") {
-              indicator.style.display = "block";
-              indicator.style.opacity = "0";
-              requestAnimationFrame(() => {
-                indicator.style.opacity = "1";
-              });
-            }
-            indicator.style.left = `${targetRect.left}px`;
-            indicator.style.width = `${targetRect.width}px`;
-            indicator.style.height = "2px";
-            indicator.style.top = before
-              ? `${targetRect.top - 1}px`
-              : `${targetRect.bottom - 1}px`;
-            indicator.style.backgroundColor = "var(--interactive-accent)";
-            indicator.style.border = "none";
-            indicator.style.borderRadius = "0";
-          }
+      check: () => {
+        const completeCell = row.createEl("td", { cls: "planner-complete-cell" });
+        const checkbox = completeCell.createEl("input", { attr: { type: "checkbox" } });
+        checkbox.checked = !!task.completed;
+        checkbox.onchange = async (ev) => {
+          ev.stopPropagation();
+          this.saveScrollPosition();
+          const isDone = checkbox.checked;
+          await this.taskStore.updateTask(task.id, {
+            completed: isDone,
+            status: isDone ? "Completed" : "Not Started",
+          });
         };
+      },
 
-        const onUp = async (upEvt: PointerEvent) => {
-          upEvt.preventDefault();
-
-          window.removeEventListener("pointermove", onMove, true);
-          window.removeEventListener("pointerup", onUp, true);
-          
-          // Stop auto-scroll
-          if (autoScrollInterval !== null) {
-            cancelAnimationFrame(autoScrollInterval);
-            autoScrollInterval = null;
-          }
-
-          // Smooth fade-out of ghost and indicator before removal
-          ghost.style.opacity = "0";
-          indicator.style.opacity = "0";
-          
-          setTimeout(() => {
-            ghost.remove();
-            indicator.remove();
-          }, 100); // Match transition duration
-
-          row.classList.remove("planner-row-dragging");
-          document.body.style.userSelect = "";
-          (document.body.style as any).webkitUserSelect = "";
-          document.body.style.cursor = "";
-          
-          // Remove hover classes from target row
-          if (this.lastTargetRow) {
-            this.lastTargetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
-            this.lastTargetRow = null;
-          }
-
-          const dragId = this.currentDragId;
-          const targetId = this.dragTargetTaskId;
-          const insertAfter = this.dragInsertAfter;
-          const dropOnto = this.dragDropOnto;
-
-          this.currentDragId = null;
-          this.dragTargetTaskId = null;
-          this.dragInsertAfter = false;
-          this.dragDropOnto = false;
-
-          if (dragId && targetId && dragId !== targetId) {
-            await this.handleDrop(dragId, targetId, insertAfter, dropOnto);
-          }
-        };
-
-        window.addEventListener("pointermove", onMove, true);
-        window.addEventListener("pointerup", onUp, true);
-      };
-    }
-
-    // Number cell (Planner style)
-    if (this.isColumnVisible("number")) {
-      const numberCell = row.createEl("td", { cls: "planner-num-cell" });
-      numberCell.setText(String(this.numberingMap.get(task.id) || ""));
-    }
-
-    // ---------------------------------------------------------------------
-    // Checkbox cell
-    // ---------------------------------------------------------------------
-    if (this.isColumnVisible("check")) {
-      const completeCell = row.createEl("td", { cls: "planner-complete-cell" });
-
-      const checkbox = completeCell.createEl("input", {
-        attr: { type: "checkbox" },
-      });
-      checkbox.checked = !!task.completed;
-
-      checkbox.onchange = async (ev) => {
-        ev.stopPropagation();
-        this.saveScrollPosition(); // Preserve scroll for checkbox toggle
-        const isDone = checkbox.checked;
-        await this.taskStore.updateTask(task.id, {
-          completed: isDone,
-          status: isDone ? "Completed" : "Not Started",
+      title: () => {
+        const titleCell = row.createEl("td", {
+          cls: isChild ? "planner-title-cell subtask" : "planner-title-cell",
         });
-        // Don't call render() - TaskStore subscription handles it
-      };
-    }
-
-    // ---------------------------------------------------------------------
-    // Title cell: caret + title + menu
-    // ---------------------------------------------------------------------
-    if (this.isColumnVisible("title")) {
-      const titleCell = row.createEl("td", {
-        cls: isChild ? "planner-title-cell subtask" : "planner-title-cell",
-      });
-
-      // Add indentation based on depth (20px per level)
-      if (depth > 0) {
-        titleCell.style.paddingLeft = `${8 + (depth * 20)}px`;
-      }
-
-      // Caret for parent tasks
-      if (hasChildren) {
-        const caret = titleCell.createSpan({
-          cls: "planner-expand-toggle",
-          text: task.collapsed ? "▸" : "▾",
-        });
-        caret.onclick = async (evt) => {
-          evt.stopPropagation();
-          this.saveScrollPosition(); // Preserve scroll for collapse toggle
-          await this.taskStore.toggleCollapsed(task.id);
-          // Don't call render() - TaskStore subscription handles it
-        };
-      } else {
-        titleCell.createSpan({
-          cls: "planner-expand-spacer",
-          text: "",
-        });
-      }
-
-      // Title text (editable)
-      const titleInner = titleCell.createDiv({ cls: "planner-title-inner" });
-      const titleSpan = this.createEditableTextSpan(
-        titleInner,
-        task.title,
-        async (value) => {
-          this.saveScrollPosition(); // Preserve scroll during title update
-          await this.taskStore.updateTask(task.id, { title: value });
-          // Don't call render() - TaskStore subscription handles it
+        if (depth > 0) {
+          titleCell.style.paddingLeft = `${8 + (depth * 20)}px`;
         }
-      );
-
-      // Bold if this task has children (regardless of its own depth)
-      if (hasChildren) {
-        titleSpan.classList.add("planner-parent-bold");
-      }
-      if (task.completed) {
-        titleSpan.classList.add("planner-task-completed");
-      }
-
-      // 3-dots menu (hover-visible via CSS)
-      const titleMenuBtn = titleCell.createEl("button", {
-        cls: "planner-task-menu",
-        text: "⋯",
-      });
-
-      titleMenuBtn.onclick = (evt) => {
-        evt.stopPropagation();
-        this.buildInlineMenu(task, evt);
-      };
-    }
-
-    // ---------------------------------------------------------------------
-    // Status
-    // ---------------------------------------------------------------------
-    if (this.isColumnVisible("status")) {
-      const statusCell = row.createEl("td");
-      const pluginAny = this.plugin as any;
-      const settings = pluginAny.settings || {};
-      const availableStatuses = settings.availableStatuses || [];
-      const statusNames = availableStatuses.map((s: any) => s.name);
-
-      this.createEditableSelectCell(
-        statusCell,
-        task.status,
-        statusNames,
-        async (value) => {
-          this.saveScrollPosition(); // Preserve scroll for status change
-          // Update directly via TaskStore for GridView
-          await this.taskStore.updateTask(task.id, { status: value });
-          // Don't call render() - TaskStore subscription handles it
-        },
-        (val, target) => this.createStatusPill(val, target)
-      );
-    }
-
-    // ---------------------------------------------------------------------
-    // Priority
-    // ---------------------------------------------------------------------
-    if (this.isColumnVisible("priority")) {
-      const priorityCell = row.createEl("td");
-      const pluginAny = this.plugin as any;
-      const settings = pluginAny.settings || {};
-      const availablePriorities = settings.availablePriorities || [];
-      const priorityNames = availablePriorities.map((p: any) => p.name);
-      const defaultPriority = availablePriorities[0]?.name || "Medium";
-
-      this.createEditableSelectCell(
-        priorityCell,
-        task.priority || defaultPriority,
-        priorityNames,
-        async (value) => {
-          await this.taskStore.updateTask(task.id, { priority: value });
-          // Don't call render() - TaskStore subscription handles it
-        },
-        (val, target) => this.createPriorityPill(val, target)
-      );
-    }
-
-    // ---------------------------------------------------------------------
-    // Bucket
-    // ---------------------------------------------------------------------
-    if (this.isColumnVisible("bucket")) {
-      const bucketCell = row.createEl("td");
-
-      // Parent tasks cannot be assigned to buckets
-      if (hasChildren) {
-        bucketCell.createSpan({
-          cls: "planner-disabled-cell",
-          text: "—"
+        if (hasChildren) {
+          const caret = titleCell.createSpan({
+            cls: "planner-expand-toggle",
+            text: task.collapsed ? "▸" : "▾",
+          });
+          caret.onclick = async (evt) => {
+            evt.stopPropagation();
+            this.saveScrollPosition();
+            await this.taskStore.toggleCollapsed(task.id);
+          };
+        } else {
+          titleCell.createSpan({ cls: "planner-expand-spacer", text: "" });
+        }
+        const titleInner = titleCell.createDiv({ cls: "planner-title-inner" });
+        const titleSpan = this.createEditableTextSpan(
+          titleInner,
+          task.title,
+          async (value) => {
+            this.saveScrollPosition();
+            await this.taskStore.updateTask(task.id, { title: value });
+          }
+        );
+        if (hasChildren) titleSpan.classList.add("planner-parent-bold");
+        if (task.completed) titleSpan.classList.add("planner-task-completed");
+        const titleMenuBtn = titleCell.createEl("button", {
+          cls: "planner-task-menu",
+          text: "⋯",
         });
-      } else {
+        titleMenuBtn.onclick = (evt) => {
+          evt.stopPropagation();
+          this.buildInlineMenu(task, evt);
+        };
+      },
+
+      status: () => {
+        const statusCell = row.createEl("td");
         const pluginAny = this.plugin as any;
         const settings = pluginAny.settings || {};
-        const activeProject = settings.projects?.find(
-          (p: any) => p.id === settings.activeProjectId
-        );
-        const buckets = activeProject?.buckets || [];
-        const bucketNames = ["Unassigned", ...buckets.map((b: any) => b.name)];
-
-        const currentBucketId = task.bucketId;
-        const currentBucketName = currentBucketId
-          ? buckets.find((b: any) => b.id === currentBucketId)?.name || "Unassigned"
-          : "Unassigned";
-
+        const availableStatuses = settings.availableStatuses || [];
+        const statusNames = availableStatuses.map((s: any) => s.name);
         this.createEditableSelectCell(
-          bucketCell,
-          currentBucketName,
-          bucketNames,
+          statusCell,
+          task.status,
+          statusNames,
           async (value) => {
-            this.saveScrollPosition(); // Preserve scroll for bucket change
-            if (value === "Unassigned") {
-              await this.taskStore.updateTask(task.id, { bucketId: undefined });
-            } else {
-              const selectedBucket = buckets.find((b: any) => b.name === value);
-              if (selectedBucket) {
-                await this.taskStore.updateTask(task.id, { bucketId: selectedBucket.id });
+            this.saveScrollPosition();
+            await this.taskStore.updateTask(task.id, { status: value });
+          },
+          (val, target) => this.createStatusPill(val, target)
+        );
+      },
+
+      priority: () => {
+        const priorityCell = row.createEl("td");
+        const pluginAny = this.plugin as any;
+        const settings = pluginAny.settings || {};
+        const availablePriorities = settings.availablePriorities || [];
+        const priorityNames = availablePriorities.map((p: any) => p.name);
+        const defaultPriority = availablePriorities[0]?.name || "Medium";
+        this.createEditableSelectCell(
+          priorityCell,
+          task.priority || defaultPriority,
+          priorityNames,
+          async (value) => {
+            await this.taskStore.updateTask(task.id, { priority: value });
+          },
+          (val, target) => this.createPriorityPill(val, target)
+        );
+      },
+
+      bucket: () => {
+        const bucketCell = row.createEl("td");
+        if (hasChildren) {
+          bucketCell.createSpan({ cls: "planner-disabled-cell", text: "—" });
+        } else {
+          const pluginAny = this.plugin as any;
+          const settings = pluginAny.settings || {};
+          const activeProject = settings.projects?.find(
+            (p: any) => p.id === settings.activeProjectId
+          );
+          const buckets = activeProject?.buckets || [];
+          const bucketNames = ["Unassigned", ...buckets.map((b: any) => b.name)];
+          const currentBucketId = task.bucketId;
+          const currentBucketName = currentBucketId
+            ? buckets.find((b: any) => b.id === currentBucketId)?.name || "Unassigned"
+            : "Unassigned";
+          this.createEditableSelectCell(
+            bucketCell,
+            currentBucketName,
+            bucketNames,
+            async (value) => {
+              this.saveScrollPosition();
+              if (value === "Unassigned") {
+                await this.taskStore.updateTask(task.id, { bucketId: undefined });
+              } else {
+                const selectedBucket = buckets.find((b: any) => b.name === value);
+                if (selectedBucket) {
+                  await this.taskStore.updateTask(task.id, { bucketId: selectedBucket.id });
+                }
               }
             }
-            // Don't call render() - TaskStore subscription handles it
+          );
+        }
+      },
+
+      tags: () => {
+        const tagsCell = row.createEl("td", { cls: "planner-tags-cell" });
+        this.renderTaskTags(tagsCell, task);
+      },
+
+      dependencies: () => {
+        const depsCell = row.createEl("td", { cls: "planner-deps-cell" });
+        const dependencies = task.dependencies || [];
+        if (dependencies.length > 0) {
+          const violations = this.checkDependencyViolations(task);
+          const hasViolations = violations.length > 0;
+          const indicator = depsCell.createEl("span", {
+            cls: hasViolations
+              ? "planner-dependency-indicator planner-dependency-warning"
+              : "planner-dependency-indicator",
+            text: hasViolations ? "⚠️" : "🔗",
+            attr: {
+              title: hasViolations
+                ? `${violations.length} violation(s):\n${violations.join("\n")}`
+                : `${dependencies.length} dependency/ies`
+            }
+          });
+          indicator.onclick = () => { this.plugin.openTaskDetail(task); };
+        }
+      },
+
+      start: () => {
+        const startCell = row.createEl("td");
+        this.createEditableDateOnlyCell(
+          startCell,
+          task.startDate || "",
+          async (value) => {
+            await this.taskStore.updateTask(task.id, { startDate: value });
           }
         );
-      }
-    }
+      },
 
-    // ---------------------------------------------------------------------
-    // Tags
-    // ---------------------------------------------------------------------
-    if (this.isColumnVisible("tags")) {
-      const tagsCell = row.createEl("td", { cls: "planner-tags-cell" });
-      this.renderTaskTags(tagsCell, task);
-    }
+      due: () => {
+        const dueCell = row.createEl("td");
+        this.createEditableDateOnlyCell(
+          dueCell,
+          task.dueDate || "",
+          async (value) => {
+            await this.taskStore.updateTask(task.id, { dueDate: value });
+          },
+          true
+        );
+      },
 
-    // ---------------------------------------------------------------------
-    // Dependencies
-    // ---------------------------------------------------------------------
-    if (this.isColumnVisible("dependencies")) {
-      const depsCell = row.createEl("td", { cls: "planner-deps-cell" });
-      const dependencies = task.dependencies || [];
-
-      if (dependencies.length > 0) {
-        const violations = this.checkDependencyViolations(task);
-        const hasViolations = violations.length > 0;
-
-        const indicator = depsCell.createEl("span", {
-          cls: hasViolations
-            ? "planner-dependency-indicator planner-dependency-warning"
-            : "planner-dependency-indicator",
-          text: hasViolations ? "⚠️" : "🔗",
-          attr: {
-            title: hasViolations
-              ? `${violations.length} violation(s):\n${violations.join("\n")}`
-              : `${dependencies.length} dependency/ies`
-          }
+      created: () => {
+        row.createEl("td", {
+          cls: "planner-date-cell-readonly",
+          text: task.createdDate || "-"
         });
+      },
 
-        indicator.onclick = () => {
-          // Open task detail panel
-          this.plugin.openTaskDetail(task);
+      modified: () => {
+        row.createEl("td", {
+          cls: "planner-date-cell-readonly",
+          text: task.lastModifiedDate || "-"
+        });
+      },
+
+      percentComplete: () => {
+        const pct = task.percentComplete ?? 0;
+        row.createEl("td", {
+          cls: "planner-effort-cell planner-percent-cell",
+          text: `${pct}%`
+        });
+      },
+
+      effortCompleted: () => {
+        const ecCell = row.createEl("td", { cls: "planner-effort-cell" });
+        const ecInput = ecCell.createEl("input", {
+          attr: { type: "number", min: "0", step: "0.5" },
+          cls: "planner-inline-number-input"
+        });
+        ecInput.value = task.effortCompleted ? String(task.effortCompleted) : "";
+        ecInput.placeholder = "0";
+        const commitEc = async () => {
+          const val = parseFloat(ecInput.value) || 0;
+          this.isEditingInline = false;
+          await this.taskStore.updateTask(task.id, { effortCompleted: val });
         };
-      }
-    }
+        ecInput.onfocus = () => { this.isEditingInline = true; };
+        ecInput.onblur = commitEc;
+        ecInput.onkeydown = (e) => { if (e.key === "Enter") { ecInput.blur(); } };
+      },
 
-    // ---------------------------------------------------------------------
-    // Start Date
-    // ---------------------------------------------------------------------
-    if (this.isColumnVisible("start")) {
-      const startCell = row.createEl("td");
-      this.createEditableDateOnlyCell(
-        startCell,
-        task.startDate || "",
-        async (value) => {
-          await this.taskStore.updateTask(task.id, { startDate: value });
-          // Don't call render() - TaskStore subscription handles it
+      effortRemaining: () => {
+        const erCell = row.createEl("td", { cls: "planner-effort-cell" });
+        const erInput = erCell.createEl("input", {
+          attr: { type: "number", min: "0", step: "0.5" },
+          cls: "planner-inline-number-input"
+        });
+        erInput.value = task.effortRemaining ? String(task.effortRemaining) : "";
+        erInput.placeholder = "0";
+        const commitEr = async () => {
+          const val = parseFloat(erInput.value) || 0;
+          this.isEditingInline = false;
+          await this.taskStore.updateTask(task.id, { effortRemaining: val });
+        };
+        erInput.onfocus = () => { this.isEditingInline = true; };
+        erInput.onblur = commitEr;
+        erInput.onkeydown = (e) => { if (e.key === "Enter") { erInput.blur(); } };
+      },
+
+      effortTotal: () => {
+        const total = (task.effortCompleted ?? 0) + (task.effortRemaining ?? 0);
+        row.createEl("td", {
+          cls: "planner-effort-cell planner-effort-total-cell",
+          text: total > 0 ? `${total}h` : "-"
+        });
+      },
+
+      duration: () => {
+        let durationText = "-";
+        if (task.startDate && task.dueDate) {
+          const start = new Date(task.startDate);
+          const end = new Date(task.dueDate);
+          const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+          if (diffDays >= 0) {
+            durationText = diffDays === 1 ? "1 day" : `${diffDays} days`;
+          } else {
+            durationText = "Invalid";
+          }
         }
-      );
-    }
+        row.createEl("td", {
+          cls: "planner-effort-cell planner-duration-cell",
+          text: durationText
+        });
+      },
 
-    // ---------------------------------------------------------------------
-    // Due Date
-    // ---------------------------------------------------------------------
-    if (this.isColumnVisible("due")) {
-      const dueCell = row.createEl("td");
-      this.createEditableDateOnlyCell(
-        dueCell,
-        task.dueDate || "",
-        async (value) => {
-          await this.taskStore.updateTask(task.id, { dueDate: value });
-          // Don't call render() - TaskStore subscription handles it
-        },
-        true // Enable conditional formatting for due dates
-      );
-    }
+    };
 
-    // ---------------------------------------------------------------------
-    // Created Date (read-only)
-    // ---------------------------------------------------------------------
-    if (this.isColumnVisible("created")) {
-      const createdCell = row.createEl("td", {
-        cls: "planner-date-cell-readonly",
-        text: task.createdDate || "-"
-      });
-    }
-
-    // ---------------------------------------------------------------------
-    // Last Modified Date (read-only)
-    // ---------------------------------------------------------------------
-    if (this.isColumnVisible("modified")) {
-      const modifiedCell = row.createEl("td", {
-        cls: "planner-date-cell-readonly",
-        text: task.lastModifiedDate || "-"
-      });
+    // Render cells in the dynamic column order (respects drag-and-drop reordering)
+    const columns = this.getColumnDefinitions();
+    for (const col of columns) {
+      if (!this.isColumnVisible(col.key)) continue;
+      const renderer = cellRenderers[col.key];
+      if (renderer) renderer();
     }
   }
 
@@ -1586,6 +1318,244 @@ export class GridView extends ItemView {
   // ---------------------------------------------------------------------------
   // Drag-and-drop reordering (Planner-style blocks, manual DnD)
   // ---------------------------------------------------------------------------
+
+  private handleRowDragStart(evt: PointerEvent, row: HTMLTableRowElement, task: PlannerTask) {
+    evt.preventDefault();
+    evt.stopPropagation();
+
+    const rowRect = row.getBoundingClientRect();
+
+    // Create ghost row
+    const ghost = document.createElement("div");
+    ghost.className = "planner-row-ghost";
+    ghost.style.position = "fixed";
+    ghost.style.left = `${rowRect.left}px`;
+    ghost.style.top = `${rowRect.top}px`;
+    ghost.style.width = `${rowRect.width}px`;
+    ghost.style.pointerEvents = "none";
+    ghost.style.zIndex = "9998";
+    ghost.style.opacity = "0";
+    ghost.style.background =
+      getComputedStyle(row).backgroundColor || "var(--background-primary)";
+    ghost.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.25)";
+    ghost.style.transition = "opacity 0.1s ease-out";
+
+    const inner = row.cloneNode(true) as HTMLElement;
+    inner.classList.remove("planner-row-dragging");
+    ghost.appendChild(inner);
+
+    // Create drop indicator line
+    const indicator = document.createElement("div");
+    indicator.className = "planner-drop-indicator";
+    indicator.style.position = "fixed";
+    indicator.style.height = "2px";
+    indicator.style.backgroundColor = "var(--interactive-accent)";
+    indicator.style.pointerEvents = "none";
+    indicator.style.zIndex = "9999";
+    indicator.style.left = `${rowRect.left}px`;
+    indicator.style.width = `${rowRect.width}px`;
+    indicator.style.display = "none";
+    indicator.style.transition = "top 0.1s ease-out, opacity 0.1s ease-out";
+
+    document.body.appendChild(ghost);
+    document.body.appendChild(indicator);
+
+    // Fade in ghost element smoothly
+    requestAnimationFrame(() => {
+      ghost.style.opacity = "0.9";
+    });
+
+    this.currentDragId = task.id;
+    this.dragTargetTaskId = null;
+    this.dragInsertAfter = false;
+    this.dragDropOnto = false;
+
+    row.classList.add("planner-row-dragging");
+    document.body.style.userSelect = "none";
+    (document.body.style as any).webkitUserSelect = "none";
+    document.body.style.cursor = "grabbing";
+
+    const offsetY = evt.clientY - rowRect.top;
+
+    // Throttle drop zone calculations for better performance
+    let lastTargetCheck = 0;
+    const TARGET_CHECK_INTERVAL = 16; // ~60fps
+
+    // Auto-scroll when dragging near viewport edges
+    let autoScrollInterval: number | null = null;
+    const AUTO_SCROLL_THRESHOLD = 80; // pixels from edge
+    const AUTO_SCROLL_SPEED = 10; // pixels per frame
+
+    const updateAutoScroll = (clientY: number) => {
+      const viewportHeight = window.innerHeight;
+      const scrollContainer = this.containerEl.querySelector('.planner-grid-scroll-container') as HTMLElement;
+
+      if (!scrollContainer) {
+        if (autoScrollInterval !== null) {
+          cancelAnimationFrame(autoScrollInterval);
+          autoScrollInterval = null;
+        }
+        return;
+      }
+
+      if (clientY < AUTO_SCROLL_THRESHOLD) {
+        if (autoScrollInterval === null) {
+          const scroll = () => {
+            scrollContainer.scrollTop -= AUTO_SCROLL_SPEED;
+            autoScrollInterval = requestAnimationFrame(scroll);
+          };
+          autoScrollInterval = requestAnimationFrame(scroll);
+        }
+      } else if (clientY > viewportHeight - AUTO_SCROLL_THRESHOLD) {
+        if (autoScrollInterval === null) {
+          const scroll = () => {
+            scrollContainer.scrollTop += AUTO_SCROLL_SPEED;
+            autoScrollInterval = requestAnimationFrame(scroll);
+          };
+          autoScrollInterval = requestAnimationFrame(scroll);
+        }
+      } else {
+        if (autoScrollInterval !== null) {
+          cancelAnimationFrame(autoScrollInterval);
+          autoScrollInterval = null;
+        }
+      }
+    };
+
+    const onMove = (moveEvt: PointerEvent) => {
+      moveEvt.preventDefault();
+
+      const y = moveEvt.clientY - offsetY;
+      ghost.style.top = `${y}px`;
+
+      updateAutoScroll(moveEvt.clientY);
+
+      const now = Date.now();
+      if (now - lastTargetCheck < TARGET_CHECK_INTERVAL) return;
+      lastTargetCheck = now;
+
+      const targetEl = document.elementFromPoint(
+        moveEvt.clientX,
+        moveEvt.clientY
+      ) as HTMLElement | null;
+
+      const targetRow = targetEl?.closest("tr.planner-row") as
+        | HTMLTableRowElement
+        | null;
+
+      if (!targetRow || !targetRow.dataset.taskId) {
+        indicator.style.display = "none";
+        this.dragTargetTaskId = null;
+        if (this.lastTargetRow) {
+          this.lastTargetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
+          this.lastTargetRow = null;
+        }
+        return;
+      }
+
+      const targetRect = targetRow.getBoundingClientRect();
+      const relativeY = moveEvt.clientY - targetRect.top;
+      const height = targetRect.height;
+
+      const topZone = height * 0.25;
+      const bottomZone = height * 0.75;
+
+      let dropOnto = false;
+      let before = false;
+
+      if (relativeY < topZone) {
+        before = true;
+      } else if (relativeY > bottomZone) {
+        before = false;
+      } else {
+        dropOnto = true;
+      }
+
+      this.dragTargetTaskId = targetRow.dataset.taskId;
+      this.dragInsertAfter = !before;
+      this.dragDropOnto = dropOnto;
+
+      if (this.lastTargetRow !== targetRow) {
+        if (this.lastTargetRow) {
+          this.lastTargetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
+        }
+        this.lastTargetRow = targetRow;
+        targetRow.classList.add("planner-row-drop-target");
+        if (dropOnto) targetRow.classList.add("planner-row-drop-onto");
+      } else {
+        targetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
+        targetRow.classList.add("planner-row-drop-target");
+        if (dropOnto) targetRow.classList.add("planner-row-drop-onto");
+      }
+
+      if (dropOnto) {
+        indicator.style.opacity = "0";
+        requestAnimationFrame(() => { indicator.style.display = "none"; });
+      } else {
+        if (indicator.style.display === "none") {
+          indicator.style.display = "block";
+          indicator.style.opacity = "0";
+          requestAnimationFrame(() => { indicator.style.opacity = "1"; });
+        }
+        indicator.style.left = `${targetRect.left}px`;
+        indicator.style.width = `${targetRect.width}px`;
+        indicator.style.height = "2px";
+        indicator.style.top = before
+          ? `${targetRect.top - 1}px`
+          : `${targetRect.bottom - 1}px`;
+        indicator.style.backgroundColor = "var(--interactive-accent)";
+        indicator.style.border = "none";
+        indicator.style.borderRadius = "0";
+      }
+    };
+
+    const onUp = async (upEvt: PointerEvent) => {
+      upEvt.preventDefault();
+
+      window.removeEventListener("pointermove", onMove, true);
+      window.removeEventListener("pointerup", onUp, true);
+
+      if (autoScrollInterval !== null) {
+        cancelAnimationFrame(autoScrollInterval);
+        autoScrollInterval = null;
+      }
+
+      ghost.style.opacity = "0";
+      indicator.style.opacity = "0";
+
+      setTimeout(() => {
+        ghost.remove();
+        indicator.remove();
+      }, 100);
+
+      row.classList.remove("planner-row-dragging");
+      document.body.style.userSelect = "";
+      (document.body.style as any).webkitUserSelect = "";
+      document.body.style.cursor = "";
+
+      if (this.lastTargetRow) {
+        this.lastTargetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
+        this.lastTargetRow = null;
+      }
+
+      const dragId = this.currentDragId;
+      const targetId = this.dragTargetTaskId;
+      const insertAfter = this.dragInsertAfter;
+      const dropOnto = this.dragDropOnto;
+
+      this.currentDragId = null;
+      this.dragTargetTaskId = null;
+      this.dragInsertAfter = false;
+      this.dragDropOnto = false;
+
+      if (dragId && targetId && dragId !== targetId) {
+        await this.handleDrop(dragId, targetId, insertAfter, dropOnto);
+      }
+    };
+
+    window.addEventListener("pointermove", onMove, true);
+    window.addEventListener("pointerup", onUp, true);
+  }
 
   private async handleDrop(
     dragId: string,
@@ -2166,6 +2136,11 @@ export class GridView extends ItemView {
       { key: "due", label: "Due Date", hideable: true, reorderable: true },
       { key: "created", label: "Created", hideable: true, reorderable: true },
       { key: "modified", label: "Modified", hideable: true, reorderable: true },
+      { key: "percentComplete", label: "% Complete", hideable: true, reorderable: true },
+      { key: "effortCompleted", label: "Effort Done", hideable: true, reorderable: true },
+      { key: "effortRemaining", label: "Effort Left", hideable: true, reorderable: true },
+      { key: "effortTotal", label: "Effort Total", hideable: true, reorderable: true },
+      { key: "duration", label: "Duration", hideable: true, reorderable: true },
     ];
     
     // Apply custom column order if available
@@ -2354,9 +2329,16 @@ export class GridView extends ItemView {
       const allColumns = this.getColumnDefinitions();
       const reorderableColumns = allColumns.filter((c: any) => c.reorderable);
       
-      // Initialize columnOrder if empty
+      // Initialize columnOrder if empty, or sync missing columns
       if (this.columnOrder.length === 0) {
         this.columnOrder = reorderableColumns.map(c => c.key);
+      } else {
+        const missing = reorderableColumns
+          .map(c => c.key)
+          .filter(k => !this.columnOrder.includes(k));
+        if (missing.length > 0) {
+          this.columnOrder.push(...missing);
+        }
       }
 
       // Find indices in the order array
@@ -2433,8 +2415,18 @@ export class GridView extends ItemView {
       this.columnOrder = [...settings.gridViewColumnOrder];
     }
 
+    // Ensure columnOrder includes ALL reorderable columns (handles newly added columns)
+    const allDefs = this.getColumnDefinitions();
+    if (this.columnOrder.length > 0) {
+      const reorderableKeys = allDefs.filter((c: any) => c.reorderable).map(c => c.key);
+      const missing = reorderableKeys.filter(k => !this.columnOrder.includes(k));
+      if (missing.length > 0) {
+        this.columnOrder.push(...missing);
+      }
+    }
+
     // Ensure non-hideable columns stay visible and defaults exist for new columns
-    this.getColumnDefinitions().forEach((col) => {
+    allDefs.forEach((col) => {
       if (!col.hideable || NON_HIDEABLE_COLUMNS.has(col.key)) {
         this.columnVisibility[col.key] = true;
       } else if (this.columnVisibility[col.key] === undefined) {

@@ -20,6 +20,10 @@ interface ProjectStats {
     dueThisWeekTasks: number;
     completionPercentage: number;
     tasksWithDependencies: number;
+    totalEffortCompleted: number;
+    totalEffortRemaining: number;
+    totalEffort: number;
+    averagePercentComplete: number;
 }
 
 export class DashboardView extends ItemView {
@@ -95,6 +99,14 @@ export class DashboardView extends ItemView {
 
         const tasksWithDependencies = tasks.filter(t => t.dependencies && t.dependencies.length > 0).length;
 
+        // Effort metrics
+        const totalEffortCompleted = tasks.reduce((sum, t) => sum + (t.effortCompleted ?? 0), 0);
+        const totalEffortRemaining = tasks.reduce((sum, t) => sum + (t.effortRemaining ?? 0), 0);
+        const totalEffort = totalEffortCompleted + totalEffortRemaining;
+        const averagePercentComplete = totalTasks > 0
+            ? Math.round(tasks.reduce((sum, t) => sum + (t.percentComplete ?? 0), 0) / totalTasks)
+            : 0;
+
         return {
             projectId,
             projectName,
@@ -109,7 +121,11 @@ export class DashboardView extends ItemView {
             dueTodayTasks,
             dueThisWeekTasks,
             completionPercentage,
-            tasksWithDependencies
+            tasksWithDependencies,
+            totalEffortCompleted,
+            totalEffortRemaining,
+            totalEffort,
+            averagePercentComplete
         };
     }
 
@@ -406,6 +422,33 @@ export class DashboardView extends ItemView {
             statsGrid, "Not Started", stats.notStartedTasks, "circle", "#6c757d",
             () => this.showTaskListModal("Not Started Tasks", notStartedTasks)
         );
+
+        // Effort section (only show if any tasks have effort data)
+        if (stats.totalEffort > 0) {
+            const effortSection = projectCard.createDiv("dashboard-section");
+            effortSection.createEl("h3", { text: "Effort Summary" });
+
+            // Effort progress bar
+            const effortPercent = stats.totalEffort > 0
+                ? Math.round((stats.totalEffortCompleted / stats.totalEffort) * 100)
+                : 0;
+            this.renderProgressBar(effortSection, effortPercent);
+
+            const effortGrid = projectCard.createDiv("dashboard-kpi-grid");
+
+            this.renderKPICard(
+                effortGrid, "Effort Done", `${stats.totalEffortCompleted}h`, "check-circle", "#2f9e44"
+            );
+            this.renderKPICard(
+                effortGrid, "Effort Left", `${stats.totalEffortRemaining}h`, "clock", "#f59e0b"
+            );
+            this.renderKPICard(
+                effortGrid, "Total Effort", `${stats.totalEffort}h`, "bar-chart-2", "#6366f1"
+            );
+            this.renderKPICard(
+                effortGrid, "Avg % Complete", `${stats.averagePercentComplete}%`, "percent", "#0a84ff"
+            );
+        }
     }
 
     render() {

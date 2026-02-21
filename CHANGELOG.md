@@ -2,6 +2,56 @@
 
 All notable changes to Obsidian Project Planner will be documented in this file.
 
+## [0.7.0] - 2026-02-21
+
+### Added
+
+#### Task Effort Tracking
+- **Microsoft Planner-Style Effort System**: Full effort tracking with Completed, Remaining, and Total hours
+  - **Effort Completed**: Hours of work done on a task (editable in Grid View and Task Detail)
+  - **Effort Remaining**: Hours of work left (auto-adjusts when completed changes)
+  - **Effort Total**: Read-only sum of Completed + Remaining
+  - **Duration**: Auto-calculated days between Start Date and Due Date
+  - **% Complete**: Auto-derived from effort values using `round(completed / total × 100)`
+
+#### Smart Effort Auto-Sync (Microsoft Planner Behavior)
+- **Auto-Deduct Remaining**: Entering completed hours automatically reduces remaining from the established total
+  - Example: 10h total, enter 4h completed → remaining auto-adjusts to 6h
+- **Status ↔ Effort Sync**: Marking a task "Completed" moves all remaining hours into completed; % Complete at 100% auto-sets status to "Completed"; dropping below 100% from Completed resets to "In Progress"
+- **Bidirectional View Sync**: Effort changes in Grid View instantly reflect in Task Detail View and vice versa
+
+#### Effort in All Views
+- **Grid View**: 5 new columns — % Complete, Effort Done, Effort Left, Effort Total, Duration
+  - Effort Done and Effort Left are inline-editable number inputs
+  - % Complete, Effort Total, and Duration are read-only calculated cells
+  - All new columns support drag-and-drop reordering and show/hide toggles
+- **Task Detail View**: New Effort section with Duration row, % Complete display (with "calculated from effort" hint), and Completed/Remaining/Total grid
+- **Dashboard View**: Effort Summary section with progress bar and KPI cards (Total Effort, Completed, Remaining, Avg % Complete) — appears only when tasks have effort data
+
+#### Markdown Sync for Effort Fields
+- **Bidirectional Sync**: `effortCompleted`, `effortRemaining`, and `percentComplete` now sync to/from YAML frontmatter in task markdown files
+  - Written to frontmatter when values are > 0
+  - Parsed back with safe `Number()` coercion on markdown → JSON sync
+  - Duration not synced (derived from `startDate`/`dueDate` which are already synced)
+
+### Fixed
+
+#### Grid View Column Drag-and-Drop
+- **Column Order Sync**: New columns added after initial setup are now properly included in the drag-and-drop order array
+  - Previously, columns not in the saved `gridViewColumnOrder` caused `indexOf()` to return `-1`, silently breaking drag-and-drop for those columns
+  - Fix applied in both `loadGridViewSettings()` (appends missing columns on load) and `ondrop` handler (syncs missing columns before reorder)
+
+#### Grid View Cell Rendering Architecture
+- **Dynamic Column Rendering**: Refactored `renderTaskRow` from hardcoded if-blocks to a `cellRenderers` map iterated in `getColumnDefinitions()` order
+  - Headers and cells now guaranteed to render in the same order regardless of column reordering
+  - Row drag logic extracted to dedicated `handleRowDragStart()` method
+  - Eliminates header/cell mismatch bugs when columns are reordered
+
+#### Grid View Inline Edit Sync
+- **Timing Fix**: `isEditingInline` flag now set to `false` BEFORE `updateTask()` call instead of after
+  - Previously, the subscriber re-render was skipped during the update because the flag hadn't been cleared yet
+  - Ensures Grid View reflects changes immediately when editing effort or other fields inline
+
 ## [0.6.13] - 2026-02-10
 
 ### Added
