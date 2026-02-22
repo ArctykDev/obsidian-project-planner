@@ -27,7 +27,7 @@ A full-featured project planner for [Obsidian](https://obidian.md) based on [Mic
 
 ### Dashboard view [v0.7.0]
 
-![Dashboard](assets/version-0-7-0-Dashboard-View.png)
+![Dashboard](assets/0-7-0-Dashboard-View.png)
 
 ### Grid view [v0.6.7]
 
@@ -39,11 +39,11 @@ A full-featured project planner for [Obsidian](https://obidian.md) based on [Mic
 
 ### Timeline view [v0.7.0]
 
-![Timeline view](assets/version-0-7-0-Timeline-View-Arrows.png)
+![Timeline view](assets/0-7-0-Timeline-View-Arrows.png)
 
 ### Dependency graph [v0.7.0]
 
-![Dependency graph](assets/version-0-7-0-Dependency-Graph.png)
+![Dependency graph](assets/0-7-0-Dependency-Graph.png)
 
 ### Task details - [v0.4.0]
 
