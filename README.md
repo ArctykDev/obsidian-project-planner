@@ -25,9 +25,9 @@ A full-featured project planner for [Obsidian](https://obidian.md) based on [Mic
 
 ## Screen shots
 
-### Dashboard view [v0.6.7]
+### Dashboard view [v0.7.0]
 
-![Dashboard](assets/version-0-6-7-dashboard-view.png)
+![Dashboard](assets/version-0-7-0-Dashboard-View.png)
 
 ### Grid view [v0.6.7]
 
@@ -37,9 +37,13 @@ A full-featured project planner for [Obsidian](https://obidian.md) based on [Mic
 
 ![Board view](assets/version-0-6-7-board-view.png)
 
-### Timeline view [v0.6.7]
+### Timeline view [v0.7.0]
 
-![Timeline view](assets/version-0-6-7-timeline-view.png)
+![Timeline view](assets/version-0-7-0-Timeline-View-Arrows.png)
+
+### Dependency graph [v0.7.0]
+
+![Dependency graph](assets/version-0-7-0-Dependency-Graph.png)
 
 ### Task details - [v0.4.0]
 
@@ -53,7 +57,11 @@ A full-featured project planner for [Obsidian](https://obidian.md) based on [Mic
 
 ## Documentation
 
-**Read the documentation:** [Obsidian Project Planner Docs](https://projectplanner.md)
+**Installation:** [How to install Obsidian Project Planner](https://projectplanner.md/docs/getting-started/installation/)
+
+**Full documentation:** [Obsidian Project Planner Docs](https://projectplanner.md)
+
+**Full changelog:** [Obsidian Project Planner Changlog](https://projectplanner.md/changelog/)
 
 ---
 
@@ -61,14 +69,24 @@ A full-featured project planner for [Obsidian](https://obidian.md) based on [Mic
 
 **Discussion board:** [Discussions](https://github.com/ArctykDev/obsidian-project-planner/discussions)
 
----
+**Discord:** [Project Planner Discord Server](https://discord.gg/6rgmVKK4)
 
-## Changelog
+**YouTube:** [Project Planner YouTube Channel](https://youtube.com/@ArctykDev)
+
+---
 
 **Read the full changelog:** [Obsidian Project Planner Changlog](https://projectplanner.md/changelog/)
 
 ## Support
 
-Project Planner is free to use and enjoy but if you are feeling generous, you're welcome to buy me a coffee! 
+Project Planner is free to use and enjoy, but you can help support the project by joining our community, sharing Project Planner with others, or by a small donation. 
 
 <a href="https://www.buymeacoffee.com/arctykdev" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+
+---
+
+## ProjectPlanner.md
+
+**Official website:** [ProjectPlanner.md](https://projectplanner.md)
+
+**Obsidian website:** [Obsidian.md](https://obsidian.md)

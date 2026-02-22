@@ -2,7 +2,7 @@
 
 All notable changes to Obsidian Project Planner will be documented in this file.
 
-## [0.7.0] - 2026-02-21
+## [0.7.0] - 2026-02-22
 
 ### Added
 
