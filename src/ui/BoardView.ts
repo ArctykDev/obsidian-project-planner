@@ -24,6 +24,14 @@ export class BoardView extends ItemView {
         search: ""
     };
 
+    // Scroll preservation
+    private savedBoardScrollLeft: number | null = null;
+    private savedColumnScrollTops: Map<string, number> = new Map();
+
+    // Render guard: prevents overlapping async renders that corrupt scroll state
+    private isRendering = false;
+    private renderPending = false;
+
     constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
         super(leaf);
         this.plugin = plugin;
@@ -115,7 +123,45 @@ export class BoardView extends ItemView {
     }
 
     async render() {
+        // Guard: if a render is already in progress, queue one re-render
+        // and return. This prevents overlapping async renders from
+        // corrupting scroll state and orphaning DOM elements.
+        if (this.isRendering) {
+            this.renderPending = true;
+            return;
+        }
+        this.isRendering = true;
+        this.renderPending = false;
+
+        try {
+            await this.renderImpl();
+        } finally {
+            this.isRendering = false;
+            // If another render was requested while we were busy, run it now
+            if (this.renderPending) {
+                this.renderPending = false;
+                // Use queueMicrotask so the current stack fully unwinds first
+                queueMicrotask(() => this.render());
+            }
+        }
+    }
+
+    private async renderImpl() {
         const container = this.containerEl;
+
+        // Save scroll positions before clearing
+        const existingBoard = container.querySelector('.planner-board-container') as HTMLElement;
+        if (existingBoard) {
+            this.savedBoardScrollLeft = existingBoard.scrollLeft;
+            this.savedColumnScrollTops.clear();
+            existingBoard.querySelectorAll('.planner-board-column-content').forEach((col: Element) => {
+                const bucketId = (col as HTMLElement).dataset.bucketId;
+                if (bucketId) {
+                    this.savedColumnScrollTops.set(bucketId, (col as HTMLElement).scrollTop);
+                }
+            });
+        }
+
         container.empty();
 
         const wrapper = container.createDiv("planner-board-wrapper");
@@ -186,6 +232,8 @@ export class BoardView extends ItemView {
         };
 
         clearFilterBtn.onclick = () => {
+            this.currentFilters.priority = "All";
+            this.currentFilters.search = "";
             this.render();
         };
 
@@ -193,6 +241,33 @@ export class BoardView extends ItemView {
 
         // Render board columns
         await this.renderBoard(wrapper);
+
+        // Restore scroll positions after board is rendered.
+        // Use double-rAF so the browser has completed layout before we set scroll.
+        if (this.savedBoardScrollLeft !== null || this.savedColumnScrollTops.size > 0) {
+            const scrollLeft = this.savedBoardScrollLeft;
+            const columnScrolls = new Map(this.savedColumnScrollTops);
+            // Clear immediately so a queued re-render doesn't clobber with stale 0s
+            this.savedBoardScrollLeft = null;
+            this.savedColumnScrollTops.clear();
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const boardEl = container.querySelector('.planner-board-container') as HTMLElement;
+                    if (boardEl && scrollLeft !== null) {
+                        boardEl.scrollLeft = scrollLeft;
+                    }
+                    if (columnScrolls.size > 0) {
+                        boardEl?.querySelectorAll('.planner-board-column-content').forEach((col: Element) => {
+                            const bucketId = (col as HTMLElement).dataset.bucketId;
+                            if (bucketId && columnScrolls.has(bucketId)) {
+                                (col as HTMLElement).scrollTop = columnScrolls.get(bucketId)!;
+                            }
+                        });
+                    }
+                });
+            });
+        }
     }
 
     // Header is now shared; previous method removed
@@ -278,7 +353,7 @@ export class BoardView extends ItemView {
             addTaskBtn.onclick = async () => {
                 const newTask = await this.taskStore.addTask("New Task");
                 await this.taskStore.updateTask(newTask.id, { bucketId: bucket.id });
-                this.render();
+                // No explicit render() — TaskStore.save() → emit() already re-renders via subscription
             };
 
             // Separate incomplete and completed tasks
@@ -464,7 +539,7 @@ export class BoardView extends ItemView {
         checkbox.onclick = async (e) => {
             e.stopPropagation(); // Prevent opening details
             await this.taskStore.updateTask(task.id, { completed: !task.completed });
-            this.render();
+            // No explicit render() — TaskStore.save() → emit() already re-renders via subscription
         };
 
         // Title (inline with checkbox)
@@ -502,7 +577,7 @@ export class BoardView extends ItemView {
                         s.id === subtask.id ? { ...s, completed: !s.completed } : s
                     );
                     await this.taskStore.updateTask(task.id, { subtasks: updatedSubtasks });
-                    this.render();
+                    // No explicit render() — TaskStore.save() → emit() already re-renders via subscription
                 };
                 const label = itemDiv.createSpan("planner-board-checklist-label");
                 label.textContent = subtask.title;
@@ -618,7 +693,7 @@ export class BoardView extends ItemView {
                 .setIcon("trash")
                 .onClick(async () => {
                     await this.taskStore.deleteTask(task.id);
-                    this.render();
+                    // No explicit render() — TaskStore.save() → emit() already re-renders via subscription
                 })
         );
 
@@ -654,11 +729,10 @@ export class BoardView extends ItemView {
     }
 
     private async saveCompletedSectionsState() {
-        const pluginAny = this.plugin as any;
-        const settings = pluginAny.settings || {};
+        const settings = this.plugin.settings;
         const activeProjectId = settings.activeProjectId;
         const projects = settings.projects || [];
-        const activeProject = projects.find((p: any) => p.id === activeProjectId);
+        const activeProject = projects.find((p) => p.id === activeProjectId);
 
         if (activeProject) {
             activeProject.completedSectionsCollapsed = { ...this.completedSectionsCollapsed };
@@ -695,7 +769,7 @@ export class BoardView extends ItemView {
                 });
             }
 
-            this.render();
+            // No explicit render() — TaskStore.save() → emit() already re-renders via subscription
         };
     }
 
@@ -704,11 +778,10 @@ export class BoardView extends ItemView {
         const unassignedTasks = tasks.filter((t) => !t.bucketId);
 
         // Get custom name from settings
-        const pluginAny = this.plugin as any;
-        const settings = pluginAny.settings || {};
+        const settings = this.plugin.settings;
         const activeProjectId = settings.activeProjectId;
         const projects = settings.projects || [];
-        const activeProject = projects.find((p: any) => p.id === activeProjectId);
+        const activeProject = projects.find((p) => p.id === activeProjectId);
         const bucketName = activeProject?.unassignedBucketName || "📋 Unassigned";
 
         const column = boardContainer.createDiv("planner-board-column planner-board-column-unassigned");
@@ -756,7 +829,7 @@ export class BoardView extends ItemView {
         addTaskBtn.onclick = async () => {
             const newTask = await this.taskStore.addTask("New Task");
             // Don't assign bucketId - leave it unassigned
-            this.render();
+            // No explicit render() — TaskStore.save() → emit() already re-renders via subscription
         };
 
         // Separate incomplete and completed tasks
@@ -775,11 +848,10 @@ export class BoardView extends ItemView {
     }
 
     private startRenameUnassignedBucket(titleElement: HTMLElement) {
-        const pluginAny = this.plugin as any;
-        const settings = pluginAny.settings || {};
+        const settings = this.plugin.settings;
         const activeProjectId = settings.activeProjectId;
         const projects = settings.projects || [];
-        const activeProject = projects.find((p: any) => p.id === activeProjectId);
+        const activeProject = projects.find((p) => p.id === activeProjectId);
         const originalName = activeProject?.unassignedBucketName || "📋 Unassigned";
 
         titleElement.contentEditable = "true";
@@ -913,11 +985,10 @@ export class BoardView extends ItemView {
     }
 
     private createEditableUnassignedBucketName(container: HTMLElement): void {
-        const pluginAny = this.plugin as any;
-        const settings = pluginAny.settings || {};
+        const settings = this.plugin.settings;
         const activeProjectId = settings.activeProjectId;
         const projects = settings.projects || [];
-        const activeProject = projects.find((p: any) => p.id === activeProjectId);
+        const activeProject = projects.find((p) => p.id === activeProjectId);
         let currentName = activeProject?.unassignedBucketName || "📋 Unassigned";
 
         container.empty();
@@ -1075,7 +1146,8 @@ export class BoardView extends ItemView {
                     itemEl.setIcon("circle");
                     // Style the icon with the color
                     setTimeout(() => {
-                        const iconEl = (item as any).dom?.querySelector(".menu-item-icon");
+                        const dom = (item as unknown as { dom?: HTMLElement }).dom;
+                        const iconEl = dom?.querySelector(".menu-item-icon") as HTMLElement | null;
                         if (iconEl) {
                             iconEl.style.color = colorOption.value;
                         }
@@ -1121,11 +1193,10 @@ export class BoardView extends ItemView {
     }
 
     private async saveBuckets() {
-        const pluginAny = this.plugin as any;
-        const settings = pluginAny.settings || {};
+        const settings = this.plugin.settings;
         const activeProjectId = settings.activeProjectId;
         const projects = settings.projects || [];
-        const activeProject = projects.find((p: any) => p.id === activeProjectId);
+        const activeProject = projects.find((p) => p.id === activeProjectId);
 
         if (activeProject) {
             activeProject.buckets = [...this.buckets];
@@ -1212,6 +1283,6 @@ export class BoardView extends ItemView {
     // Public API for task updates
     async updateTask(id: string, fields: Partial<PlannerTask>) {
         await this.taskStore.updateTask(id, fields);
-        this.render();
+        // No explicit render() — TaskStore.save() → emit() already re-renders via subscription
     }
 }

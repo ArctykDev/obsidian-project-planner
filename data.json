@@ -5,7 +5,7 @@
         "id": "b11b178b-baf8-4c28-80db-4330a74c1d65",
         "name": "Project Planner Dev",
         "createdDate": "2026-01-23T18:17:19.333Z",
-        "lastUpdatedDate": "2026-02-18T22:32:56.834Z",
+        "lastUpdatedDate": "2026-02-21T22:54:59.296Z",
         "buckets": [
           {
             "id": "682eb1f0-f99c-4096-9025-a883bbf251f5",
@@ -37,7 +37,7 @@
           "65a6b97a-82b5-4011-9180-1ac658756497": true,
           "b985d8b1-da84-4431-96e8-f67c29df5f22": true,
           "682eb1f0-f99c-4096-9025-a883bbf251f5": true,
-          "761e8562-b734-41a8-a920-3d56df4462ad": false,
+          "761e8562-b734-41a8-a920-3d56df4462ad": true,
           "unassigned": true
         }
       },
@@ -176,8 +176,10 @@
     "dailyNoteTagPattern": "#planner",
     "dailyNoteScanFolders": [],
     "dailyNoteDefaultProject": "b11b178b-baf8-4c28-80db-4330a74c1d65",
+    "enableDependencyScheduling": true,
+    "enableParentRollUp": true,
     "dateFormat": "us",
-    "ganttLeftColumnWidth": 380,
+    "ganttLeftColumnWidth": 406,
     "showRibbonIconGrid": true,
     "showRibbonIconDashboard": false,
     "showRibbonIconBoard": false,
@@ -189,13 +191,13 @@
       "priority": 171,
       "tags": 76,
       "bucket": 130,
-      "start": 101,
+      "start": 110,
       "modified": 97,
       "created": 94,
       "due": 100,
       "dependencies": 78,
       "percentComplete": 101,
-      "effortRemaining": 115,
+      "effortRemaining": 68,
       "effortCompleted": 88,
       "effortTotal": 104,
       "duration": 69
@@ -235,8 +237,8 @@
       "created",
       "modified",
       "percentComplete",
-      "effortRemaining",
       "effortCompleted",
+      "effortRemaining",
       "effortTotal",
       "duration"
     ],
@@ -3548,16 +3550,16 @@
         "parentId": null,
         "collapsed": false,
         "createdDate": "2026-01-29",
-        "lastModifiedDate": "2026-02-17",
-        "startDate": "2026-01-29",
+        "lastModifiedDate": "2026-02-21",
+        "startDate": "2026-01-28",
         "description": "---\n*Task from Project: Project Planner Dev*",
         "tags": [
           "c2b5b773-cd7c-404b-864c-d89a0842c3fc"
         ],
-        "effortCompleted": 2,
-        "effortRemaining": 8,
-        "percentComplete": 20,
-        "dueDate": "2026-02-20"
+        "effortCompleted": 10,
+        "effortRemaining": 16,
+        "percentComplete": 17,
+        "dueDate": "2026-03-29"
       },
       {
         "id": "d1ebcee8-952a-4167-8186-2f5f7e763052",
@@ -3576,42 +3578,122 @@
         "description": "Confirm that all dependency types are working and that dependencies work between parent and subtasks."
       },
       {
+        "id": "bb56a1e3-3421-46cc-819e-0d89b0080e2c",
+        "title": "Board view and Task details jump when editing",
+        "status": "Completed",
+        "completed": true,
+        "parentId": "4056f669-6444-4295-8341-d4b7f1b1b9b8",
+        "priority": "High",
+        "startDate": "2026-02-21",
+        "createdDate": "2026-02-21",
+        "lastModifiedDate": "2026-02-21",
+        "collapsed": false,
+        "description": "After making any changes in Board view, such as drag and drop a task card, the Board view resets to the start. The expected behaviour should be that the changes are applied in real-time while preserving the view. \n\nThe same issue occurs when applying changes from Task Details.",
+        "bucketId": "65a6b97a-82b5-4011-9180-1ac658756497",
+        "tags": [
+          "e983767c-4d22-4f34-a6c2-f37ee52ed113"
+        ],
+        "dueDate": "2026-02-22",
+        "effortCompleted": 2,
+        "effortRemaining": 0,
+        "percentComplete": 100,
+        "cardPreview": "description"
+      },
+      {
         "id": "f7f665bf-5852-4e24-9fef-59e1a296ac59",
         "title": "Task Effort",
-        "status": "In Progress",
+        "status": "Completed",
         "priority": "High",
-        "completed": false,
+        "completed": true,
         "parentId": "886c5b3d-3560-4e4f-8386-f3bf6a3d1e46",
         "collapsed": false,
         "createdDate": "2026-01-29",
-        "lastModifiedDate": "2026-02-11",
+        "lastModifiedDate": "2026-02-21",
         "startDate": "2026-01-29",
         "description": "Add effort support for tasks. This includes time tracking features similar to Microsoft Planner and Jira. \n\n- Actual time\n- Estimated time\n- Progress indicator",
         "tags": [
           "c2b5b773-cd7c-404b-864c-d89a0842c3fc",
-          "cfc49091-140c-4b0d-8d54-b812dbf02db5"
+          "12bd3120-3aec-4bc7-a32f-7dfc49297c2d"
         ],
         "cardPreview": "description",
         "bucketId": "65a6b97a-82b5-4011-9180-1ac658756497",
-        "dueDate": "2026-02-19"
+        "dueDate": "2026-02-22",
+        "effortRemaining": 0,
+        "percentComplete": 100,
+        "effortCompleted": 10
+      },
+      {
+        "id": "6e7876e3-170f-4295-8fd7-4b8d6d1d99f7",
+        "title": "My Day view",
+        "status": "Not Started",
+        "completed": false,
+        "parentId": "886c5b3d-3560-4e4f-8386-f3bf6a3d1e46",
+        "priority": "High",
+        "startDate": "2026-02-05",
+        "createdDate": "2026-02-05",
+        "lastModifiedDate": "2026-02-21",
+        "tags": [
+          "c2b5b773-cd7c-404b-864c-d89a0842c3fc"
+        ],
+        "collapsed": false,
+        "description": "Show all tasks in a grid view that are scheduled for today. \n\n- Show tasks from all projects\n- Use current grid view with filers",
+        "bucketId": "b985d8b1-da84-4431-96e8-f67c29df5f22",
+        "cardPreview": "description",
+        "subtasks": [
+          {
+            "id": "0ee585e5-814d-4c8f-b147-2a9425f01920",
+            "title": "My Day view",
+            "completed": false
+          },
+          {
+            "id": "537ba4ea-c3bb-493e-8f05-1fa9ab112783",
+            "title": "Move tasks between projects",
+            "completed": false
+          }
+        ],
+        "dueDate": "2026-03-29",
+        "dependencies": [],
+        "effortRemaining": 8,
+        "percentComplete": 0,
+        "effortCompleted": 0
       },
       {
         "id": "f0e3475b-1f27-4974-b200-4ebe042467a7",
         "title": "Move tasks between projects",
         "status": "Not Started",
-        "priority": "Medium",
+        "priority": "High",
         "completed": false,
         "parentId": "886c5b3d-3560-4e4f-8386-f3bf6a3d1e46",
         "collapsed": false,
         "createdDate": "2026-01-29",
-        "lastModifiedDate": "2026-02-10",
+        "lastModifiedDate": "2026-02-21",
         "startDate": "2026-01-29",
         "description": "Add support for moving tasks between projects. \n\nConsider supporting task dependency between projects.",
         "tags": [
           "c2b5b773-cd7c-404b-864c-d89a0842c3fc"
         ],
         "cardPreview": "description",
-        "bucketId": "42148647-2989-4b64-823b-27fdc8614c66"
+        "bucketId": "b985d8b1-da84-4431-96e8-f67c29df5f22",
+        "dueDate": "2026-03-29",
+        "effortRemaining": 8,
+        "percentComplete": 0
+      },
+      {
+        "id": "412a9caf-0c98-48f2-a968-0a2476a7eb25",
+        "title": "Dashboard export",
+        "status": "Not Started",
+        "priority": "Medium",
+        "completed": false,
+        "parentId": "fdbddbbe-f8e0-452e-90b9-dc309f9365d2",
+        "collapsed": false,
+        "createdDate": "2026-01-29",
+        "lastModifiedDate": "2026-02-21",
+        "startDate": "2026-01-29",
+        "description": "Add an option to export dashboard analytics. \n\nConsider including options for different export templates or formats.",
+        "tags": [
+          "c2b5b773-cd7c-404b-864c-d89a0842c3fc"
+        ],
+        "cardPreview": "description"
       },
       {
         "id": "2668d47d-ac17-4c50-b70a-42d1b2d668f9",
@@ -3639,28 +3721,11 @@
         "parentId": null,
         "collapsed": false,
         "createdDate": "2026-01-23",
-        "lastModifiedDate": "2026-02-04",
-        "startDate": "2026-01-23",
-        "description": "---\n*Task from Project: Tutorials*",
-        "dueDate": "2026-02-04"
-      },
-      {
-        "id": "412a9caf-0c98-48f2-a968-0a2476a7eb25",
-        "title": "Dashboard export",
-        "status": "Not Started",
-        "priority": "Medium",
-        "completed": false,
-        "parentId": "fdbddbbe-f8e0-452e-90b9-dc309f9365d2",
-        "collapsed": false,
-        "createdDate": "2026-01-29",
-        "lastModifiedDate": "2026-02-10",
+        "lastModifiedDate": "2026-02-21",
         "startDate": "2026-01-29",
-        "description": "Add an option to export dashboard analytics. \n\nConsider including options for different export templates or formats.",
-        "tags": [
-          "c2b5b773-cd7c-404b-864c-d89a0842c3fc"
-        ],
-        "cardPreview": "description",
-        "bucketId": "b985d8b1-da84-4431-96e8-f67c29df5f22"
+        "description": "---\n*Task from Project: Tutorials*",
+        "dueDate": "2026-03-29",
+        "effortRemaining": 8
       },
       {
         "id": "6c53ef3a-f438-492f-94ca-c790155e96c3",
@@ -3669,9 +3734,9 @@
         "priority": "Medium",
         "completed": false,
         "parentId": null,
-        "collapsed": false,
+        "collapsed": true,
         "createdDate": "2026-01-23",
-        "lastModifiedDate": "2026-01-29",
+        "lastModifiedDate": "2026-02-21",
         "startDate": "2026-01-22",
         "description": "---\n*Task from Project: Tutorials*",
         "dueDate": "2026-01-28"
@@ -3711,7 +3776,7 @@
         "parentId": null,
         "collapsed": false,
         "createdDate": "2026-01-23",
-        "lastModifiedDate": "2026-01-29",
+        "lastModifiedDate": "2026-02-21",
         "startDate": "2026-01-23",
         "description": "---\n*Task from Project: Tutorials*",
         "tags": []
@@ -3777,9 +3842,9 @@
         "priority": "Medium",
         "completed": false,
         "parentId": null,
-        "collapsed": false,
+        "collapsed": true,
         "createdDate": "2026-01-23",
-        "lastModifiedDate": "2026-01-29",
+        "lastModifiedDate": "2026-02-21",
         "startDate": "2026-01-23",
         "description": "Add description?",
         "cardPreview": "description"
@@ -3829,26 +3894,31 @@
         "parentId": null,
         "collapsed": false,
         "createdDate": "2026-01-23",
-        "lastModifiedDate": "2026-02-01",
+        "lastModifiedDate": "2026-02-21",
         "startDate": "2026-01-23",
         "description": "---\n*Task from Project: Tutorials*"
       },
       {
         "id": "2557afcc-3762-4234-9c83-025d34a39c7f",
         "title": "Add details to Gantt",
-        "status": "Not Started",
-        "completed": false,
+        "status": "Completed",
+        "completed": true,
         "priority": "Medium",
         "startDate": "2026-02-01",
         "createdDate": "2026-02-01",
-        "lastModifiedDate": "2026-02-10",
+        "lastModifiedDate": "2026-02-21",
         "collapsed": false,
-        "description": "---\n*Task from Project: Project Planner Dev*",
+        "description": "Add dependency arrows to Gantt chart.",
         "parentId": "43f6cc10-0840-449b-a909-15bbc7513360",
         "tags": [
           "12bd3120-3aec-4bc7-a32f-7dfc49297c2d"
         ],
-        "bucketId": "b985d8b1-da84-4431-96e8-f67c29df5f22"
+        "bucketId": "65a6b97a-82b5-4011-9180-1ac658756497",
+        "dueDate": "2026-02-22",
+        "cardPreview": "description",
+        "effortCompleted": 1,
+        "effortRemaining": 0,
+        "percentComplete": 100
       },
       {
         "id": "d61f2a03-f7d8-44d4-853c-9ea78ce091ff",
@@ -3857,9 +3927,9 @@
         "priority": "Medium",
         "completed": false,
         "parentId": null,
-        "collapsed": false,
+        "collapsed": true,
         "createdDate": "2026-01-23",
-        "lastModifiedDate": "2026-01-29",
+        "lastModifiedDate": "2026-02-21",
         "startDate": "2026-01-23",
         "description": "---\n*Task from Project: Tutorials*"
       },
@@ -3901,7 +3971,7 @@
         "description": "**Testing**\n- Moving a subtask to a new position pushes the subtask out of the current parent task.\n    - Fixed in v0.6.9",
         "subtasks": [
           {
-            "id": "00176917-12d5-40f0-b1cb-7a88c4a12fae",
+            "id": "04aed19d-58fc-49a6-8e86-dbb60c4edb8b",
             "title": "Confirm subtasks are draggign and dropping correctly",
             "completed": true
           }
@@ -3916,37 +3986,38 @@
         "priority": "Medium",
         "completed": false,
         "parentId": null,
-        "collapsed": false,
+        "collapsed": true,
         "createdDate": "2026-01-25",
-        "lastModifiedDate": "2026-01-26",
+        "lastModifiedDate": "2026-02-22",
         "startDate": "2026-01-25",
         "description": "YouTube videos that showcase Project Planner.",
         "cardPreview": "description",
         "links": [
           {
-            "id": "04cbf3c4-676b-40d5-b56f-33e70f4eb2d6",
+            "id": "6290104c-e887-4dfa-b21c-63e4100cbff8",
             "title": "https://youtube.com/@ArctykDev",
             "url": "https://youtube.com/@ArctykDev",
             "type": "external"
           }
-        ]
+        ],
+        "dueDate": "2026-02-10"
       },
       {
         "id": "f3f88ef1-39cb-4688-9f54-1803ab739951",
         "title": "Setup Channel",
         "status": "In Progress",
-        "priority": "Low",
+        "priority": "Medium",
         "completed": false,
         "parentId": "61d039de-c12b-4c26-9e7b-833a60e65b6f",
         "collapsed": false,
         "createdDate": "2026-01-25",
-        "lastModifiedDate": "2026-02-03",
+        "lastModifiedDate": "2026-02-22",
         "startDate": "2026-01-25",
         "cardPreview": "description",
         "description": "Setup YouTube channel description, avatar, profile, etc.",
         "links": [
           {
-            "id": "e9b08e81-a842-4f5d-8bc2-4f91ac6c2151",
+            "id": "6e21a3c3-b740-4b86-b8d9-12e798cf7082",
             "title": "https://youtube.com/@ArctykDev",
             "url": "https://youtube.com/@ArctykDev",
             "type": "external"
@@ -3954,14 +4025,14 @@
         ],
         "subtasks": [
           {
-            "id": "f7134ca2-5668-4261-8ece-3a1ed34bb8fa",
+            "id": "6765b81b-9ebc-4ac6-9561-067be588cf04",
             "title": "Add channel description",
-            "completed": false
+            "completed": true
           },
           {
-            "id": "eb7f127d-98e1-4131-a3d4-d905dc44162b",
+            "id": "7b309fdb-0aec-42ed-aae5-70d642888a27",
             "title": "Add channel avatar",
-            "completed": false
+            "completed": true
           }
         ],
         "bucketId": "682eb1f0-f99c-4096-9025-a883bbf251f5",
@@ -3985,23 +4056,59 @@
         "dueDate": "2026-02-10"
       },
       {
-        "id": "3d0424ad-8158-476c-b637-d49e9a04c9bb",
-        "title": "Header Icons",
-        "status": "Not Started",
-        "priority": "Medium",
+        "id": "4751be69-43cf-47c9-9a82-174bfd8344ea",
+        "title": "Test Suite",
+        "status": "In Review",
         "completed": false,
+        "priority": "Medium",
+        "startDate": "2026-02-03",
+        "createdDate": "2026-02-03",
+        "lastModifiedDate": "2026-02-21",
+        "collapsed": true,
+        "description": "---\n*Task from Project: Project Planner Dev*",
+        "tags": [
+          "78bf00ac-a3cc-47d6-92a3-5f4816dc4719"
+        ],
+        "parentId": "886c5b3d-3560-4e4f-8386-f3bf6a3d1e46",
+        "bucketId": "761e8562-b734-41a8-a920-3d56df4462ad",
+        "dueDate": "2026-02-05"
+      },
+      {
+        "id": "8f451fc5-382d-42db-8cfa-33efa7af4290",
+        "title": "Markdown sync testing",
+        "status": "Completed",
+        "completed": true,
+        "parentId": "4751be69-43cf-47c9-9a82-174bfd8344ea",
+        "priority": "Medium",
+        "startDate": "2026-02-04",
+        "createdDate": "2026-02-04",
+        "lastModifiedDate": "2026-02-11",
+        "collapsed": false,
+        "description": "Confirm Markdown sync is working correctly and close GitHub Issue.",
+        "bucketId": "761e8562-b734-41a8-a920-3d56df4462ad",
+        "tags": [
+          "78bf00ac-a3cc-47d6-92a3-5f4816dc4719"
+        ],
+        "dueDate": "2026-02-10"
+      },
+      {
+        "id": "3d0424ad-8158-476c-b637-d49e9a04c9bb",
+        "title": "Header Icon support",
+        "status": "Completed",
+        "priority": "Medium",
+        "completed": true,
         "parentId": "6c53ef3a-f438-492f-94ca-c790155e96c3",
         "collapsed": false,
         "createdDate": "2026-01-29",
-        "lastModifiedDate": "2026-01-29",
-        "startDate": "2026-01-29",
-        "description": "---\n*Task from Project: Project Planner Dev*",
+        "lastModifiedDate": "2026-02-10",
+        "startDate": "2026-01-30",
+        "description": "Allow support for changing plugin header to show icons or show text buttons.",
         "tags": [
           "c2b5b773-cd7c-404b-864c-d89a0842c3fc",
           "78bf00ac-a3cc-47d6-92a3-5f4816dc4719"
         ],
         "cardPreview": "description",
-        "bucketId": "65a6b97a-82b5-4011-9180-1ac658756497",
+        "bucketId": "761e8562-b734-41a8-a920-3d56df4462ad",
         "dueDate": "2026-02-10"
       },
       {
@@ -4042,22 +4149,22 @@
         "description": "Renaming a task from Project Planner seems to create a new version of the Markdown note. \n\nThis is a **high** priority issue that must be fixed for the next release.\n\n- Created GitHub Issue\n- Confirmed that task notes are being duplicated\n- Confirmed that it is only the task title that causes the problem\n- Renaming the task note title immediately resets back to original title. Changes have not affect.",
         "subtasks": [
           {
-            "id": "9e449f94-8c9a-4b7b-9ffa-683c3a22a798",
+            "id": "c8627fe0-94de-49c6-803e-a79b7020ef96",
             "title": "Create GitHub Issue",
             "completed": true
           },
           {
-            "id": "fed3bd67-c357-4107-8995-cbaaa099d9e5",
+            "id": "80e82d77-7b7f-48d4-8903-dbeae37130ed",
             "title": "Test  - rename tasks to reproduce the issue",
             "completed": true
           },
           {
-            "id": "395953f8-66ab-4ac4-894c-82493946dcc3",
+            "id": "c3f5d8b6-b4de-4f8d-8e08-140be0992475",
             "title": "Implement a fix",
             "completed": true
           },
           {
-            "id": "36aa697c-1abd-468d-a8f7-5c55710ebdd6",
+            "id": "91104ba7-42da-4fed-8ed7-02613a8c10a9",
             "title": "Test - rename tasks to reproduce the issue",
             "completed": true
           }
@@ -4078,37 +4185,37 @@
         "cardPreview": "checklist",
         "subtasks": [
           {
-            "id": "6b6caa9c-bd65-4040-81d4-d2c4e48080a3",
+            "id": "d766a406-9cf5-4433-b531-afe82fec6a73",
             "title": "Clip Champ",
             "completed": true
           },
           {
-            "id": "c65e36c1-2f07-444d-a2bd-38ebee7cf85c",
+            "id": "c0e36b80-88ee-48bf-ba5a-8299fce70c33",
             "title": "Snipping Tool & Game Bar",
             "completed": true
           },
           {
-            "id": "99b7be1a-9b91-4f4b-8b93-b5027ba7a7da",
+            "id": "ef448872-b9ef-46e2-9a0f-c0a6bb94049e",
             "title": "Boom",
             "completed": true
           },
           {
-            "id": "81441abf-0e59-4de5-bed3-bd652c867c83",
+            "id": "1ed1b81d-9bd2-4068-94da-f54ed55da6a1",
             "title": "ShareX",
             "completed": true
           },
           {
-            "id": "a146a904-0377-47ec-8049-72392980d4fb",
+            "id": "0cf2c31e-8a2f-4c6c-837b-c91bde3e0325",
             "title": "OBS Studio",
             "completed": true
           },
           {
-            "id": "7d9538a6-7374-4a87-988c-ee8a50ecf12c",
+            "id": "7491ce07-b1f6-4084-b157-fd1ea3486268",
             "title": "Debut",
             "completed": true
           },
           {
-            "id": "f9064f30-140e-4037-94c5-cee93cdab5c5",
+            "id": "44c660be-0c6e-4b0c-8eff-53f43d98b4a9",
             "title": "Screenify",
             "completed": true
           }
@@ -4120,13 +4227,13 @@
         ],
         "links": [
           {
-            "id": "59141548-bc86-4d27-bbb1-71dd52e10205",
+            "id": "188673cf-dadd-46f8-adef-7c20d20182e2",
             "title": "https://obsproject.com/",
             "url": "https://obsproject.com/",
             "type": "external"
           },
           {
-            "id": "28c81576-93c4-43bb-aa95-d3e17a60ed0c",
+            "id": "45d8763f-3ab2-4cdb-bbbe-2e84b921de7e",
             "title": "https://www.nchsoftware.com/capture/index.html",
             "url": "https://www.nchsoftware.com/capture/index.html",
             "type": "external"
@@ -4140,9 +4247,9 @@
         "priority": "Medium",
         "completed": false,
         "parentId": null,
-        "collapsed": false,
+        "collapsed": true,
         "createdDate": "2026-01-29",
-        "lastModifiedDate": "2026-01-29",
+        "lastModifiedDate": "2026-02-21",
         "startDate": "2026-01-29",
         "description": "---\n*Task from Project: Project Planner Dev*",
         "tags": [
@@ -4177,44 +4284,17 @@
         "priority": "Medium",
         "startDate": "2026-02-01",
         "createdDate": "2026-02-01",
-        "lastModifiedDate": "2026-02-10",
+        "lastModifiedDate": "2026-02-21",
         "collapsed": false,
         "description": "Add support for drag and drop sorting of the project cards. \n\nAdd the foundation for hiding/showing task cards.",
         "tags": [
           "c2b5b773-cd7c-404b-864c-d89a0842c3fc"
         ],
         "bucketId": "b985d8b1-da84-4431-96e8-f67c29df5f22",
-        "cardPreview": "description"
-      },
-      {
-        "id": "a857a539-c5c6-4ea4-8983-8733e0b4fcf7",
-        "title": "Version 0.6.11",
-        "status": "Completed",
-        "completed": true,
-        "priority": "Critical",
-        "bucketId": "761e8562-b734-41a8-a920-3d56df4462ad",
-        "startDate": "2026-02-02",
-        "createdDate": "2026-02-02",
-        "lastModifiedDate": "2026-02-02",
-        "collapsed": false,
-        "description": "The next dev release will be 0.6.11 and continue crushing bugs.",
-        "tags": [
-          "12bd3120-3aec-4bc7-a32f-7dfc49297c2d"
-        ],
         "cardPreview": "description",
-        "subtasks": [
-          {
-            "id": "2e30dec2-c4c4-415a-bd5c-53cf60a49f75",
-            "title": "Move checklist up the task details order",
-            "completed": true
-          },
-          {
-            "id": "adb6b4f0-56e0-46a0-a5e3-27043cc22428",
-            "title": "Enable dragging cards up and down the bucket column",
-            "completed": true
-          }
-        ],
-        "dueDate": "2026-02-02"
+        "dueDate": "2026-03-29",
+        "effortRemaining": 8,
+        "percentComplete": 0
       },
       {
         "id": "ea13293a-63c4-4656-b929-481dbfbe7798",
@@ -4222,37 +4302,14 @@
         "status": "Not Started",
         "completed": false,
         "priority": "Medium",
-        "startDate": "2026-02-03",
+        "startDate": "2026-02-02",
         "createdDate": "2026-02-03",
-        "lastModifiedDate": "2026-02-03",
+        "lastModifiedDate": "2026-02-21",
         "collapsed": false,
         "description": "---\n*Task from Project: Project Planner Dev*",
-        "parentId": "4db803f0-410e-433d-aedf-7bcbd50069c7"
-      },
-      {
-        "id": "6e7876e3-170f-4295-8fd7-4b8d6d1d99f7",
-        "title": "My Day view",
-        "status": "Not Started",
-        "completed": false,
-        "parentId": "886c5b3d-3560-4e4f-8386-f3bf6a3d1e46",
-        "priority": "Medium",
-        "startDate": "2026-02-05",
-        "createdDate": "2026-02-05",
-        "lastModifiedDate": "2026-02-10",
-        "tags": [
-          "c2b5b773-cd7c-404b-864c-d89a0842c3fc"
-        ],
-        "collapsed": false,
-        "description": "Show all tasks in a grid view that are scheduled for today. \n\n- Show tasks from all projects\n- Use current grid view with filers",
-        "bucketId": "42148647-2989-4b64-823b-27fdc8614c66",
-        "cardPreview": "description",
-        "subtasks": [
-          {
-            "id": "ca640fa2-5ce4-4345-b001-d7f3524d9f55",
-            "title": "My Day view",
-            "completed": false
-          }
-        ]
+        "parentId": "4db803f0-410e-433d-aedf-7bcbd50069c7",
+        "dueDate": "2026-02-22",
+        "effortRemaining": 49880
       },
       {
         "id": "1894b04f-0ea5-48aa-ac75-7d851eb53055",
@@ -4268,17 +4325,17 @@
         "description": "Version 1.0.0 will be the first official release of Project Planner.",
         "subtasks": [
           {
-            "id": "400a3fd5-8240-462b-afb1-c0e7a26efdc1",
+            "id": "a65d0638-f868-4427-88df-e3bb08f9e566",
             "title": "Project Archive",
             "completed": false
           },
           {
-            "id": "83deb8f4-323b-4f5b-a5d9-132dfc147490",
+            "id": "013bce2e-07f0-446f-8b15-49409fb96262",
             "title": "Move tasks between projects",
             "completed": false
           },
           {
-            "id": "06d72007-e045-4fc9-9e30-db36fc12add5",
+            "id": "11605e79-03fd-4632-adb4-97a02da2600c",
             "title": "Re-arrange project cards on Dashboard",
             "completed": false
           }
@@ -4288,29 +4345,44 @@
       {
         "id": "a012ff8e-6501-452d-9d03-3c7b8db9a36c",
         "title": "Version 0.7.0",
-        "status": "Not Started",
+        "status": "In Progress",
         "completed": false,
         "priority": "High",
         "bucketId": "65a6b97a-82b5-4011-9180-1ac658756497",
         "startDate": "2026-02-02",
         "createdDate": "2026-02-02",
-        "lastModifiedDate": "2026-02-10",
+        "lastModifiedDate": "2026-02-21",
         "collapsed": false,
         "description": "The next minor release will be 0.7.0 and include all current patches and features plus improve existing features. See the checklist.",
         "subtasks": [
           {
-            "id": "eadfec36-fc50-41e0-801b-bfb4b47b94f6",
+            "id": "47cf5bfd-f517-46fb-9462-e74d6beb59fb",
             "title": "Add task effort",
-            "completed": false
+            "completed": true
           },
           {
-            "id": "697b6d7d-a2d7-4f99-84f2-9c642a412c76",
+            "id": "b25a5e7f-410b-46cc-b1d1-7dcc227a4f7d",
             "title": "Add task duration",
-            "completed": false
+            "completed": true
           },
           {
-            "id": "7cce0473-9fc7-40bb-ac1b-b252defa5563",
+            "id": "f68e272b-455d-4c2a-a21e-4237de002b77",
             "title": "Add task progress tracking",
+            "completed": true
+          },
+          {
+            "id": "48a44dd1-a010-4907-94d6-6b7384de5f0a",
+            "title": "Auto-dependency scheduled",
+            "completed": true
+          },
+          {
+            "id": "dd3066d0-bc85-4061-88a9-275dcb065ea7",
+            "title": "Fix bug in Board view when editing tasks in Task Details",
+            "completed": true
+          },
+          {
+            "id": "65815431-2ec2-4cc7-8e54-ca8b76dcb045",
+            "title": "All tests pass",
             "completed": false
           }
         ],
@@ -4318,7 +4390,20 @@
         "tags": [
           "12bd3120-3aec-4bc7-a32f-7dfc49297c2d"
         ],
-        "parentId": "ea13293a-63c4-4656-b929-481dbfbe7798"
+        "parentId": "ea13293a-63c4-4656-b929-481dbfbe7798",
+        "dueDate": "2026-02-22",
+        "effortRemaining": 10,
+        "percentComplete": 0,
+        "dependencies": [
+          {
+            "type": "FS",
+            "predecessorId": "f7f665bf-5852-4e24-9fef-59e1a296ac59"
+          },
+          {
+            "type": "FS",
+            "predecessorId": "bb56a1e3-3421-46cc-819e-0d89b0080e2c"
+          }
+        ]
       },
       {
         "id": "4db803f0-410e-433d-aedf-7bcbd50069c7",
@@ -4329,15 +4414,16 @@
         "bucketId": "761e8562-b734-41a8-a920-3d56df4462ad",
         "startDate": "2026-02-02",
         "createdDate": "2026-02-02",
-        "lastModifiedDate": "2026-02-03",
+        "lastModifiedDate": "2026-02-21",
         "collapsed": false,
         "description": "Version 0.6.12 may be the last of the 0.6.* dev release series before hitting 0.7.0. \n\nContinue fixing bug, improving polish and refinement, preparing for the next minor release which will introduce updates to existing features.",
         "cardPreview": "description",
-        "dueDate": "2026-02-03",
+        "dueDate": "2026-02-22",
         "tags": [
           "12bd3120-3aec-4bc7-a32f-7dfc49297c2d"
         ],
-        "parentId": "ea13293a-63c4-4656-b929-481dbfbe7798"
+        "parentId": "ea13293a-63c4-4656-b929-481dbfbe7798",
+        "effortRemaining": 49870
       },
       {
         "id": "2d767163-7c6a-4cbf-8def-67f9e351b767",
@@ -4379,262 +4465,72 @@
         "description": "---\n*Task from Project: Project Planner Dev*"
       },
       {
-        "id": "4751be69-43cf-47c9-9a82-174bfd8344ea",
-        "title": "Test Suite",
-        "status": "In Review",
-        "completed": false,
-        "priority": "Medium",
-        "startDate": "2026-02-03",
-        "createdDate": "2026-02-03",
-        "lastModifiedDate": "2026-02-05",
-        "collapsed": false,
-        "description": "---\n*Task from Project: Project Planner Dev*",
-        "tags": [
-          "78bf00ac-a3cc-47d6-92a3-5f4816dc4719"
-        ],
-        "parentId": "886c5b3d-3560-4e4f-8386-f3bf6a3d1e46",
-        "bucketId": "761e8562-b734-41a8-a920-3d56df4462ad",
-        "dueDate": "2026-02-05"
-      },
-      {
-        "id": "8f451fc5-382d-42db-8cfa-33efa7af4290",
-        "title": "Markdown sync testing",
-        "status": "Completed",
-        "completed": true,
-        "parentId": "4751be69-43cf-47c9-9a82-174bfd8344ea",
-        "priority": "Medium",
-        "startDate": "2026-02-04",
-        "createdDate": "2026-02-04",
-        "lastModifiedDate": "2026-02-11",
-        "collapsed": false,
-        "description": "Confirm Markdown sync is working correctly and close GitHub Issue.",
-        "bucketId": "761e8562-b734-41a8-a920-3d56df4462ad",
-        "tags": [
-          "78bf00ac-a3cc-47d6-92a3-5f4816dc4719"
-        ],
-        "dueDate": "2026-02-10"
-      },
-      {
         "id": "daily-task-70ec578c",
         "title": "Configure domain to be used with GitHub Pages",
         "completed": true,
         "status": "Completed",
         "description": "Imported from: [[Domain]]\nLine: 21",
-        "createdDate": "2026-02-10",
-        "lastModifiedDate": "2026-02-21",
+        "lastModifiedDate": "2026-02-22",
         "links": [
           {
-            "id": "ccf7096e-d0dd-4a62-8bf5-240d3c8efe44",
+            "id": "038481b7-e4c4-433b-a9f9-830a84ff826c",
             "title": "Domain",
             "url": "Obsidian Project Planner/Domain.md",
             "type": "obsidian"
           }
-        ]
+        ],
+        "createdDate": "2026-02-21"
       },
       {
-        "id": "daily-task-268f099d-51c2-43d3-b775-703dd6d9a8b8",
-        "title": "Configure domain to be used with GitHub Pages",
-        "completed": true,
-        "status": "Completed",
-        "description": "Imported from: [[Domain]]",
-        "createdDate": "2026-02-08",
-        "lastModifiedDate": "2026-02-08",
-        "links": [
-          {
-            "id": "66d42ec7-35ac-4316-a831-df59bcf2de13",
-            "title": "Domain",
-            "url": "Obsidian Project Planner/Domain.md",
-            "type": "obsidian"
-          }
-        ]
-      },
-      {
-        "id": "daily-task-af51fd90-f945-4c54-9037-8bf07ba56d69",
-        "title": "Configure domain to be used with GitHub Pages",
-        "completed": true,
-        "status": "Completed",
-        "description": "Imported from: [[Domain]]",
-        "createdDate": "2026-02-08",
-        "lastModifiedDate": "2026-02-08",
-        "links": [
-          {
-            "id": "3e081778-b428-4827-b83c-75f8a7a7b3c4",
-            "title": "Domain",
-            "url": "Obsidian Project Planner/Domain.md",
-            "type": "obsidian"
-          }
-        ]
-      },
-      {
-        "id": "daily-task-5f034161-cbec-48a7-8a94-1a1a91119240",
-        "title": "Configure domain to be used with GitHub Pages",
+        "id": "ffce2a5a-ff1b-42e1-bf4c-57061e6b8720",
+        "title": "Version 0.8.0",
         "status": "Not Started",
         "completed": false,
-        "parentId": "4056f669-6444-4295-8341-d4b7f1b1b9b8",
-        "createdDate": "2026-02-05",
-        "lastModifiedDate": "2026-02-05",
-        "description": "Imported from: [[Domain]]",
-        "links": [
+        "priority": "High",
+        "bucketId": "b985d8b1-da84-4431-96e8-f67c29df5f22",
+        "startDate": "2026-03-30",
+        "createdDate": "2026-02-21",
+        "lastModifiedDate": "2026-02-21",
+        "collapsed": false,
+        "description": "The next minor release will be `0.8.0` and include all current patches and features plus improve existing features. See the checklist.",
+        "cardPreview": "description",
+        "tags": [
+          "cfc49091-140c-4b0d-8d54-b812dbf02db5"
+        ],
+        "subtasks": [
           {
-            "id": "cfd3660c-75e4-4166-adaf-7fad52e917b8",
-            "title": "Obsidian Project Planner/Domain.md",
-            "url": "Obsidian Project Planner/Domain.md",
-            "type": "obsidian"
-          }
-        ]
-      },
-      {
-        "id": "daily-task-0cf2862f-106f-4397-90c6-4c7050a04656",
-        "title": "Configure domain to be used with GitHub Pages",
-        "completed": true,
-        "status": "Completed",
-        "description": "Imported from: [[Domain]]",
-        "createdDate": "2026-02-08",
-        "lastModifiedDate": "2026-02-08",
-        "links": [
+            "id": "24fe7f16-f50e-4de2-8508-5f1b38a80002",
+            "title": "My Day view",
+            "completed": false
+          },
           {
-            "id": "e3b628bd-c958-4080-b870-6e820667d0fb",
-            "title": "Domain",
-            "url": "Obsidian Project Planner/Domain.md",
-            "type": "obsidian"
-          }
-        ]
-      },
-      {
-        "id": "daily-task-edd0277f-dcd8-4e50-9ee8-cd156e980a56",
-        "title": "Configure domain to be used with GitHub Pages",
-        "completed": true,
-        "status": "Completed",
-        "description": "Imported from: [[Domain]]",
-        "createdDate": "2026-02-08",
-        "lastModifiedDate": "2026-02-08",
-        "links": [
+            "id": "2af598db-fab4-4396-aa0c-014891089e32",
+            "title": "Move tasks between projects",
+            "completed": false
+          },
           {
-            "id": "cfdc1662-1a92-4f4a-b8b5-d7d2e3cbecf9",
-            "title": "Domain",
-            "url": "Obsidian Project Planner/Domain.md",
-            "type": "obsidian"
+            "id": "ced08d66-4bed-48cc-aaa4-de30a7c03cbe",
+            "title": "Re-arrange project cards",
+            "completed": false
           }
-        ]
-      },
-      {
-        "id": "daily-task-70cba991-8a57-488d-8f1d-5c38b43fec01",
-        "title": "Configure domain to be used with GitHub Pages",
-        "completed": true,
-        "status": "Completed",
-        "description": "Imported from: [[Domain]]",
-        "createdDate": "2026-02-08",
-        "lastModifiedDate": "2026-02-08",
-        "links": [
+        ],
+        "dependencies": [
           {
-            "id": "7fcfb05f-6224-4ad9-9739-114ae3bf8d67",
-            "title": "Domain",
-            "url": "Obsidian Project Planner/Domain.md",
-            "type": "obsidian"
-          }
-        ]
-      },
-      {
-        "id": "daily-task-7f660dc5-4f98-4d3d-985a-845793086344",
-        "title": "Configure domain to be used with GitHub Pages",
-        "completed": true,
-        "status": "Completed",
-        "description": "Imported from: [[Domain]]",
-        "createdDate": "2026-02-08",
-        "lastModifiedDate": "2026-02-08",
-        "links": [
+            "type": "FS",
+            "predecessorId": "6e7876e3-170f-4295-8fd7-4b8d6d1d99f7"
+          },
           {
-            "id": "3af50e42-3645-4706-9f05-0c876f8d8f0f",
-            "title": "Domain",
-            "url": "Obsidian Project Planner/Domain.md",
-            "type": "obsidian"
-          }
-        ]
-      },
-      {
-        "id": "daily-task-8a8b7149-9154-474a-b10e-7bf94fe90c01",
-        "title": "Configure domain to be used with GitHub Pages",
-        "completed": true,
-        "status": "Completed",
-        "description": "Imported from: [[Domain]]",
-        "createdDate": "2026-02-08",
-        "lastModifiedDate": "2026-02-08",
-        "links": [
+            "type": "FS",
+            "predecessorId": "f0e3475b-1f27-4974-b200-4ebe042467a7"
+          },
           {
-            "id": "97e83e87-5bb6-41c3-8183-caa0a6cec07f",
-            "title": "Domain",
-            "url": "Obsidian Project Planner/Domain.md",
-            "type": "obsidian"
+            "type": "FS",
+            "predecessorId": "d9a6e9e5-aadf-4955-8580-588eb8dd0656"
           }
-        ]
-      },
-      {
-        "id": "daily-task-a197f056-bc6f-4130-95f0-bb395f56a992",
-        "title": "Configure domain to be used with GitHub Pages",
-        "completed": true,
-        "status": "Completed",
-        "description": "Imported from: [[Domain]]",
-        "createdDate": "2026-02-09",
-        "lastModifiedDate": "2026-02-09",
-        "links": [
-          {
-            "id": "c7882e32-d450-44b5-b78e-1614fc909061",
-            "title": "Domain",
-            "url": "Obsidian Project Planner/Domain.md",
-            "type": "obsidian"
-          }
-        ]
-      },
-      {
-        "id": "daily-task-97d5d491-cbd0-4466-bd3a-08d4d800248e",
-        "title": "Configure domain to be used with GitHub Pages",
-        "completed": true,
-        "status": "Completed",
-        "description": "Imported from: [[Domain]]",
-        "createdDate": "2026-02-09",
-        "lastModifiedDate": "2026-02-09",
-        "links": [
-          {
-            "id": "c8f37637-2dd2-4330-880f-0fd4e79dca37",
-            "title": "Domain",
-            "url": "Obsidian Project Planner/Domain.md",
-            "type": "obsidian"
-          }
-        ]
-      },
-      {
-        "id": "daily-task-798e2928-f6fa-4a59-868c-c854039586aa",
-        "title": "Configure domain to be used with GitHub Pages",
-        "completed": true,
-        "status": "Completed",
-        "description": "Imported from: [[Domain]]",
-        "createdDate": "2026-02-10",
-        "lastModifiedDate": "2026-02-10",
-        "links": [
-          {
-            "id": "44672a3e-4215-457a-aed1-7a673e8b2d02",
-            "title": "Domain",
-            "url": "Obsidian Project Planner/Domain.md",
-            "type": "obsidian"
-          }
-        ]
-      },
-      {
-        "id": "daily-task-5ab77ebd-80c6-44f4-81c5-4d06f25b41d9",
-        "title": "Configure domain to be used with GitHub Pages",
-        "completed": true,
-        "status": "Completed",
-        "description": "Imported from: [[Domain]]",
-        "createdDate": "2026-02-10",
-        "lastModifiedDate": "2026-02-10",
-        "links": [
-          {
-            "id": "168f9aac-35a6-4197-bcb3-14f1d5315cde",
-            "title": "Domain",
-            "url": "Obsidian Project Planner/Domain.md",
-            "type": "obsidian"
-          }
-        ]
+        ],
+        "dueDate": "2026-05-03",
+        "effortRemaining": 0,
+        "percentComplete": 0
       }
     ],
     "c6d1a72c-1b04-46c5-b8d7-8e3c47a2befa": [

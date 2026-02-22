@@ -22,6 +22,7 @@ describe("DailyNoteTaskScanner", () => {
             getTaskById: jest.fn(),
             addTaskToProject: jest.fn().mockResolvedValue(undefined),
             updateTask: jest.fn().mockResolvedValue(undefined),
+            getAll: jest.fn().mockReturnValue([]),
         };
 
         mockVault = {
@@ -51,6 +52,7 @@ describe("DailyNoteTaskScanner", () => {
             },
             taskStore: mockTaskStore,
             registerEvent: jest.fn(),
+            saveSettings: jest.fn().mockResolvedValue(undefined),
         };
 
         scanner = new DailyNoteTaskScanner(mockApp, mockPlugin);
@@ -146,9 +148,9 @@ describe("DailyNoteTaskScanner", () => {
             mockFile.basename = "2026-02-04";
         });
 
-        it("should parse basic task with title", () => {
+        it("should parse basic task with title", async () => {
             const line = "- [ ] Simple task #planner";
-            const result = (scanner as any).parseTaskLine(line, mockFile, 5);
+            const result = await (scanner as any).parseTaskLine(line, mockFile, 5);
 
             expect(result).not.toBeNull();
             expect(result.task.title).toBe("Simple task");
@@ -156,30 +158,30 @@ describe("DailyNoteTaskScanner", () => {
             expect(result.task.status).toBe("Not Started");
         });
 
-        it("should parse completed task", () => {
+        it("should parse completed task", async () => {
             const line = "- [x] Completed task #planner";
-            const result = (scanner as any).parseTaskLine(line, mockFile, 5);
+            const result = await (scanner as any).parseTaskLine(line, mockFile, 5);
 
             expect(result).not.toBeNull();
             expect(result.task.completed).toBe(true);
             expect(result.task.status).toBe("Completed");
         });
 
-        it("should extract priority from exclamation marks", () => {
+        it("should extract priority from exclamation marks", async () => {
             const testCases = [
                 { line: "- [ ] Critical task !!! #planner", expected: "Critical" },
                 { line: "- [ ] High priority !! #planner", expected: "High" },
                 { line: "- [ ] Medium priority ! #planner", expected: "Medium" },
             ];
 
-            testCases.forEach(({ line, expected }) => {
-                const result = (scanner as any).parseTaskLine(line, mockFile, 5);
+            for (const { line, expected } of testCases) {
+                const result = await (scanner as any).parseTaskLine(line, mockFile, 5);
                 expect(result.task.priority).toBe(expected);
                 expect(result.task.title).not.toContain("!");
-            });
+            }
         });
 
-        it("should extract priority from text markers", () => {
+        it("should extract priority from text markers", async () => {
             const testCases = [
                 { line: "- [ ] Task (critical) #planner", expected: "Critical" },
                 { line: "- [ ] Task (high) #planner", expected: "High" },
@@ -187,53 +189,53 @@ describe("DailyNoteTaskScanner", () => {
                 { line: "- [ ] Task (low) #planner", expected: "Low" },
             ];
 
-            testCases.forEach(({ line, expected }) => {
-                const result = (scanner as any).parseTaskLine(line, mockFile, 5);
+            for (const { line, expected } of testCases) {
+                const result = await (scanner as any).parseTaskLine(line, mockFile, 5);
                 expect(result.task.priority).toBe(expected);
                 expect(result.task.title).not.toContain("(");
-            });
+            }
         });
 
-        it("should extract due date from various formats", () => {
+        it("should extract due date from various formats", async () => {
             const testCases = [
                 "- [ ] Task 📅 2026-03-15 #planner",
                 "- [ ] Task due: 2026-03-15 #planner",
                 "- [ ] Task @2026-03-15 #planner",
             ];
 
-            testCases.forEach(line => {
-                const result = (scanner as any).parseTaskLine(line, mockFile, 5);
+            for (const line of testCases) {
+                const result = await (scanner as any).parseTaskLine(line, mockFile, 5);
                 expect(result.task.dueDate).toBe("2026-03-15");
                 expect(result.task.title).toBe("Task");
-            });
+            }
         });
 
-        it("should extract additional tags from settings", () => {
+        it("should extract additional tags from settings", async () => {
             const line = "- [ ] Task #urgent #personal #planner";
-            const result = (scanner as any).parseTaskLine(line, mockFile, 5);
+            const result = await (scanner as any).parseTaskLine(line, mockFile, 5);
 
             expect(result.task.tags).toContain('tag-urgent');
             expect(result.task.tags).toContain('tag-personal');
             expect(result.task.tags?.length).toBe(2);
         });
 
-        it("should ignore tags not in settings", () => {
+        it("should ignore tags not in settings", async () => {
             const line = "- [ ] Task #unknown-tag #planner";
-            const result = (scanner as any).parseTaskLine(line, mockFile, 5);
+            const result = await (scanner as any).parseTaskLine(line, mockFile, 5);
 
             expect(result.task.tags || []).toEqual([]);
         });
 
-        it("should create description with source link", () => {
+        it("should create description with source link", async () => {
             const line = "- [ ] Task #planner";
-            const result = (scanner as any).parseTaskLine(line, mockFile, 5);
+            const result = await (scanner as any).parseTaskLine(line, mockFile, 5);
 
             expect(result.task.description).toContain("[[2026-02-04]]");
         });
 
-        it("should create obsidian link back to source", () => {
+        it("should create obsidian link back to source", async () => {
             const line = "- [ ] Task #planner";
-            const result = (scanner as any).parseTaskLine(line, mockFile, 5);
+            const result = await (scanner as any).parseTaskLine(line, mockFile, 5);
 
             expect(result.task.links).toHaveLength(1);
             expect(result.task.links[0].type).toBe("obsidian");
@@ -241,38 +243,38 @@ describe("DailyNoteTaskScanner", () => {
             expect(result.task.links[0].url).toBe("Daily Notes/2026-02-04.md");
         });
 
-        it("should generate location key for tracking", () => {
+        it("should generate location key for tracking", async () => {
             const line = "- [ ] Task #planner";
-            const result = (scanner as any).parseTaskLine(line, mockFile, 5);
+            const result = await (scanner as any).parseTaskLine(line, mockFile, 5);
 
             expect(result.locationKey).toBe("Daily Notes/2026-02-04.md:5");
         });
 
-        it("should reuse task ID for same location", () => {
+        it("should reuse task ID for same location", async () => {
             const line = "- [ ] Task #planner";
             
             // First parse
-            const result1 = (scanner as any).parseTaskLine(line, mockFile, 5);
+            const result1 = await (scanner as any).parseTaskLine(line, mockFile, 5);
             const firstId = result1.task.id;
 
             // Second parse at same location
-            const result2 = (scanner as any).parseTaskLine(line, mockFile, 5);
+            const result2 = await (scanner as any).parseTaskLine(line, mockFile, 5);
             
             expect(result2.task.id).toBe(firstId);
         });
 
-        it("should set timestamps for new tasks", () => {
+        it("should set timestamps for new tasks", async () => {
             const line = "- [ ] Task #planner";
-            const result = (scanner as any).parseTaskLine(line, mockFile, 5);
+            const result = await (scanner as any).parseTaskLine(line, mockFile, 5);
 
             const today = new Date().toISOString().slice(0, 10);
             expect(result.task.createdDate).toBe(today);
             expect(result.task.lastModifiedDate).toBe(today);
         });
 
-        it("should handle complex task with all features", () => {
+        it("should handle complex task with all features", async () => {
             const line = "- [ ] Important task !!! 📅 2026-05-01 #planner/Work-Project";
-            const result = (scanner as any).parseTaskLine(line, mockFile, 10);
+            const result = await (scanner as any).parseTaskLine(line, mockFile, 10);
 
             // Title should have tags removed (only planner tags are removed)
             expect(result.task.title).toContain("Important task");
@@ -280,9 +282,9 @@ describe("DailyNoteTaskScanner", () => {
             expect(result.task.dueDate).toBe("2026-05-01");
         });
 
-        it("should return null for non-task line", () => {
+        it("should return null for non-task line", async () => {
             const line = "Regular text #planner";
-            const result = (scanner as any).parseTaskLine(line, mockFile, 5);
+            const result = await (scanner as any).parseTaskLine(line, mockFile, 5);
 
             expect(result).toBeNull();
         });
@@ -519,9 +521,11 @@ describe("DailyNoteTaskScanner", () => {
         it("should register vault event watchers", () => {
             scanner.setupWatchers();
 
-            expect(mockPlugin.registerEvent).toHaveBeenCalledTimes(2);
+            expect(mockPlugin.registerEvent).toHaveBeenCalledTimes(4);
             expect(mockVault.on).toHaveBeenCalledWith('modify', expect.any(Function));
             expect(mockVault.on).toHaveBeenCalledWith('create', expect.any(Function));
+            expect(mockVault.on).toHaveBeenCalledWith('delete', expect.any(Function));
+            expect(mockVault.on).toHaveBeenCalledWith('rename', expect.any(Function));
         });
 
         it("should schedule scan on file modify", () => {

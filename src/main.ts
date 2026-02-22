@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, Notice, TFile } from "obsidian";
+import { Plugin, WorkspaceLeaf, Notice, TFile, FileSystemAdapter } from "obsidian";
 
 import {
   ProjectPlannerSettingTab,
@@ -225,14 +225,17 @@ export default class ProjectPlannerPlugin extends Plugin {
     try {
       // Attempt to read stylesheet directly from vault (plugin is inside .obsidian/plugins)
       const cssPath = `.obsidian/plugins/${this.manifest.id}/styles.css`;
-      const css = await (this.app.vault.adapter as any).read(cssPath);
-      if (css && typeof css === 'string') {
-        const styleEl = document.createElement('style');
-        styleEl.id = `${this.manifest.id}-inline-style`;
-        styleEl.textContent = css;
-        head.appendChild(styleEl);
-        this.inlineStyleEl = styleEl;
-        console.info("Project Planner: injected stylesheet inline as fallback.");
+      const adapter = this.app.vault.adapter;
+      if (adapter instanceof FileSystemAdapter) {
+        const css = await adapter.read(cssPath);
+        if (css && typeof css === 'string') {
+          const styleEl = document.createElement('style');
+          styleEl.id = `${this.manifest.id}-inline-style`;
+          styleEl.textContent = css;
+          head.appendChild(styleEl);
+          this.inlineStyleEl = styleEl;
+          console.info("Project Planner: injected stylesheet inline as fallback.");
+        }
       }
     } catch (e) {
       console.warn("Project Planner: could not auto-inject stylesheet", e);
@@ -336,8 +339,8 @@ export default class ProjectPlannerPlugin extends Plugin {
 
     // Otherwise create a right-hand split
     if (!detailLeaf) {
-      const rightLeaf = (workspace as any).getRightLeaf
-        ? (workspace as any).getRightLeaf(false)
+      const rightLeaf = workspace.getRightLeaf
+        ? workspace.getRightLeaf(false)
         : null;
       detailLeaf = rightLeaf ?? workspace.getLeaf(true);
     }
@@ -358,14 +361,9 @@ export default class ProjectPlannerPlugin extends Plugin {
   // ---------------------------------------------------------------------------
   public async updateTask(id: string, fields: Partial<PlannerTask>) {
     await this.taskStore.updateTask(id, fields);
-
-    // Sync to markdown if enabled
-    if (this.settings.enableMarkdownSync && this.settings.autoCreateTaskNotes) {
-      const task = this.taskStore.getTaskById(id);
-      if (task) {
-        await this.taskSync.syncTaskToMarkdown(task, this.settings.activeProjectId);
-      }
-    }
+    // Markdown sync is already handled inside taskStore.updateTask() — no
+    // need to sync again here.  The duplicate sync could trigger extra vault
+    // watcher events and unnecessary re-renders.
   }
 
   // ---------------------------------------------------------------------------

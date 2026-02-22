@@ -297,6 +297,7 @@
 
 /* Date cell (read-only for Created/Modified columns) */
 .planner-date-cell-readonly {
+  padding: 4px 8px;
   color: var(--text-muted);
   font-size: 12px;
   font-family: var(--font-monospace);
@@ -798,14 +799,14 @@
 
 /* Overdue (Planner red) */
 .planner-date-pill-overdue {
-  background: rgba(255, 0, 0, 0.1);
+  background: rgba(232, 17, 35, 0.1);
   color: var(--planner-accent-red);
   border: 1px solid var(--planner-accent-red);
 }
 
 /* Today (Planner blue) */
 .planner-date-pill-today {
-  background: rgba(0, 120, 215, 0.15);
+  background: rgba(0, 120, 212, 0.15);
   color: var(--planner-accent-blue);
   border: 1px solid var(--planner-accent-blue);
 }
@@ -920,7 +921,7 @@
 }
 
 .planner-subtask-delete:hover {
-  background: rgba(255, 0, 0, 0.1);
+  background: rgba(232, 17, 35, 0.1);
   color: var(--planner-accent-red);
   border-color: var(--planner-accent-red);
 }
@@ -1460,6 +1461,61 @@
 .planner-dependency-warning {
   color: var(--text-warning);
   animation: pulse-warning 2s ease-in-out infinite;
+}
+
+.planner-dependency-auto {
+  color: var(--text-accent);
+  opacity: 0.9;
+}
+
+/* Gantt dependency arrow overlay */
+.planner-gantt-dependency-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 5;
+  overflow: visible;
+}
+
+.planner-dep-arrow-line {
+  fill: none;
+  stroke: var(--text-accent);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+
+.planner-dep-arrow-fill {
+  fill: var(--text-accent);
+  opacity: 0.7;
+}
+
+.planner-dep-arrow-btn {
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--background-modifier-border);
+  transition: all 0.15s ease;
+}
+
+.planner-dep-arrow-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.planner-dep-arrow-btn.active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
 }
 
 @keyframes pulse-warning {
@@ -3396,4 +3452,65 @@
 .planner-duration-cell {
   color: var(--text-muted);
   font-size: 12px;
+}
+
+/* ---------------------------------------------------------------------------
+   Parent Roll-Up Indicators
+   --------------------------------------------------------------------------- */
+
+/* Grid cells that are auto-calculated from subtasks */
+.planner-rolled-up {
+  font-style: italic;
+  color: var(--text-muted);
+  cursor: default;
+}
+
+/* Tooltip icon hint in Grid view */
+td.planner-rolled-up {
+  position: relative;
+}
+
+td.planner-rolled-up::after {
+  content: "Σ";
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  font-size: 10px;
+  color: var(--text-faint);
+  font-style: normal;
+}
+
+/* Read-only date display in TaskDetailView */
+.planner-date-readonly {
+  padding: 4px 0;
+  font-size: 14px;
+}
+
+.planner-date-readonly.planner-rolled-up {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+/* Read-only effort display in TaskDetailView */
+.planner-effort-readonly {
+  padding: 6px 8px;
+  font-size: 14px;
+  text-align: center;
+  min-width: 50px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-secondary);
+}
+
+.planner-effort-readonly.planner-rolled-up {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+/* "Rolled up" hint text next to section headings */
+.planner-rolled-up-hint {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-faint);
+  font-weight: normal;
 }

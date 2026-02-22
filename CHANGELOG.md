@@ -34,6 +34,47 @@ All notable changes to Obsidian Project Planner will be documented in this file.
   - Parsed back with safe `Number()` coercion on markdown → JSON sync
   - Duration not synced (derived from `startDate`/`dueDate` which are already synced)
 
+#### Dependency-Driven Auto-Scheduling (MS Project / GanttProject Style)
+- **Automatic Date Cascading**: When a predecessor task's dates change, all dependent tasks automatically shift their dates
+  - **Finish-to-Start (FS)**: Dependent starts the day after predecessor finishes
+  - **Start-to-Start (SS)**: Dependent starts when predecessor starts
+  - **Finish-to-Finish (FF)**: Dependent finishes when predecessor finishes
+  - **Start-to-Finish (SF)**: Dependent finishes when predecessor starts
+  - **Duration Preservation**: Task duration (days between start and due) is maintained when shifting
+  - **Forward-Only Scheduling**: Tasks are only pushed later, never pulled earlier — prevents unexpected schedule compression
+  - **Recursive Cascade**: Changes propagate through the entire dependency chain (A → B → C all shift)
+  - **Circular Dependency Guard**: Visited-set prevents infinite loops in circular dependency graphs
+  - **Markdown Sync**: Cascaded date changes automatically sync to markdown files
+- **New Setting**: "Auto-schedule dependent tasks" toggle under Dependency Scheduling section (enabled by default)
+- **Grid View Indicator**: Dependency cells show 📐 icon with "(auto-scheduled)" tooltip when scheduling is active; falls back to 🔗 when disabled
+
+#### Timeline/Gantt Dependency Arrows (MS Project Style)
+- **Visual Dependency Connectors**: SVG overlay draws right-angle connector arrows between linked task bars
+  - **Finish-to-Start (FS)**: Arrow from predecessor's right edge to successor's left edge
+  - **Start-to-Start (SS)**: Arrow from predecessor's left edge to successor's left edge
+  - **Finish-to-Finish (FF)**: Arrow from predecessor's right edge to successor's right edge
+  - **Start-to-Finish (SF)**: Arrow from predecessor's left edge to successor's right edge
+  - **Smart Routing**: L-shaped orthogonal paths (horizontal → vertical → horizontal) with automatic detour routing when bars overlap horizontally
+  - **Accent-Colored Lines**: Arrows use theme accent color with arrowhead markers for clear directionality
+- **Toggle Button**: Toolbar button to show/hide dependency arrows (enabled by default)
+  - Active state uses accent color styling; toggles with single click
+  - Arrows re-render on every view update to stay in sync with task changes
+
+#### Parent Task Roll-Up (MS Project Style)
+- **Automatic Parent Field Calculation**: Parent tasks automatically derive their values from subtasks, matching MS Project behavior
+  - **Date Roll-Up**: Parent `Start Date` = earliest child start; parent `Due Date` = latest child due
+  - **Effort Roll-Up**: Parent `Effort Completed` = sum of children; parent `Effort Remaining` = sum of children
+  - **% Complete Roll-Up**: Duration-weighted average — `Σ(childDuration × child%) / Σ(childDuration)` — tasks without dates use equal weight (1 day)
+  - **Status Sync**: 100% complete auto-sets parent to "Completed"; dropping below 100% from Completed resets to "In Progress"
+  - **Upward Cascade**: Changes propagate up the hierarchy — grandparent updates when child changes
+  - **Trigger Points**: Roll-up fires on task update, task delete, make-subtask, and promote-subtask operations
+  - **Markdown Sync**: Rolled-up parent values automatically sync to markdown files
+- **Read-Only Parent Fields**: Rolled-up fields are non-editable in both Grid View and Task Detail View
+  - Grid: Cells show italic text with Σ indicator and "Rolled up from subtasks" tooltip
+  - Task Detail: Effort inputs replaced with read-only display; date fields shown as static text
+  - % Complete hint changes from "(calculated from effort)" to "(rolled up from subtasks)"
+- **New Setting**: "Auto-calculate parent task fields from subtasks" toggle under Parent Task Roll-Up section (enabled by default)
+
 ### Fixed
 
 #### Grid View Column Drag-and-Drop
@@ -51,6 +92,15 @@ All notable changes to Obsidian Project Planner will be documented in this file.
 - **Timing Fix**: `isEditingInline` flag now set to `false` BEFORE `updateTask()` call instead of after
   - Previously, the subscriber re-render was skipped during the update because the flag hadn't been cleared yet
   - Ensures Grid View reflects changes immediately when editing effort or other fields inline
+
+#### Scroll Position Preservation Across All Views
+- **Board View**: Horizontal board scroll and per-column vertical scroll positions are now preserved across re-renders
+  - Saves `.planner-board-container` horizontal scroll and each bucket column's vertical scroll
+- **Task Detail View**: Scroll position of the detail panel is preserved when task data updates (e.g., status change, effort edit)
+- **Dashboard View**: Scroll position of the dashboard wrapper is preserved on data-driven re-renders
+- **Gantt/Timeline View**: All 3 scroll axes preserved — left column vertical, right timeline vertical, and right timeline horizontal
+  - Cross-sync suppressed during restore to prevent scroll listener interference
+- Previously, any TaskStore change caused a full `container.empty()` + rebuild, losing the user's scroll position in all views except Grid View
 
 ## [0.6.13] - 2026-02-10
 

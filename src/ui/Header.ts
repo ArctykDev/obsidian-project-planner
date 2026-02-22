@@ -1,5 +1,5 @@
 import type ProjectPlannerPlugin from "../main";
-import { setIcon } from "obsidian";
+import { App, setIcon } from "obsidian";
 
 type ActiveView = "grid" | "board" | "graph" | "gantt" | "dashboard";
 
@@ -117,8 +117,10 @@ export function renderPlannerHeader(
         settingsBtn.textContent = "⚙";
     }
     settingsBtn.onclick = () => {
-        (plugin.app as any).setting.open();
-        (plugin.app as any).setting.openTabById(plugin.manifest.id);
+        // Obsidian's settings modal API is not part of the public typings
+        const app = plugin.app as App & { setting?: { open(): void; openTabById(id: string): void } };
+        app.setting?.open();
+        app.setting?.openTabById(plugin.manifest.id);
     };
 
     return { headerEl: header, actionsEl: headerActions };

@@ -30,6 +30,8 @@ export class DependencyGraphView extends ItemView {
     private animationFrame: number | null = null;
     private unsubscribe: (() => void) | null = null;
     private resizeHandler: (() => void) | null = null;
+    private boundMouseMove: ((e: MouseEvent) => void) | null = null;
+    private boundMouseUp: ((e: MouseEvent) => void) | null = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
         super(leaf);
@@ -106,6 +108,14 @@ export class DependencyGraphView extends ItemView {
             window.removeEventListener("resize", this.resizeHandler);
             this.resizeHandler = null;
         }
+        if (this.boundMouseMove) {
+            document.removeEventListener("mousemove", this.boundMouseMove);
+            this.boundMouseMove = null;
+        }
+        if (this.boundMouseUp) {
+            document.removeEventListener("mouseup", this.boundMouseUp);
+            this.boundMouseUp = null;
+        }
         this.containerEl.empty();
         if (this.unsubscribe) {
             this.unsubscribe();
@@ -133,8 +143,9 @@ export class DependencyGraphView extends ItemView {
         let offsetX = 0;
         let offsetY = 0;
 
-        this.canvas.onmousedown = (e) => {
-            const rect = this.canvas!.getBoundingClientRect();
+        this.canvas.addEventListener("mousedown", (e: MouseEvent) => {
+            if (!this.canvas) return;
+            const rect = this.canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
@@ -145,6 +156,8 @@ export class DependencyGraphView extends ItemView {
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
                 if (distance < 30) {
+                    e.preventDefault();
+                    e.stopPropagation();
                     this.dragNode = node;
                     isDragging = true;
                     offsetX = dx;
@@ -157,11 +170,13 @@ export class DependencyGraphView extends ItemView {
 
             this.selectedNode = null;
             this.render();
-        };
+        });
 
-        this.canvas.onmousemove = (e) => {
-            if (isDragging && this.dragNode) {
-                const rect = this.canvas!.getBoundingClientRect();
+        // Bind mousemove/mouseup to document so drag continues outside canvas
+        this.boundMouseMove = (e: MouseEvent) => {
+            if (isDragging && this.dragNode && this.canvas) {
+                e.preventDefault();
+                const rect = this.canvas.getBoundingClientRect();
                 this.dragNode.x = e.clientX - rect.left - offsetX;
                 this.dragNode.y = e.clientY - rect.top - offsetY;
                 this.dragNode.vx = 0;
@@ -169,14 +184,21 @@ export class DependencyGraphView extends ItemView {
                 this.render();
             }
         };
+        document.addEventListener("mousemove", this.boundMouseMove);
 
-        this.canvas.onmouseup = () => {
+        this.boundMouseUp = (_e: MouseEvent) => {
+            if (isDragging && this.dragNode) {
+                // Zero velocity so the node stays where dropped
+                this.dragNode.vx = 0;
+                this.dragNode.vy = 0;
+            }
             isDragging = false;
             this.dragNode = null;
         };
+        document.addEventListener("mouseup", this.boundMouseUp);
 
         // Double click to open task details
-        this.canvas.ondblclick = (e) => {
+        this.canvas.addEventListener("dblclick", (e: MouseEvent) => {
             if (!this.selectedNode) return;
 
             const detailLeaves = this.app.workspace.getLeavesOfType("project-planner-task-detail");
@@ -186,17 +208,19 @@ export class DependencyGraphView extends ItemView {
                     detailView.setTask(this.selectedNode.task);
                 }
             }
-        };
+        });
     }
 
     async refresh() {
+        // Don't rebuild graph while user is dragging a node
+        if (this.dragNode) return;
         const tasks = this.getAllTasks();
         this.buildGraph(tasks);
         this.startSimulation();
     }
 
     private getAllTasks(): PlannerTask[] {
-        const store = (this.plugin as any).taskStore;
+        const store = this.plugin.taskStore;
         if (!store) return [];
         return store.getAll();
     }
@@ -291,10 +315,14 @@ export class DependencyGraphView extends ItemView {
                 const fx = (dx / distance) * force;
                 const fy = (dy / distance) * force;
 
-                node1.vx -= fx;
-                node1.vy -= fy;
-                node2.vx += fx;
-                node2.vy += fy;
+                if (node1 !== this.dragNode) {
+                    node1.vx -= fx;
+                    node1.vy -= fy;
+                }
+                if (node2 !== this.dragNode) {
+                    node2.vx += fx;
+                    node2.vy += fy;
+                }
             }
         }
 
@@ -312,10 +340,14 @@ export class DependencyGraphView extends ItemView {
                 const fx = (dx / distance) * force;
                 const fy = (dy / distance) * force;
 
-                source.vx += fx;
-                source.vy += fy;
-                target.vx -= fx;
-                target.vy -= fy;
+                if (source !== this.dragNode) {
+                    source.vx += fx;
+                    source.vy += fy;
+                }
+                if (target !== this.dragNode) {
+                    target.vx -= fx;
+                    target.vy -= fy;
+                }
             }
         });
 

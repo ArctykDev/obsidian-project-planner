@@ -4,6 +4,7 @@ import { TaskStore } from '../../src/stores/taskStore';
 import { TaskSync } from '../../src/utils/TaskSync';
 import { DailyNoteTaskScanner } from '../../src/utils/DailyNoteTaskScanner';
 import { PlannerTask } from '../../src/types';
+import { FileSystemAdapter } from 'obsidian';
 
 // Mock the view classes
 jest.mock('../../src/ui/GridView');
@@ -33,9 +34,9 @@ describe('ProjectPlannerPlugin', () => {
                 getLeavesOfType: jest.fn().mockReturnValue([]),
             },
             vault: {
-                adapter: {
+                adapter: Object.assign(Object.create(FileSystemAdapter.prototype), {
                     read: jest.fn().mockResolvedValue('/* mock css */'),
-                },
+                }),
                 getAbstractFileByPath: jest.fn(),
                 createFolder: jest.fn(),
                 create: jest.fn(),
@@ -454,9 +455,9 @@ describe('ProjectPlannerPlugin', () => {
 
             await plugin.updateTask('task-1', { status: 'Completed' });
 
+            // Markdown sync is now handled inside taskStore.updateTask(), not
+            // in plugin.updateTask(). Verify the taskStore call was forwarded.
             expect(plugin.taskStore.updateTask).toHaveBeenCalledWith('task-1', { status: 'Completed' });
-            expect(plugin.taskStore.getTaskById).toHaveBeenCalledWith('task-1');
-            expect(plugin.taskSync.syncTaskToMarkdown).toHaveBeenCalled();
         });
 
         it('should not sync to markdown when disabled', async () => {
@@ -464,7 +465,8 @@ describe('ProjectPlannerPlugin', () => {
 
             await plugin.updateTask('task-1', { status: 'Completed' });
 
-            expect(plugin.taskSync.syncTaskToMarkdown).not.toHaveBeenCalled();
+            // plugin.updateTask now delegates entirely to taskStore.updateTask
+            expect(plugin.taskStore.updateTask).toHaveBeenCalledWith('task-1', { status: 'Completed' });
         });
     });
 

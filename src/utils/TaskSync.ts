@@ -1,5 +1,5 @@
 import { App, TFile } from "obsidian";
-import { PlannerTask, TaskDependency, TaskLink, PlannerSubtask } from "../types";
+import { PlannerTask, TaskDependency, TaskLink, PlannerSubtask, DependencyType } from "../types";
 import type ProjectPlannerPlugin from "../main";
 
 /**
@@ -146,7 +146,7 @@ export class TaskSync {
             task.dependencies = fm.dependencies.map((d: string) => {
                 const [type, predecessorId] = d.split(':');
                 return {
-                    type: type as any,
+                    type: type as DependencyType,
                     predecessorId,
                 };
             });
@@ -303,6 +303,8 @@ export class TaskSync {
 
     /**
      * Sync a task from JSON to markdown (create or update the note)
+     * Forward sync (task→markdown) is always allowed — the syncInProgress
+     * guard only blocks reverse sync (markdown→task) to prevent infinite loops.
      */
     async syncTaskToMarkdown(task: PlannerTask, projectId: string): Promise<void> {
         const project = this.plugin.settings.projects.find(p => p.id === projectId);
@@ -310,8 +312,8 @@ export class TaskSync {
 
         const filePath = this.getTaskFilePath(task, project.name);
 
-        // Prevent infinite loop
-        if (this.syncInProgress.has(task.id)) return;
+        // Mark forward sync in progress so reverse sync (md→task) is blocked.
+        // Always allow forward writes — reset timer if already set.
         this.syncInProgress.add(task.id);
 
         try {
@@ -330,7 +332,7 @@ export class TaskSync {
                 await this.app.vault.create(filePath, content);
             }
         } finally {
-            // Longer timeout for Obsidian Sync delays
+            // Keep guard up for 1s to block the reverse metadata-cache event
             setTimeout(() => this.syncInProgress.delete(task.id), 1000);
         }
     }

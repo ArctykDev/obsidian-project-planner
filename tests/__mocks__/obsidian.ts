@@ -232,6 +232,18 @@ export class MarkdownRenderer {
   }
 }
 
+export class FileSystemAdapter {
+  basePath: string;
+  constructor() {
+    this.basePath = '';
+  }
+  async read(path: string): Promise<string> {
+    return '';
+  }
+  async write(path: string, data: string): Promise<void> {}
+  async exists(path: string): Promise<boolean> { return false; }
+}
+
 export function setIcon(el: HTMLElement, icon: string) {
   el.setAttribute('data-icon', icon);
 }

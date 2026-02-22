@@ -1,6 +1,6 @@
 import { ItemView, WorkspaceLeaf, MarkdownRenderer, setIcon } from "obsidian";
 import type ProjectPlannerPlugin from "../main";
-import type { PlannerTask } from "../types";
+import type { PlannerTask, DependencyType } from "../types";
 
 export const VIEW_TYPE_TASK_DETAIL = "project-planner-task-detail";
 
@@ -8,6 +8,7 @@ export class TaskDetailView extends ItemView {
   private plugin: ProjectPlannerPlugin;
   private task: PlannerTask | null = null;
   private unsubscribe: (() => void) | null = null;
+  private savedScrollTop: number | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
     super(leaf);
@@ -71,6 +72,12 @@ export class TaskDetailView extends ItemView {
 
   render() {
     const container = this.containerEl;
+
+    // Save scroll position before clearing
+    if (this.savedScrollTop === null) {
+      this.savedScrollTop = container.scrollTop;
+    }
+
     container.empty();
     container.addClass("planner-detail-wrapper");
 
@@ -79,7 +86,22 @@ export class TaskDetailView extends ItemView {
       return;
     }
 
+    // Restore scroll position after DOM is rebuilt.
+    // Capture into local so a queued re-render can't clobber with stale 0.
+    if (this.savedScrollTop !== null) {
+      const scrollTop = this.savedScrollTop;
+      this.savedScrollTop = null;
+      requestAnimationFrame(() => {
+        container.scrollTop = scrollTop;
+      });
+    }
+
     const task = this.task;
+
+    // Check if this task is a rolled-up parent (has children with roll-up enabled)
+    const allTasks = this.plugin.taskStore.getAll();
+    const hasChildren = allTasks.some((t: PlannerTask) => t.parentId === task.id);
+    const isRolledUp = hasChildren && this.plugin.settings?.enableParentRollUp;
 
     //
     // COMPLETE BUTTON — top action
@@ -305,33 +327,45 @@ export class TaskDetailView extends ItemView {
     // START DATE
     //
     container.createEl("h3", { text: "Start Date" });
-    this.createEditableDateTime(container, task.startDate, async (val) => {
-      await this.update({ startDate: val });
-    });
+    if (isRolledUp) {
+      const startReadonly = container.createDiv("planner-date-readonly planner-rolled-up");
+      startReadonly.textContent = task.startDate || "—";
+      startReadonly.title = "Rolled up from subtasks";
+    } else {
+      this.createEditableDateTime(container, task.startDate, async (val) => {
+        await this.update({ startDate: val });
+      });
+    }
 
     //
     // DUE DATE
     //
     container.createEl("h3", { text: "Due Date" });
-    this.createEditableDateTime(container, task.dueDate, async (val) => {
-      await this.update({ dueDate: val });
-    });
+    if (isRolledUp) {
+      const dueReadonly = container.createDiv("planner-date-readonly planner-rolled-up");
+      dueReadonly.textContent = task.dueDate || "—";
+      dueReadonly.title = "Rolled up from subtasks";
+    } else {
+      this.createEditableDateTime(container, task.dueDate, async (val) => {
+        await this.update({ dueDate: val });
+      });
+    }
 
     //
     // DURATION (auto-calculated from start/due dates)
     //
-    this.renderDurationRow(container, task);
+    this.renderDurationRow(container, task, isRolledUp);
 
     //
     // % COMPLETE
     //
     container.createEl("h3", { text: "% Complete" });
-    this.renderPercentComplete(container, task);
+    this.renderPercentComplete(container, task, isRolledUp);
 
     //
     // EFFORT
     //
-    this.renderEffortSection(container, task);
+    this.renderEffortSection(container, task, isRolledUp);
 
     //
     // DEPENDENCIES
@@ -572,17 +606,11 @@ export class TaskDetailView extends ItemView {
   private async update(fields: Partial<PlannerTask>) {
     if (!this.task) return;
 
-    // Update canonical TaskStore via plugin.updateTask()
+    // Update canonical TaskStore via plugin.updateTask().
+    // The taskStore.emit() inside updateTask triggers our subscriber which
+    // re-fetches the canonical task and calls render() — no need to do either
+    // again here.  Doing so caused a redundant full DOM rebuild on every edit.
     await this.plugin.updateTask(this.task.id, fields);
-
-    // Fetch fresh canonical task from TaskStore after update
-    const updated = this.getCanonicalTask(this.task.id);
-    if (updated) {
-      this.task = updated;
-    }
-
-    // Re-render panel with fresh data
-    this.render();
   }
 
   // ---------------------------------------------------------------------------
@@ -852,7 +880,7 @@ export class TaskDetailView extends ItemView {
         if (taskSelect.value) {
           const newDep = {
             predecessorId: taskSelect.value,
-            type: typeSelect.value as any
+            type: typeSelect.value as DependencyType
           };
 
           // Check for circular dependencies
@@ -1042,8 +1070,7 @@ export class TaskDetailView extends ItemView {
   // ---------------------------------------------------------------------------
 
   private renderTagSelector(container: HTMLElement, task: PlannerTask) {
-    const pluginAny = this.plugin as any;
-    const settings = pluginAny.settings || {};
+    const settings = this.plugin.settings;
     const availableTags = settings.availableTags || [];
     const taskTags = task.tags || [];
 
@@ -1058,7 +1085,7 @@ export class TaskDetailView extends ItemView {
       });
     } else {
       taskTags.forEach((tagId) => {
-        const tag = availableTags.find((t: any) => t.id === tagId);
+        const tag = availableTags.find((t) => t.id === tagId);
         if (tag) {
           const badge = assignedTagsDiv.createDiv({
             cls: "planner-tag-badge",
@@ -1088,7 +1115,7 @@ export class TaskDetailView extends ItemView {
 
       select.createEl("option", { text: "Add tag...", value: "" });
 
-      availableTags.forEach((tag: any) => {
+      availableTags.forEach((tag) => {
         if (!taskTags.includes(tag.id)) {
           select.createEl("option", { text: tag.name, value: tag.id });
         }
@@ -1115,8 +1142,9 @@ export class TaskDetailView extends ItemView {
   // Duration (auto-calculated read-only)
   // ---------------------------------------------------------------------------
 
-  private renderDurationRow(container: HTMLElement, task: PlannerTask) {
+  private renderDurationRow(container: HTMLElement, task: PlannerTask, isRolledUp?: boolean) {
     const wrapper = container.createDiv("planner-duration-row");
+    if (isRolledUp) wrapper.classList.add("planner-rolled-up");
     const label = wrapper.createEl("h3", { text: "Duration" });
 
     const durationValue = wrapper.createDiv("planner-duration-value");
@@ -1143,8 +1171,9 @@ export class TaskDetailView extends ItemView {
   // % Complete
   // ---------------------------------------------------------------------------
 
-  private renderPercentComplete(container: HTMLElement, task: PlannerTask) {
+  private renderPercentComplete(container: HTMLElement, task: PlannerTask, isRolledUp?: boolean) {
     const wrapper = container.createDiv("planner-percent-complete-wrapper");
+    if (isRolledUp) wrapper.classList.add("planner-rolled-up");
 
     const display = wrapper.createDiv({
       cls: "planner-percent-display",
@@ -1154,29 +1183,54 @@ export class TaskDetailView extends ItemView {
     wrapper.createSpan({ text: "%", cls: "planner-percent-suffix" });
 
     const hint = wrapper.createSpan({
-      text: "(calculated from effort)",
+      text: isRolledUp ? "(rolled up from subtasks)" : "(calculated from effort)",
       cls: "planner-percent-hint"
     });
+    if (isRolledUp) wrapper.title = "Rolled up from subtasks";
   }
 
   // ---------------------------------------------------------------------------
   // Effort section (Completed + Remaining = Total)
   // ---------------------------------------------------------------------------
 
-  private renderEffortSection(container: HTMLElement, task: PlannerTask) {
+  private renderEffortSection(container: HTMLElement, task: PlannerTask, isRolledUp?: boolean) {
     const section = container.createDiv("planner-effort-section");
-    section.createEl("h3", { text: "Effort" });
+    const heading = section.createEl("h3", { text: "Effort" });
+    if (isRolledUp) {
+      heading.createSpan({ text: " (rolled up)", cls: "planner-rolled-up-hint" });
+    }
 
     const grid = section.createDiv("planner-effort-grid");
+
+    const completed = task.effortCompleted ?? 0;
+    const remaining = task.effortRemaining ?? 0;
+    const total = completed + remaining;
 
     // Completed
     const completedCol = grid.createDiv("planner-effort-col");
     completedCol.createDiv({ text: "Completed", cls: "planner-effort-label" });
-    const completedInput = completedCol.createEl("input", {
-      attr: { type: "number", min: "0", step: "0.5", placeholder: "0" },
-      cls: "planner-effort-input"
-    });
-    completedInput.value = task.effortCompleted ? String(task.effortCompleted) : "";
+
+    if (isRolledUp) {
+      const readonlyCompleted = completedCol.createDiv({ cls: "planner-effort-readonly planner-rolled-up" });
+      readonlyCompleted.textContent = completed > 0 ? String(completed) : "0";
+      readonlyCompleted.title = "Rolled up from subtasks";
+    } else {
+      const completedInput = completedCol.createEl("input", {
+        attr: { type: "number", min: "0", step: "0.5", placeholder: "0" },
+        cls: "planner-effort-input"
+      });
+      completedInput.value = completed ? String(completed) : "";
+
+      // Event handler — Microsoft Planner style: changing completed auto-adjusts remaining from total
+      const commitCompleted = async () => {
+        const c = parseFloat(completedInput.value) || 0;
+        const tot = (task.effortCompleted ?? 0) + (task.effortRemaining ?? 0);
+        const r = Math.max(0, tot - c);
+        await this.update({ effortCompleted: c });
+      };
+      completedInput.onblur = commitCompleted;
+      completedInput.onkeydown = (e) => { if (e.key === "Enter") void commitCompleted(); };
+    }
 
     // Plus sign
     const plusCol = grid.createDiv("planner-effort-operator");
@@ -1185,55 +1239,50 @@ export class TaskDetailView extends ItemView {
     // Remaining
     const remainingCol = grid.createDiv("planner-effort-col");
     remainingCol.createDiv({ text: "Remaining", cls: "planner-effort-label" });
-    const remainingInput = remainingCol.createEl("input", {
-      attr: { type: "number", min: "0", step: "0.5", placeholder: "0" },
-      cls: "planner-effort-input"
-    });
-    remainingInput.value = task.effortRemaining ? String(task.effortRemaining) : "";
+
+    if (isRolledUp) {
+      const readonlyRemaining = remainingCol.createDiv({ cls: "planner-effort-readonly planner-rolled-up" });
+      readonlyRemaining.textContent = remaining > 0 ? String(remaining) : "0";
+      readonlyRemaining.title = "Rolled up from subtasks";
+    } else {
+      const remainingInput = remainingCol.createEl("input", {
+        attr: { type: "number", min: "0", step: "0.5", placeholder: "0" },
+        cls: "planner-effort-input"
+      });
+      remainingInput.value = remaining ? String(remaining) : "";
+
+      // Changing remaining adjusts the total (completed stays fixed)
+      const commitRemaining = async () => {
+        const r = parseFloat(remainingInput.value) || 0;
+        await this.update({ effortRemaining: r });
+      };
+      remainingInput.onblur = commitRemaining;
+      remainingInput.onkeydown = (e) => { if (e.key === "Enter") void commitRemaining(); };
+    }
 
     // Equals sign
     const equalsCol = grid.createDiv("planner-effort-operator");
     equalsCol.createSpan({ text: "=" });
 
-    // Total (read-only)
+    // Total (always read-only)
     const totalCol = grid.createDiv("planner-effort-col");
     totalCol.createDiv({ text: "Total", cls: "planner-effort-label" });
-    const totalInput = totalCol.createEl("input", {
-      attr: { type: "number", readonly: "true" },
-      cls: "planner-effort-input planner-effort-total"
-    });
-    const completed = task.effortCompleted ?? 0;
-    const remaining = task.effortRemaining ?? 0;
-    totalInput.value = (completed + remaining) > 0 ? String(completed + remaining) : "";
+
+    if (isRolledUp) {
+      const readonlyTotal = totalCol.createDiv({ cls: "planner-effort-readonly planner-rolled-up" });
+      readonlyTotal.textContent = total > 0 ? String(total) : "0";
+      readonlyTotal.title = "Rolled up from subtasks";
+    } else {
+      const totalInput = totalCol.createEl("input", {
+        attr: { type: "number", readonly: "true" },
+        cls: "planner-effort-input planner-effort-total"
+      });
+      totalInput.value = total > 0 ? String(total) : "";
+    }
 
     // Unit label
     const unitLabel = grid.createDiv("planner-effort-unit");
     unitLabel.createSpan({ text: "hours" });
-
-    // Event handlers
-    // Microsoft Planner style: changing completed auto-adjusts remaining from total
-    const commitCompleted = async () => {
-      const c = parseFloat(completedInput.value) || 0;
-      const total = (task.effortCompleted ?? 0) + (task.effortRemaining ?? 0);
-      const r = Math.max(0, total - c);
-      remainingInput.value = r > 0 ? String(r) : "";
-      totalInput.value = (c + r) > 0 ? String(c + r) : "";
-      await this.update({ effortCompleted: c });
-    };
-
-    // Changing remaining adjusts the total (completed stays fixed)
-    const commitRemaining = async () => {
-      const c = parseFloat(completedInput.value) || 0;
-      const r = parseFloat(remainingInput.value) || 0;
-      totalInput.value = (c + r) > 0 ? String(c + r) : "";
-      await this.update({ effortRemaining: r });
-    };
-
-    completedInput.onblur = commitCompleted;
-    completedInput.onkeydown = (e) => { if (e.key === "Enter") void commitCompleted(); };
-
-    remainingInput.onblur = commitRemaining;
-    remainingInput.onkeydown = (e) => { if (e.key === "Enter") void commitRemaining(); };
   }
 
   private createSubtaskId(): string {

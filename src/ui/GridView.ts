@@ -269,8 +269,7 @@ export class GridView extends ItemView {
     let all = this.taskStore.getAll();
     
     // Filter out completed tasks if setting is disabled (Grid View only)
-    const pluginAny = this.plugin as any;
-    const showCompleted = pluginAny.settings?.showCompleted ?? true;
+    const showCompleted = this.plugin.settings?.showCompleted ?? true;
     if (!showCompleted) {
       all = all.filter((t) => !t.completed);
     }
@@ -369,7 +368,7 @@ export class GridView extends ItemView {
       }
 
       // Make header draggable if reorderable
-      if ((col as any).reorderable) {
+      if (col.reorderable) {
         th.draggable = true;
         th.classList.add("planner-column-draggable");
         this.setupColumnDrag(th, col.key, headerRow);
@@ -617,10 +616,9 @@ export class GridView extends ItemView {
 
       status: () => {
         const statusCell = row.createEl("td");
-        const pluginAny = this.plugin as any;
-        const settings = pluginAny.settings || {};
+        const settings = this.plugin.settings;
         const availableStatuses = settings.availableStatuses || [];
-        const statusNames = availableStatuses.map((s: any) => s.name);
+        const statusNames = availableStatuses.map((s) => s.name);
         this.createEditableSelectCell(
           statusCell,
           task.status,
@@ -635,10 +633,9 @@ export class GridView extends ItemView {
 
       priority: () => {
         const priorityCell = row.createEl("td");
-        const pluginAny = this.plugin as any;
-        const settings = pluginAny.settings || {};
+        const settings = this.plugin.settings;
         const availablePriorities = settings.availablePriorities || [];
-        const priorityNames = availablePriorities.map((p: any) => p.name);
+        const priorityNames = availablePriorities.map((p) => p.name);
         const defaultPriority = availablePriorities[0]?.name || "Medium";
         this.createEditableSelectCell(
           priorityCell,
@@ -656,16 +653,15 @@ export class GridView extends ItemView {
         if (hasChildren) {
           bucketCell.createSpan({ cls: "planner-disabled-cell", text: "—" });
         } else {
-          const pluginAny = this.plugin as any;
-          const settings = pluginAny.settings || {};
+          const settings = this.plugin.settings;
           const activeProject = settings.projects?.find(
-            (p: any) => p.id === settings.activeProjectId
+            (p) => p.id === settings.activeProjectId
           );
           const buckets = activeProject?.buckets || [];
-          const bucketNames = ["Unassigned", ...buckets.map((b: any) => b.name)];
+          const bucketNames = ["Unassigned", ...buckets.map((b) => b.name)];
           const currentBucketId = task.bucketId;
           const currentBucketName = currentBucketId
-            ? buckets.find((b: any) => b.id === currentBucketId)?.name || "Unassigned"
+            ? buckets.find((b) => b.id === currentBucketId)?.name || "Unassigned"
             : "Unassigned";
           this.createEditableSelectCell(
             bucketCell,
@@ -697,22 +693,37 @@ export class GridView extends ItemView {
         if (dependencies.length > 0) {
           const violations = this.checkDependencyViolations(task);
           const hasViolations = violations.length > 0;
+          const autoScheduleEnabled = this.plugin.settings?.enableDependencyScheduling;
+          let titleText: string;
+          if (hasViolations) {
+            titleText = `${violations.length} violation(s):\n${violations.join("\n")}`;
+          } else {
+            titleText = `${dependencies.length} dependency/ies`;
+            if (autoScheduleEnabled) titleText += " (auto-scheduled)";
+          }
           const indicator = depsCell.createEl("span", {
             cls: hasViolations
               ? "planner-dependency-indicator planner-dependency-warning"
-              : "planner-dependency-indicator",
-            text: hasViolations ? "⚠️" : "🔗",
-            attr: {
-              title: hasViolations
-                ? `${violations.length} violation(s):\n${violations.join("\n")}`
-                : `${dependencies.length} dependency/ies`
-            }
+              : autoScheduleEnabled
+                ? "planner-dependency-indicator planner-dependency-auto"
+                : "planner-dependency-indicator",
+            text: hasViolations ? "⚠️" : autoScheduleEnabled ? "📐" : "🔗",
+            attr: { title: titleText }
           });
           indicator.onclick = () => { this.plugin.openTaskDetail(task); };
         }
       },
 
       start: () => {
+        const isRolledUp = hasChildren && this.plugin.settings.enableParentRollUp;
+        if (isRolledUp) {
+          const cell = row.createEl("td", {
+            cls: "planner-date-cell-readonly planner-rolled-up",
+            text: task.startDate || "-"
+          });
+          cell.setAttribute("title", "Rolled up from subtasks");
+          return;
+        }
         const startCell = row.createEl("td");
         this.createEditableDateOnlyCell(
           startCell,
@@ -724,6 +735,15 @@ export class GridView extends ItemView {
       },
 
       due: () => {
+        const isRolledUp = hasChildren && this.plugin.settings.enableParentRollUp;
+        if (isRolledUp) {
+          const cell = row.createEl("td", {
+            cls: "planner-date-cell-readonly planner-rolled-up",
+            text: task.dueDate || "-"
+          });
+          cell.setAttribute("title", "Rolled up from subtasks");
+          return;
+        }
         const dueCell = row.createEl("td");
         this.createEditableDateOnlyCell(
           dueCell,
@@ -751,13 +771,25 @@ export class GridView extends ItemView {
 
       percentComplete: () => {
         const pct = task.percentComplete ?? 0;
-        row.createEl("td", {
-          cls: "planner-effort-cell planner-percent-cell",
+        const isRolledUp = hasChildren && this.plugin.settings.enableParentRollUp;
+        const cell = row.createEl("td", {
+          cls: `planner-effort-cell planner-percent-cell${isRolledUp ? " planner-rolled-up" : ""}`,
           text: `${pct}%`
         });
+        if (isRolledUp) cell.setAttribute("title", "Rolled up from subtasks");
       },
 
       effortCompleted: () => {
+        const isRolledUp = hasChildren && this.plugin.settings.enableParentRollUp;
+        if (isRolledUp) {
+          const val = task.effortCompleted ?? 0;
+          const cell = row.createEl("td", {
+            cls: "planner-effort-cell planner-rolled-up",
+            text: val > 0 ? `${val}h` : "-"
+          });
+          cell.setAttribute("title", "Rolled up from subtasks");
+          return;
+        }
         const ecCell = row.createEl("td", { cls: "planner-effort-cell" });
         const ecInput = ecCell.createEl("input", {
           attr: { type: "number", min: "0", step: "0.5" },
@@ -776,6 +808,16 @@ export class GridView extends ItemView {
       },
 
       effortRemaining: () => {
+        const isRolledUp = hasChildren && this.plugin.settings.enableParentRollUp;
+        if (isRolledUp) {
+          const val = task.effortRemaining ?? 0;
+          const cell = row.createEl("td", {
+            cls: "planner-effort-cell planner-rolled-up",
+            text: val > 0 ? `${val}h` : "-"
+          });
+          cell.setAttribute("title", "Rolled up from subtasks");
+          return;
+        }
         const erCell = row.createEl("td", { cls: "planner-effort-cell" });
         const erInput = erCell.createEl("input", {
           attr: { type: "number", min: "0", step: "0.5" },
@@ -795,28 +837,35 @@ export class GridView extends ItemView {
 
       effortTotal: () => {
         const total = (task.effortCompleted ?? 0) + (task.effortRemaining ?? 0);
-        row.createEl("td", {
-          cls: "planner-effort-cell planner-effort-total-cell",
+        const isRolledUp = hasChildren && this.plugin.settings.enableParentRollUp;
+        const cell = row.createEl("td", {
+          cls: `planner-effort-cell planner-effort-total-cell${isRolledUp ? " planner-rolled-up" : ""}`,
           text: total > 0 ? `${total}h` : "-"
         });
+        if (isRolledUp) cell.setAttribute("title", "Rolled up from subtasks");
       },
 
       duration: () => {
         let durationText = "-";
         if (task.startDate && task.dueDate) {
-          const start = new Date(task.startDate);
-          const end = new Date(task.dueDate);
-          const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+          // Parse dates without timezone issues (YYYY-MM-DD format)
+          const sp = task.startDate.split("-").map(Number);
+          const ep = task.dueDate.split("-").map(Number);
+          const start = new Date(sp[0], sp[1] - 1, sp[2]);
+          const end = new Date(ep[0], ep[1] - 1, ep[2]);
+          const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
           if (diffDays >= 0) {
             durationText = diffDays === 1 ? "1 day" : `${diffDays} days`;
           } else {
             durationText = "Invalid";
           }
         }
-        row.createEl("td", {
-          cls: "planner-effort-cell planner-duration-cell",
+        const isRolledUp = hasChildren && this.plugin.settings.enableParentRollUp;
+        const cell = row.createEl("td", {
+          cls: `planner-effort-cell planner-duration-cell${isRolledUp ? " planner-rolled-up" : ""}`,
           text: durationText
         });
+        if (isRolledUp) cell.setAttribute("title", "Rolled up from subtasks");
       },
 
     };
@@ -835,190 +884,8 @@ export class GridView extends ItemView {
   // ---------------------------------------------------------------------------
 
   private buildInlineMenu(task: PlannerTask, evt: MouseEvent) {
-    const menu = new Menu();
-
-    menu.addItem((item) =>
-      item
-        .setTitle("Open details")
-        .setIcon("pencil")
-        .onClick(() => this.plugin.openTaskDetail(task))
-    );
-
-    menu.addSeparator();
-
-    // Cut
-    menu.addItem((item) =>
-      item
-        .setTitle("Cut")
-        .setIcon("scissors")
-        .onClick(() => {
-          this.clipboardTask = { task: { ...task }, isCut: true };
-        })
-    );
-
-    // Copy
-    menu.addItem((item) =>
-      item
-        .setTitle("Copy")
-        .setIcon("copy")
-        .onClick(() => {
-          this.clipboardTask = { task: { ...task }, isCut: false };
-        })
-    );
-
-    // Paste
-    menu.addItem((item) =>
-      item
-        .setTitle("Paste")
-        .setIcon("clipboard")
-        .setDisabled(!this.clipboardTask)
-        .onClick(async () => {
-          if (!this.clipboardTask) return;
-
-          const { task: clipTask, isCut } = this.clipboardTask;
-
-          if (isCut) {
-            // Move the task by updating its parentId
-            await this.taskStore.updateTask(clipTask.id, {
-              parentId: task.parentId,
-            });
-            this.clipboardTask = null;
-          } else {
-            // Copy: create a duplicate task
-            const newTask = await this.taskStore.addTask(clipTask.title);
-            await this.taskStore.updateTask(newTask.id, {
-              description: clipTask.description,
-              status: clipTask.status,
-              priority: clipTask.priority,
-              startDate: clipTask.startDate,
-              dueDate: clipTask.dueDate,
-              tags: clipTask.tags ? [...clipTask.tags] : [],
-              completed: clipTask.completed,
-              parentId: task.parentId,
-              bucketId: clipTask.bucketId,
-              links: clipTask.links ? [...clipTask.links] : [],
-              dependencies: [], // Don't copy dependencies
-            });
-          }
-
-          // Don't call render() - TaskStore subscription handles it
-        })
-    );
-
-    menu.addSeparator();
-
-    // Copy link to task
-    menu.addItem((item) =>
-      item
-        .setTitle("Copy link to task")
-        .setIcon("link")
-        .onClick(async () => {
-          const projectId = this.plugin.settings.activeProjectId;
-          const uri = `obsidian://open-planner-task?id=${encodeURIComponent(
-            task.id
-          )}&project=${encodeURIComponent(projectId)}`;
-
-          try {
-            await navigator.clipboard.writeText(uri);
-            new Notice("Task link copied to clipboard");
-          } catch (err) {
-            console.error("Failed to copy link:", err);
-            new Notice("Failed to copy link");
-          }
-        })
-    );
-
-    // Open Markdown task note
-    menu.addItem((item) =>
-      item
-        .setTitle("Open Markdown task note")
-        .setIcon("file-text")
-        .setDisabled(!this.plugin.settings.enableMarkdownSync)
-        .onClick(async () => {
-          if (!this.plugin.settings.enableMarkdownSync) return;
-
-          const projectId = this.plugin.settings.activeProjectId;
-          const project = this.plugin.settings.projects.find(
-            (p) => p.id === projectId
-          );
-          if (!project) return;
-
-          // Use the same path as TaskSync
-          const filePath = this.plugin.taskSync.getTaskFilePath(task, project.name);
-
-          try {
-            const file = this.app.vault.getAbstractFileByPath(filePath);
-            if (file && file instanceof TFile) {
-              await this.app.workspace.openLinkText(filePath, "", true);
-            } else {
-              // Note doesn't exist - create it
-              new Notice("Creating task note...");
-              await this.plugin.taskSync.syncTaskToMarkdown(task, projectId);
-              // Wait a moment for the file to be created, then open it
-              setTimeout(async () => {
-                await this.app.workspace.openLinkText(filePath, "", true);
-              }, 100);
-            }
-          } catch (err) {
-            console.error("Failed to open task note:", err);
-            new Notice("Failed to open task note");
-          }
-        })
-    );
-
-    menu.addSeparator();
-
-    menu.addItem((item) =>
-      item
-        .setTitle("Add new task above")
-        .setIcon("plus")
-        .onClick(async () => {
-          const rowIndex = this.visibleRows.findIndex(
-            (r) => r.task.id === task.id
-          );
-          await this.addTaskAbove(task, rowIndex);
-        })
-    );
-
-    menu.addItem((item) =>
-      item
-        .setTitle("Make subtask")
-        .setIcon("arrow-right")
-        .onClick(async () => {
-          const rowIndex = this.visibleRows.findIndex(
-            (r) => r.task.id === task.id
-          );
-          if (rowIndex <= 0) return;
-          await this.handleMakeSubtask(task, rowIndex);
-          // Don't call render() - TaskStore subscription handles it
-        })
-    );
-
-    menu.addItem((item) =>
-      item
-        .setTitle("Promote to parent")
-        .setIcon("arrow-left")
-        .setDisabled(!task.parentId)
-        .onClick(async () => {
-          if (!task.parentId) return;
-          await this.taskStore.promoteSubtask(task.id);
-          // Don't call render() - TaskStore subscription handles it
-        })
-    );
-
-    menu.addSeparator();
-
-    menu.addItem((item) =>
-      item
-        .setTitle("Delete task")
-        .setIcon("trash")
-        .onClick(async () => {
-          await this.taskStore.deleteTask(task.id);
-          // Don't call render() - TaskStore subscription handles it
-        })
-    );
-
-    menu.showAtMouseEvent(evt);
+    const rowIndex = this.visibleRows.findIndex((r) => r.task.id === task.id);
+    this.showTaskMenu(task, rowIndex, evt);
   }
 
   // ---------------------------------------------------------------------------
@@ -1766,10 +1633,9 @@ export class GridView extends ItemView {
     });
 
     // Find the status color
-    const pluginAny = this.plugin as any;
-    const settings = pluginAny.settings || {};
+    const settings = this.plugin.settings;
     const availableStatuses = settings.availableStatuses || [];
-    const status = availableStatuses.find((s: any) => s.name === value);
+    const status = availableStatuses.find((s) => s.name === value);
 
     if (status) {
       pill.style.backgroundColor = status.color;
@@ -1785,10 +1651,9 @@ export class GridView extends ItemView {
     });
 
     // Find the priority color
-    const pluginAny = this.plugin as any;
-    const settings = pluginAny.settings || {};
+    const settings = this.plugin.settings;
     const availablePriorities = settings.availablePriorities || [];
-    const priority = availablePriorities.find((p: any) => p.name === value);
+    const priority = availablePriorities.find((p) => p.name === value);
 
     if (priority) {
       pill.style.backgroundColor = priority.color;
@@ -2399,8 +2264,7 @@ export class GridView extends ItemView {
   // ---------------------------------------------------------------------------
 
   private loadGridViewSettings() {
-    const pluginAny = this.plugin as any;
-    const settings: any = pluginAny.settings;
+    const settings = this.plugin.settings;
     if (!settings) return;
 
     if (settings.gridViewColumnWidths) {
@@ -2418,7 +2282,7 @@ export class GridView extends ItemView {
     // Ensure columnOrder includes ALL reorderable columns (handles newly added columns)
     const allDefs = this.getColumnDefinitions();
     if (this.columnOrder.length > 0) {
-      const reorderableKeys = allDefs.filter((c: any) => c.reorderable).map(c => c.key);
+      const reorderableKeys = allDefs.filter(c => c.reorderable).map(c => c.key);
       const missing = reorderableKeys.filter(k => !this.columnOrder.includes(k));
       if (missing.length > 0) {
         this.columnOrder.push(...missing);
@@ -2444,8 +2308,7 @@ export class GridView extends ItemView {
   }
 
   private saveGridViewSettings() {
-    const pluginAny = this.plugin as any;
-    const settings = (pluginAny.settings ||= {});
+    const settings = this.plugin.settings;
 
     settings.gridViewColumnWidths = { ...this.columnWidths };
     settings.gridViewSortKey = this.currentFilters.sortKey;
@@ -2453,9 +2316,7 @@ export class GridView extends ItemView {
     settings.gridViewVisibleColumns = { ...this.columnVisibility };
     settings.gridViewColumnOrder = [...this.columnOrder];
 
-    if (typeof pluginAny.saveSettings === "function") {
-      void pluginAny.saveSettings();
-    }
+    void this.plugin.saveSettings();
   }
 
   // ---------------------------------------------------------------------------
@@ -2463,8 +2324,7 @@ export class GridView extends ItemView {
   // ---------------------------------------------------------------------------
 
   private renderTaskTags(cell: HTMLElement, task: PlannerTask) {
-    const pluginAny = this.plugin as any;
-    const settings = pluginAny.settings || {};
+    const settings = this.plugin.settings;
     const availableTags = settings.availableTags || [];
     const taskTags = task.tags || [];
 
@@ -2477,7 +2337,7 @@ export class GridView extends ItemView {
     // Display existing tags with remove buttons
     if (taskTags.length > 0) {
       taskTags.forEach((tagId: string) => {
-        const tag = availableTags.find((t: any) => t.id === tagId);
+        const tag = availableTags.find((t) => t.id === tagId);
         if (tag) {
           const badge = tagsContainer.createDiv({
             cls: "planner-tag-badge-small planner-tag-badge-grid",
@@ -2510,7 +2370,7 @@ export class GridView extends ItemView {
       e.stopPropagation();
 
       // Find unassigned tags
-      const unassignedTags = availableTags.filter((t: any) =>
+      const unassignedTags = availableTags.filter((t) =>
         !taskTags.includes(t.id)
       );
 
@@ -2521,12 +2381,13 @@ export class GridView extends ItemView {
       // Create menu
       const menu = new Menu();
 
-      unassignedTags.forEach((tag: any) => {
+      unassignedTags.forEach((tag) => {
         menu.addItem((item) => {
-          const itemEl = item.setTitle(tag.name);
+          item.setTitle(tag.name);
 
-          // Add color indicator to menu item
-          const iconEl = (itemEl as any).iconEl;
+          // Add color indicator via menu item DOM
+          const dom = (item as unknown as { dom?: HTMLElement }).dom;
+          const iconEl = dom?.querySelector(".menu-item-icon") as HTMLElement | null;
           if (iconEl) {
             iconEl.style.backgroundColor = tag.color;
             iconEl.style.borderRadius = "3px";

@@ -1,6 +1,6 @@
 import { ItemView, WorkspaceLeaf, Menu, setIcon, Notice, TFile } from "obsidian";
 import type ProjectPlannerPlugin from "../main";
-import type { PlannerTask } from "../types";
+import type { PlannerTask, TaskDependency } from "../types";
 import { renderPlannerHeader } from "./Header";
 
 export const VIEW_TYPE_GANTT = "project-planner-gantt-view";
@@ -20,6 +20,7 @@ export class GanttView extends ItemView {
     private currentDragId: string | null = null;
     private dragTargetTaskId: string | null = null;
     private dragInsertAfter: boolean = false;
+    private activeDragCleanup: (() => void) | null = null;
 
     // Filters
     private currentFilters = {
@@ -36,6 +37,17 @@ export class GanttView extends ItemView {
 
     // Clipboard for Cut/Copy/Paste
     private clipboardTask: { task: PlannerTask; isCut: boolean } | null = null;
+
+    // Dependency arrows toggle
+    private showDependencyArrows: boolean = true;
+
+    // Scroll preservation
+    private savedLeftScrollTop: number | null = null;
+    private savedRightScrollTop: number | null = null;
+    private savedRightScrollLeft: number | null = null;
+
+    // Scroll-to-date target (set by scrollToDate, consumed by render)
+    private scrollTargetDate: Date | null = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
         super(leaf);
@@ -67,6 +79,11 @@ export class GanttView extends ItemView {
         if (this.unsubscribe) {
             this.unsubscribe();
             this.unsubscribe = null;
+        }
+        // Clean up any in-progress drag listeners
+        if (this.activeDragCleanup) {
+            this.activeDragCleanup();
+            this.activeDragCleanup = null;
         }
     }
 
@@ -179,8 +196,8 @@ export class GanttView extends ItemView {
             }
 
             ids.splice(targetRootIndex, 0, ...blockIds);
-            await (this.plugin as any).taskStore.setOrder(ids);
-            this.render();
+            await this.plugin.taskStore.setOrder(ids);
+            // No explicit render() — TaskStore.save() → emit() already re-renders via subscription
             return;
         }
 
@@ -222,12 +239,11 @@ export class GanttView extends ItemView {
 
         // Update the task's parent if it changed
         if (dragTask.parentId !== newParentId) {
-            await (this.plugin as any).taskStore.updateTask(dragId, { parentId: newParentId });
+            await this.plugin.taskStore.updateTask(dragId, { parentId: newParentId });
         }
 
-        await (this.plugin as any).taskStore.setOrder(ids);
-        this.render();
-        this.render();
+        await this.plugin.taskStore.setOrder(ids);
+        // No explicit render() — TaskStore.save() → emit() already re-renders via subscription
     }
 
     private matchesFilters(task: PlannerTask): boolean {
@@ -253,7 +269,7 @@ export class GanttView extends ItemView {
         menu.addItem((item) => {
             item.setTitle("Open details");
             item.setIcon("pencil");
-            item.onClick(async () => await (this.plugin as any).openTaskDetail(task));
+            item.onClick(async () => await this.plugin.openTaskDetail(task));
         });
 
         menu.addSeparator();
@@ -285,7 +301,7 @@ export class GanttView extends ItemView {
                 if (!this.clipboardTask) return;
 
                 const { task: clipTask, isCut } = this.clipboardTask;
-                const store = (this.plugin as any).taskStore;
+                const store = this.plugin.taskStore;
 
                 if (isCut) {
                     // Move the task by updating its parentId
@@ -310,8 +326,7 @@ export class GanttView extends ItemView {
                         dependencies: [], // Don't copy dependencies
                     });
                 }
-
-                this.render();
+                // No explicit render() — TaskStore.save() → emit() already re-renders via subscription
             });
         });
 
@@ -380,7 +395,7 @@ export class GanttView extends ItemView {
             item.setTitle("Add new task above");
             item.setIcon("plus");
             item.onClick(async () => {
-                const store = (this.plugin as any).taskStore;
+                const store = this.plugin.taskStore;
                 const newTask = await store.addTask("New Task");
                 // Insert before current task in manual order
                 const allTasks = store.getAll();
@@ -394,7 +409,7 @@ export class GanttView extends ItemView {
                         await store.setOrder(reordered.map((t: PlannerTask) => t.id));
                     }
                 }
-                this.render();
+                // No explicit render() — TaskStore.save() → emit() already re-renders via subscription
             });
         });
 
@@ -402,15 +417,16 @@ export class GanttView extends ItemView {
             item.setTitle("Make subtask");
             item.setIcon("arrow-right");
             item.onClick(async () => {
-                const store = (this.plugin as any).taskStore;
+                const store = this.plugin.taskStore;
                 const allTasks = store.getAll();
                 const taskIndex = allTasks.findIndex((t: PlannerTask) => t.id === task.id);
                 if (taskIndex <= 0) return;
 
                 // Find previous task to become parent
                 const prevTask = allTasks[taskIndex - 1];
-                await store.updateTask(task.id, { parentId: prevTask.id });
-                this.render();
+                const parentId = prevTask.parentId || prevTask.id;
+                await store.makeSubtask(task.id, parentId);
+                // No explicit render() — TaskStore emit() already re-renders via subscription
             });
         });
 
@@ -420,9 +436,9 @@ export class GanttView extends ItemView {
             item.setDisabled(!task.parentId);
             item.onClick(async () => {
                 if (!task.parentId) return;
-                const store = (this.plugin as any).taskStore;
+                const store = this.plugin.taskStore;
                 await store.promoteSubtask(task.id);
-                this.render();
+                // No explicit render() — TaskStore emit() already re-renders via subscription
             });
         });
 
@@ -432,8 +448,8 @@ export class GanttView extends ItemView {
             item.setTitle("Delete task");
             item.setIcon("trash");
             item.onClick(async () => {
-                await (this.plugin as any).taskStore.deleteTask(task.id);
-                this.render();
+                await this.plugin.taskStore.deleteTask(task.id);
+                // No explicit render() — TaskStore emit() already re-renders via subscription
             });
         });
 
@@ -514,13 +530,13 @@ export class GanttView extends ItemView {
                 bar.removeEventListener("pointercancel", onUp);
 
                 if (!moved && mode === "move" && !isHandle(target)) {
-                    await (this.plugin as any).openTaskDetail(task);
+                    await this.plugin.openTaskDetail(task);
                     return;
                 }
 
-                // Commit new dates and rerender
+                // Commit new dates
                 await this.updateTaskDates(task.id, newStart, newEnd);
-                this.render();
+                // No explicit render() — TaskStore emit() already re-renders via subscription
             };
 
             bar.addEventListener("pointermove", onMove);
@@ -565,7 +581,7 @@ export class GanttView extends ItemView {
             const commit = async () => {
                 const newTitle = input.value.trim() || task.title;
                 await this.updateTaskTitle(task.id, newTitle);
-                this.render();
+                // No explicit render() — TaskStore emit() already re-renders via subscription
             };
 
             const cancel = () => {
@@ -585,13 +601,13 @@ export class GanttView extends ItemView {
         };
 
         // Single click opens detail (Planner-like), double-click edits
-        titleSpan.onclick = () => (this.plugin as any).openTaskDetail(task);
+        titleSpan.onclick = () => this.plugin.openTaskDetail(task);
         titleSpan.ondblclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
             startEdit();
         };
-        titleSpan.oncontextmenu = (e) => this.showTaskMenu(e as any, task);
+        titleSpan.oncontextmenu = (e) => this.showTaskMenu(e, task);
 
         const menuBtn = container.createEl("button", {
             cls: "planner-task-menu",
@@ -599,12 +615,12 @@ export class GanttView extends ItemView {
         });
         menuBtn.onclick = (e) => {
             e.stopPropagation();
-            this.showTaskMenu(e as any, task);
+            this.showTaskMenu(e, task);
         };
         menuBtn.oncontextmenu = (e) => {
             e.preventDefault();
             e.stopPropagation();
-            this.showTaskMenu(e as any, task);
+            this.showTaskMenu(e, task);
         };
     }
 
@@ -685,7 +701,7 @@ export class GanttView extends ItemView {
 
     private scrollToDate(targetDate: Date) {
         // Store target date and re-render (the render will handle scrolling)
-        (this as any).scrollTargetDate = targetDate;
+        this.scrollTargetDate = targetDate;
         this.render();
     }
 
@@ -767,6 +783,7 @@ export class GanttView extends ItemView {
 
             window.removeEventListener("pointermove", onMove, true);
             window.removeEventListener("pointerup", onUp, true);
+            this.activeDragCleanup = null;
 
             ghost.remove();
             indicator.remove();
@@ -791,10 +808,33 @@ export class GanttView extends ItemView {
 
         window.addEventListener("pointermove", onMove, true);
         window.addEventListener("pointerup", onUp, true);
+
+        // Store cleanup in case view is closed mid-drag
+        this.activeDragCleanup = () => {
+            window.removeEventListener("pointermove", onMove, true);
+            window.removeEventListener("pointerup", onUp, true);
+            ghost.remove();
+            indicator.remove();
+            document.body.style.userSelect = "";
+            (document.body.style as any).webkitUserSelect = "";
+            document.body.style.cursor = "";
+        };
     }
 
     private render() {
         const container = this.containerEl;
+
+        // Save scroll positions before clearing
+        const existingLeft = container.querySelector('.planner-gantt-left') as HTMLElement;
+        const existingRightWrap = container.querySelector('.planner-gantt-right-wrap') as HTMLElement;
+        if (existingLeft && this.savedLeftScrollTop === null) {
+            this.savedLeftScrollTop = existingLeft.scrollTop;
+        }
+        if (existingRightWrap && this.savedRightScrollTop === null) {
+            this.savedRightScrollTop = existingRightWrap.scrollTop;
+            this.savedRightScrollLeft = existingRightWrap.scrollLeft;
+        }
+
         container.empty();
         container.addClass("planner-gantt-wrapper");
 
@@ -802,8 +842,8 @@ export class GanttView extends ItemView {
         renderPlannerHeader(container, this.plugin, {
             active: "gantt",
             onProjectChange: async () => {
-                await (this.plugin as any).taskStore.load();
-                this.render();
+                await this.plugin.taskStore.load();
+                // No explicit render() — TaskStore.load() → emit() already re-renders via subscription
             }
         });
 
@@ -912,6 +952,17 @@ export class GanttView extends ItemView {
         setIcon(goToDateBtn.createSpan({ cls: "planner-goto-date-icon" }), "calendar");
         goToDateBtn.onclick = (e) => {
             this.showDatePicker(e, goToDateBtn);
+        };
+
+        // Dependency arrows toggle
+        const depArrowBtn = toolbar.createEl("button", {
+            cls: `planner-dep-arrow-btn${this.showDependencyArrows ? " active" : ""}`,
+        });
+        setIcon(depArrowBtn, "arrow-right");
+        depArrowBtn.setAttribute("title", this.showDependencyArrows ? "Hide dependency arrows" : "Show dependency arrows");
+        depArrowBtn.onclick = () => {
+            this.showDependencyArrows = !this.showDependencyArrows;
+            this.render();
         };
 
         // Content area
@@ -1052,6 +1103,28 @@ export class GanttView extends ItemView {
                 setTimeout(() => { isLeftScrolling = false; }, 10);
             }
         });
+
+        // Restore scroll positions after sync listeners are set up
+        if (this.savedLeftScrollTop !== null || this.savedRightScrollTop !== null) {
+            const savedLeft = this.savedLeftScrollTop;
+            const savedRightTop = this.savedRightScrollTop;
+            const savedRightLeft = this.savedRightScrollLeft;
+            this.savedLeftScrollTop = null;
+            this.savedRightScrollTop = null;
+            this.savedRightScrollLeft = null;
+            requestAnimationFrame(() => {
+                // Suppress cross-sync during restore
+                isLeftScrolling = true;
+                isRightScrolling = true;
+                if (savedLeft !== null) leftCol.scrollTop = savedLeft;
+                if (savedRightTop !== null) rightColWrap.scrollTop = savedRightTop;
+                if (savedRightLeft !== null) rightColWrap.scrollLeft = savedRightLeft;
+                setTimeout(() => {
+                    isLeftScrolling = false;
+                    isRightScrolling = false;
+                }, 20);
+            });
+        }
 
         // Two-tier date scale (like MS Planner)
         const scale = rightCol.createDiv("planner-gantt-scale");
@@ -1215,10 +1288,15 @@ export class GanttView extends ItemView {
             this.attachBarInteractions(bar, t, start, end, minTime, dayWidth);
         });
 
+        // Draw dependency arrows between connected task bars
+        if (this.showDependencyArrows) {
+            this.renderDependencyArrows(rightCol, visibleTasks, ranges, minTime, dayWidth, finalTimelineWidth);
+        }
+
         // Handle scroll to date if requested
-        const scrollTarget = (this as any).scrollTargetDate;
+        const scrollTarget = this.scrollTargetDate;
         if (scrollTarget && rightColWrap) {
-            delete (this as any).scrollTargetDate;
+            this.scrollTargetDate = null;
 
             // Calculate scroll position
             const targetTime = scrollTarget.getTime();
@@ -1232,6 +1310,201 @@ export class GanttView extends ItemView {
                 }, 0);
             }
         }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Dependency arrow rendering (MS Project / GanttProject style)
+    // ---------------------------------------------------------------------------
+
+    private renderDependencyArrows(
+        rightCol: HTMLElement,
+        visibleTasks: VisibleTask[],
+        ranges: { start: number; end: number }[],
+        minTime: number,
+        dayWidth: number,
+        timelineWidth: number,
+    ) {
+        const dayMs = this.dayMs;
+        const rowHeight = 28; // must match bar row height
+        const scaleHeight = 52; // height of the two-tier date scale (month + day rows)
+        const barHalfHeight = 10; // approximate vertical midpoint of bars
+        const arrowSize = 5; // arrowhead size
+
+        // Build a map: taskId → row index for quick lookup
+        const taskRowMap = new Map<string, number>();
+        visibleTasks.forEach((vt, i) => taskRowMap.set(vt.task.id, i));
+
+        // Build a map: taskId → bar pixel range
+        const barPositions = new Map<string, { left: number; right: number; row: number }>();
+        visibleTasks.forEach((vt, i) => {
+            const range = ranges[i];
+            const startDays = Math.floor((Math.max(range.start, minTime) - minTime) / dayMs);
+            const endDays = Math.floor((Math.min(range.end, minTime + (timelineWidth / dayWidth) * dayMs) - minTime) / dayMs);
+            const spanDays = Math.max(1, endDays - startDays + 1);
+            barPositions.set(vt.task.id, {
+                left: startDays * dayWidth,
+                right: startDays * dayWidth + spanDays * dayWidth - 4,
+                row: i,
+            });
+        });
+
+        // Create SVG overlay
+        const totalHeight = visibleTasks.length * rowHeight + scaleHeight;
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("class", "planner-gantt-dependency-svg");
+        svg.setAttribute("width", String(timelineWidth));
+        svg.setAttribute("height", String(totalHeight));
+        svg.style.position = "absolute";
+        svg.style.top = "0";
+        svg.style.left = "0";
+        svg.style.pointerEvents = "none";
+        svg.style.overflow = "visible";
+
+        // Define arrowhead marker
+        const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+
+        const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+        marker.setAttribute("id", "dep-arrowhead");
+        marker.setAttribute("markerWidth", String(arrowSize * 2));
+        marker.setAttribute("markerHeight", String(arrowSize * 2));
+        marker.setAttribute("refX", String(arrowSize));
+        marker.setAttribute("refY", String(arrowSize));
+        marker.setAttribute("orient", "auto");
+        marker.setAttribute("markerUnits", "userSpaceOnUse");
+
+        const arrowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        arrowPath.setAttribute("d", `M 0 0 L ${arrowSize * 2} ${arrowSize} L 0 ${arrowSize * 2} Z`);
+        arrowPath.setAttribute("class", "planner-dep-arrow-fill");
+        marker.appendChild(arrowPath);
+        defs.appendChild(marker);
+        svg.appendChild(defs);
+
+        let hasArrows = false;
+
+        // Draw arrows for each dependency
+        for (const vt of visibleTasks) {
+            const task = vt.task;
+            if (!task.dependencies || task.dependencies.length === 0) continue;
+
+            const successorPos = barPositions.get(task.id);
+            if (!successorPos) continue;
+
+            for (const dep of task.dependencies) {
+                const predPos = barPositions.get(dep.predecessorId);
+                if (!predPos) continue; // predecessor not visible
+
+                // Calculate connection points based on dependency type
+                let fromX: number, fromY: number, toX: number, toY: number;
+                const predCenterY = scaleHeight + predPos.row * rowHeight + barHalfHeight;
+                const succCenterY = scaleHeight + successorPos.row * rowHeight + barHalfHeight;
+
+                switch (dep.type) {
+                    case "FS": // Finish-to-Start: predecessor end → successor start
+                        fromX = predPos.right;
+                        fromY = predCenterY;
+                        toX = successorPos.left;
+                        toY = succCenterY;
+                        break;
+                    case "SS": // Start-to-Start: predecessor start → successor start
+                        fromX = predPos.left;
+                        fromY = predCenterY;
+                        toX = successorPos.left;
+                        toY = succCenterY;
+                        break;
+                    case "FF": // Finish-to-Finish: predecessor end → successor end
+                        fromX = predPos.right;
+                        fromY = predCenterY;
+                        toX = successorPos.right;
+                        toY = succCenterY;
+                        break;
+                    case "SF": // Start-to-Finish: predecessor start → successor end
+                        fromX = predPos.left;
+                        fromY = predCenterY;
+                        toX = successorPos.right;
+                        toY = succCenterY;
+                        break;
+                    default:
+                        continue;
+                }
+
+                // Draw right-angle connector path (professional Gantt style)
+                const path = this.createConnectorPath(
+                    fromX, fromY, toX, toY, dep.type, rowHeight
+                );
+
+                const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                pathEl.setAttribute("d", path);
+                pathEl.setAttribute("class", "planner-dep-arrow-line");
+                pathEl.setAttribute("marker-end", "url(#dep-arrowhead)");
+                svg.appendChild(pathEl);
+                hasArrows = true;
+            }
+        }
+
+        if (hasArrows) {
+            rightCol.style.position = "relative";
+            rightCol.appendChild(svg);
+        }
+    }
+
+    /**
+     * Create an SVG path string for a right-angle connector between two points.
+     * Uses L-shaped routing like MS Project: horizontal → vertical → horizontal.
+     */
+    private createConnectorPath(
+        fromX: number, fromY: number,
+        toX: number, toY: number,
+        depType: string,
+        rowHeight: number
+    ): string {
+        const gap = 8; // horizontal gap out from bar edges
+        const verticalGap = 4; // small vertical clearance
+
+        // For FS/FF (coming from right side of bar) route right then down/up then to target
+        // For SS/SF (coming from left side of bar) route left then down/up then to target
+
+        if (depType === "FS") {
+            // Connector: right from pred end → down/up → right to succ start
+            const midX = fromX + gap;
+            if (toX > midX) {
+                // Simple case: successor is to the right
+                return `M ${fromX} ${fromY} L ${midX} ${fromY} L ${midX} ${toY} L ${toX} ${toY}`;
+            } else {
+                // Successor starts before predecessor ends — route around
+                const detourY = fromY < toY
+                    ? Math.max(fromY, toY) + rowHeight * 0.6
+                    : Math.min(fromY, toY) - rowHeight * 0.6;
+                return `M ${fromX} ${fromY} L ${midX} ${fromY} L ${midX} ${detourY} L ${toX - gap} ${detourY} L ${toX - gap} ${toY} L ${toX} ${toY}`;
+            }
+        }
+
+        if (depType === "SS") {
+            // Connector: left from pred start → down/up → right to succ start
+            const midX = Math.min(fromX, toX) - gap;
+            return `M ${fromX} ${fromY} L ${midX} ${fromY} L ${midX} ${toY} L ${toX} ${toY}`;
+        }
+
+        if (depType === "FF") {
+            // Connector: right from pred end → down/up → left to succ end
+            const midX = Math.max(fromX, toX) + gap;
+            return `M ${fromX} ${fromY} L ${midX} ${fromY} L ${midX} ${toY} L ${toX} ${toY}`;
+        }
+
+        if (depType === "SF") {
+            // Connector: left from pred start → down/up → left to succ end
+            const midX = fromX - gap;
+            if (toX < midX) {
+                return `M ${fromX} ${fromY} L ${midX} ${fromY} L ${midX} ${toY} L ${toX} ${toY}`;
+            } else {
+                const detourY = fromY < toY
+                    ? Math.max(fromY, toY) + rowHeight * 0.6
+                    : Math.min(fromY, toY) - rowHeight * 0.6;
+                return `M ${fromX} ${fromY} L ${midX} ${fromY} L ${midX} ${detourY} L ${toX + gap} ${detourY} L ${toX + gap} ${toY} L ${toX} ${toY}`;
+            }
+        }
+
+        // Fallback: straight line
+        return `M ${fromX} ${fromY} L ${toX} ${toY}`;
     }
 
     private attachResizerHandlers(resizer: HTMLElement, layout: HTMLElement) {

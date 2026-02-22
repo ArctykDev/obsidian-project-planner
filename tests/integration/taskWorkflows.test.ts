@@ -542,6 +542,9 @@ Renamed via markdown.
             expect(createdFiles.has(taskFilePath)).toBe(true);
 
             // 4. User updates task in project file
+            // Clear sync lock left by syncTaskToMarkdown (1s setTimeout hasn't fired in tests)
+            (taskSync as any).syncInProgress.clear();
+
             const updatedContent = `---
 id: ${importedTask!.id}
 title: Build new feature
@@ -558,6 +561,11 @@ Started implementation. Making good progress.
             // 5. Sync markdown changes back to store
             await taskSync.syncMarkdownToTask(createMockTFile(taskFilePath), 'project-work');
 
+            // syncMarkdownToTask may have renamed the file (title changed from
+            // "Build new feature #urgent" → "Build new feature"), so update the
+            // path we use for subsequent steps.
+            const renamedTaskFilePath = `Work Project/Tasks/${taskStore.getTaskById(importedTask!.id)!.title}.md`;
+
             // 6. Verify update propagated
             const updatedTask = taskStore.getTaskById(importedTask!.id);
             expect(updatedTask?.status).toBe("In Progress");
@@ -570,11 +578,13 @@ Started implementation. Making good progress.
             });
 
             // 8. Sync completion to markdown
+            // Clear sync lock from step 5
+            (taskSync as any).syncInProgress.clear();
             const completedTask = taskStore.getTaskById(importedTask!.id)!;
             await taskSync.syncTaskToMarkdown(completedTask, 'project-work');
 
             // 9. Verify final state
-            const finalContent = createdFiles.get(taskFilePath)!;
+            const finalContent = createdFiles.get(renamedTaskFilePath)!;
             expect(finalContent).toContain('status: Completed');
             expect(finalContent).toContain('completed: true');
 
@@ -584,7 +594,7 @@ Started implementation. Making good progress.
 
             // 11. Verify cleanup
             expect(taskStore.getTaskById(importedTask!.id)).toBeUndefined();
-            expect(createdFiles.has(taskFilePath)).toBe(false);
+            expect(createdFiles.has(renamedTaskFilePath)).toBe(false);
         });
     });
 });

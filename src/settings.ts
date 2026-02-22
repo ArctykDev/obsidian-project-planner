@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import type ProjectPlannerPlugin from "./main";
 import type { PlannerTag, PlannerStatus, PlannerPriority } from "./types";
 
@@ -108,11 +108,24 @@ export interface ProjectPlannerSettings {
   dailyNoteDefaultProject: string; // Default project ID for tasks without specific project tag
   dailyNoteTaskLocations?: Record<string, string>; // Persisted map: "filePath:lineNumber" -> taskId
 
+  // Dependency scheduling
+  enableDependencyScheduling: boolean; // Auto-move dependent task dates when predecessor dates change
+
+  // Parent task roll-up (MS Project style)
+  enableParentRollUp: boolean; // Auto-calculate parent dates, effort, and % complete from subtasks
+
   // Date format settings
   dateFormat: "iso" | "us" | "uk"; // ISO (YYYY-MM-DD), US (MM/DD/YYYY), UK (DD/MM/YYYY)
 
   // View-specific settings
   ganttLeftColumnWidth: number; // Width of left column in Gantt view (pixels)
+
+  // Grid View persisted settings
+  gridViewColumnWidths?: Record<string, number>;
+  gridViewSortKey?: string;
+  gridViewSortDirection?: "asc" | "desc";
+  gridViewVisibleColumns?: Record<string, boolean>;
+  gridViewColumnOrder?: string[];
 
   // Ribbon icon visibility settings
   showRibbonIconGrid: boolean; // Show ribbon icon for Grid view
@@ -150,6 +163,8 @@ export const DEFAULT_SETTINGS: ProjectPlannerSettings = {
   dailyNoteTagPattern: "#planner",
   dailyNoteScanFolders: [],
   dailyNoteDefaultProject: "",
+  enableDependencyScheduling: true,
+  enableParentRollUp: true,
   dateFormat: "iso",
   ganttLeftColumnWidth: 300,
   showRibbonIconGrid: true,
@@ -255,7 +270,7 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
           .addOption("dashboard", "Dashboard view")
           .setValue(this.plugin.settings.defaultView)
           .onChange(async (value) => {
-            this.plugin.settings.defaultView = value as any;
+            this.plugin.settings.defaultView = value as ProjectPlannerSettings["defaultView"];
             await this.plugin.saveSettings();
           })
       );
@@ -444,10 +459,49 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
           .setCta()
           .onClick(async () => {
             await this.plugin.syncAllTasksToMarkdown();
-            // Show notice
-            (this.plugin as any).app.workspace.trigger('notice', 'Tasks synced to markdown!');
+            new Notice('Tasks synced to markdown!');
           });
       });
+
+    // -----------------------------------------------------------------------
+    // Dependency Scheduling Section
+    // -----------------------------------------------------------------------
+    new Setting(containerEl).setName("Dependency scheduling").setHeading();
+
+    new Setting(containerEl)
+      .setName("Auto-schedule dependent tasks")
+      .setDesc(
+        "When a predecessor task's dates change, automatically shift dependent tasks accordingly (like MS Project / GanttProject). " +
+        "Supports all dependency types: Finish-to-Start, Start-to-Start, Finish-to-Finish, Start-to-Finish."
+      )
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.enableDependencyScheduling)
+          .onChange(async (value) => {
+            this.plugin.settings.enableDependencyScheduling = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // -----------------------------------------------------------------------
+    // Parent Task Roll-Up Section
+    // -----------------------------------------------------------------------
+    new Setting(containerEl).setName("Parent task roll-up").setHeading();
+
+    new Setting(containerEl)
+      .setName("Auto-calculate parent task fields from subtasks")
+      .setDesc(
+        "Parent tasks automatically derive dates (earliest start, latest due), effort (sum of children), " +
+        "and % complete (duration-weighted average) from their subtasks — like MS Project."
+      )
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.enableParentRollUp)
+          .onChange(async (value) => {
+            this.plugin.settings.enableParentRollUp = value;
+            await this.plugin.saveSettings();
+          })
+      );
 
     // -----------------------------------------------------------------------
     // Daily Note Task Tagging Section
@@ -525,7 +579,7 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
           .onClick(async () => {
             if (this.plugin.dailyNoteScanner) {
               await this.plugin.dailyNoteScanner.scanAllNotes();
-              (this.plugin as any).app.workspace.trigger('notice', 'Daily notes scanned for tasks!');
+              new Notice('Daily notes scanned for tasks!');
             }
           });
       });

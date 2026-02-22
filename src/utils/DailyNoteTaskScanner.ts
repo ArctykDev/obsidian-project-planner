@@ -316,6 +316,9 @@ export class DailyNoteTaskScanner {
         const content = await this.app.vault.read(file);
         const lines = content.split('\n');
         const currentFileTasks = new Set<string>(); // Track task IDs in this file
+        // File-local dedup: prevents duplicate lines within the same file from
+        // being processed twice, while still allowing re-scans of modified files.
+        const locallyProcessed = new Set<string>();
 
         for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
             const line = lines[lineNumber];
@@ -327,8 +330,8 @@ export class DailyNoteTaskScanner {
                     // Track that we found a task at this location
                     currentFileTasks.add(locationKey);
 
-                    // Check if task already processed in this scan
-                    if (this.processedTasks.has(task.id)) {
+                    // Check if task already processed in this file or batch
+                    if (locallyProcessed.has(task.id)) {
                         continue;
                     }
 
@@ -356,15 +359,18 @@ export class DailyNoteTaskScanner {
                             // Update location map to point to existing task
                             this.taskLocationMap.set(locationKey, contentDuplicate.id);
                             await this.saveTaskLocationMap();
+                            locallyProcessed.add(contentDuplicate.id);
                             this.processedTasks.add(contentDuplicate.id);
                         } else {
                             // No duplicates found, add new task
                             await this.plugin.taskStore.addTaskToProject(task, projectId);
+                            locallyProcessed.add(task.id);
                             this.processedTasks.add(task.id);
                         }
                     } else {
                         // Update existing task (content may have changed)
                         await this.plugin.taskStore.updateTask(task.id, task);
+                        locallyProcessed.add(task.id);
                         this.processedTasks.add(task.id);
                     }
                 }

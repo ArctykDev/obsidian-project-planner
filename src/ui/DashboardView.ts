@@ -30,6 +30,7 @@ export class DashboardView extends ItemView {
     private plugin: ProjectPlannerPlugin;
     private unsubscribe: (() => void) | null = null;
     private showAllProjects: boolean = false;
+    private savedScrollTop: number | null = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
         super(leaf);
@@ -99,12 +100,14 @@ export class DashboardView extends ItemView {
 
         const tasksWithDependencies = tasks.filter(t => t.dependencies && t.dependencies.length > 0).length;
 
-        // Effort metrics
-        const totalEffortCompleted = tasks.reduce((sum, t) => sum + (t.effortCompleted ?? 0), 0);
-        const totalEffortRemaining = tasks.reduce((sum, t) => sum + (t.effortRemaining ?? 0), 0);
+        // Effort metrics — exclude parent tasks to avoid double-counting rolled-up values
+        const parentIds = new Set(tasks.filter(t => t.parentId).map(t => t.parentId!));
+        const leafTasks = tasks.filter(t => !parentIds.has(t.id));
+        const totalEffortCompleted = leafTasks.reduce((sum, t) => sum + (t.effortCompleted ?? 0), 0);
+        const totalEffortRemaining = leafTasks.reduce((sum, t) => sum + (t.effortRemaining ?? 0), 0);
         const totalEffort = totalEffortCompleted + totalEffortRemaining;
-        const averagePercentComplete = totalTasks > 0
-            ? Math.round(tasks.reduce((sum, t) => sum + (t.percentComplete ?? 0), 0) / totalTasks)
+        const averagePercentComplete = leafTasks.length > 0
+            ? Math.round(leafTasks.reduce((sum, t) => sum + (t.percentComplete ?? 0), 0) / leafTasks.length)
             : 0;
 
         return {
@@ -216,7 +219,7 @@ export class DashboardView extends ItemView {
                 checkbox.onclick = async (e) => {
                     e.stopPropagation();
                     const isDone = checkbox.checked;
-                    await (this.plugin as any).taskStore.updateTask(task.id, {
+                    await this.plugin.taskStore.updateTask(task.id, {
                         completed: isDone,
                         status: isDone ? "Completed" : "Not Started"
                     });
@@ -269,7 +272,7 @@ export class DashboardView extends ItemView {
                 taskItem.onclick = () => {
                     document.body.removeChild(modal);
                     document.body.removeChild(overlay);
-                    (this.plugin as any).openTaskDetail(task);
+                    this.plugin.openTaskDetail(task);
                 };
             });
         }
@@ -289,8 +292,8 @@ export class DashboardView extends ItemView {
     }
 
     private getStatusColor(status: string): string {
-        const settings = (this.plugin as any).settings;
-        const statusObj = settings.availableStatuses?.find((s: any) => s.name === status);
+        const settings = this.plugin.settings;
+        const statusObj = settings.availableStatuses?.find((s) => s.name === status);
         if (statusObj) return statusObj.color;
         
         // Fallback colors
@@ -312,8 +315,8 @@ export class DashboardView extends ItemView {
         titleSection.createEl("h2", { text: stats.projectName });
 
         // Project metadata (dates)
-        const settings = (this.plugin as any).settings || {};
-        const activeProject = settings.projects?.find((p: any) => p.id === stats.projectId);
+        const settings = this.plugin.settings;
+        const activeProject = settings.projects?.find((p) => p.id === stats.projectId);
         if (activeProject) {
             const metadata = titleSection.createDiv("dashboard-project-metadata");
             if (activeProject.createdDate) {
@@ -453,6 +456,13 @@ export class DashboardView extends ItemView {
 
     render() {
         const container = this.containerEl;
+
+        // Save scroll position before clearing
+        const existingWrapper = container.querySelector('.dashboard-wrapper') as HTMLElement;
+        if (existingWrapper && this.savedScrollTop === null) {
+            this.savedScrollTop = existingWrapper.scrollTop;
+        }
+
         container.empty();
 
         const wrapper = container.createDiv("dashboard-wrapper");
@@ -461,8 +471,8 @@ export class DashboardView extends ItemView {
         renderPlannerHeader(wrapper, this.plugin, {
             active: "dashboard",
             onProjectChange: async () => {
-                await (this.plugin as any).taskStore.load();
-                this.render();
+                await this.plugin.taskStore.load();
+                // No explicit render() — TaskStore.load() → emit() already re-renders via subscription
             }
         });
 
@@ -481,7 +491,16 @@ export class DashboardView extends ItemView {
         // Content
         const content = wrapper.createDiv("dashboard-content");
 
-        const settings = (this.plugin as any).settings || {};
+        // Restore scroll position after DOM is rebuilt
+        if (this.savedScrollTop !== null) {
+            const scrollPos = this.savedScrollTop;
+            this.savedScrollTop = null;
+            requestAnimationFrame(() => {
+                wrapper.scrollTop = scrollPos;
+            });
+        }
+
+        const settings = this.plugin.settings;
         const projects = settings.projects || [];
         const activeProjectId = settings.activeProjectId;
 
@@ -492,21 +511,21 @@ export class DashboardView extends ItemView {
                 return;
             }
 
-            projects.forEach((project: any) => {
+            projects.forEach((project) => {
                 // Load tasks for this project
-                const projectTasks = (this.plugin as any).taskStore.getAllForProject?.(project.id) || [];
+                const projectTasks = this.plugin.taskStore.getAllForProject?.(project.id) || [];
                 const stats = this.calculateProjectStats(project.id, project.name, projectTasks);
                 this.renderProjectDashboard(content, stats, projectTasks);
             });
         } else {
             // Show active project only
-            const activeProject = projects.find((p: any) => p.id === activeProjectId);
+            const activeProject = projects.find((p) => p.id === activeProjectId);
             if (!activeProject) {
                 content.createEl("div", { text: "No active project selected.", cls: "dashboard-empty" });
                 return;
             }
 
-            const tasks = (this.plugin as any).taskStore.getAll();
+            const tasks = this.plugin.taskStore.getAll();
             const stats = this.calculateProjectStats(activeProject.id, activeProject.name, tasks);
             this.renderProjectDashboard(content, stats, tasks);
         }
