@@ -128,6 +128,10 @@ export class TaskStore {
     // Falls back to loadData() if cache is missing (e.g., external modification).
     const raw = this.cachedRawData ?? ((await this.plugin.loadData()) || {}) as StoredData;
     raw.tasksByProject = this.tasksByProject;
+    // Always sync settings from the authoritative in-memory object.
+    // Without this, the cache can hold stale settings (e.g., missing newly
+    // created Board buckets) and overwrite them on the next task save.
+    raw.settings = this.plugin.settings;
     this.cachedRawData = raw;
 
     await this.plugin.saveData(raw);
