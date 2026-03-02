@@ -704,22 +704,6 @@
   transition: background-color 0.15s ease, opacity 0.15s ease, outline 0.1s ease;
 }
 
-/* New row animation - MS Planner style slide and fade */
-@keyframes slideInRow {
-  0% {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.planner-row-new {
-  animation: slideInRow 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
 .planner-drag-cell {
   width: 24px;
   padding-right: 4px;

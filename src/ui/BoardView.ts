@@ -31,6 +31,7 @@ export class BoardView extends ItemView {
     // Render guard: prevents overlapping async renders that corrupt scroll state
     private isRendering = false;
     private renderPending = false;
+    private renderVersion = 0; // Monotonic counter — only the latest render restores scroll
 
     constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
         super(leaf);
@@ -148,10 +149,12 @@ export class BoardView extends ItemView {
 
     private async renderImpl() {
         const container = this.containerEl;
+        const thisRender = ++this.renderVersion;
 
-        // Save scroll positions before clearing
+        // Save scroll positions before clearing — only if we haven't already
+        // captured them (a rapid re-render would read 0 from a freshly-built DOM).
         const existingBoard = container.querySelector('.planner-board-container') as HTMLElement;
-        if (existingBoard) {
+        if (existingBoard && this.savedBoardScrollLeft === null) {
             this.savedBoardScrollLeft = existingBoard.scrollLeft;
             this.savedColumnScrollTops.clear();
             existingBoard.querySelectorAll('.planner-board-column-content').forEach((col: Element) => {
@@ -244,15 +247,17 @@ export class BoardView extends ItemView {
 
         // Restore scroll positions after board is rendered.
         // Use double-rAF so the browser has completed layout before we set scroll.
+        // Only the LATEST render's callback fires — stale renders are skipped.
         if (this.savedBoardScrollLeft !== null || this.savedColumnScrollTops.size > 0) {
             const scrollLeft = this.savedBoardScrollLeft;
             const columnScrolls = new Map(this.savedColumnScrollTops);
-            // Clear immediately so a queued re-render doesn't clobber with stale 0s
+            // Clear saved values so a queued re-render doesn't read stale 0s
             this.savedBoardScrollLeft = null;
             this.savedColumnScrollTops.clear();
 
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
+                    if (this.renderVersion !== thisRender) return; // stale render — skip
                     const boardEl = container.querySelector('.planner-board-container') as HTMLElement;
                     if (boardEl && scrollLeft !== null) {
                         boardEl.scrollLeft = scrollLeft;

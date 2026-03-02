@@ -153,6 +153,11 @@ export class TaskStore {
     return this.loaded;
   }
 
+  /** Expose cached raw data so plugin.saveSettings() can merge safely */
+  getCachedRawData(): StoredData | null {
+    return this.cachedRawData;
+  }
+
   async ensureLoaded(): Promise<void> {
     if (!this.loaded) {
       await this.load();
@@ -195,6 +200,50 @@ export class TaskStore {
     this.tasks.push(task);
     this.updateProjectTimestamp();
     await this.save();
+
+    // Sync to markdown if enabled
+    if (this.plugin.settings.enableMarkdownSync && this.plugin.settings.autoCreateTaskNotes) {
+      try {
+        await this.plugin.taskSync.syncTaskToMarkdown(task, this.activeProjectId);
+      } catch (error) {
+        console.error("Failed to sync task to markdown:", error);
+      }
+    }
+
+    return task;
+  }
+
+  /**
+   * Create a new task and insert it at a specific index in one atomic
+   * operation. Only emits once after the task is in its final position,
+   * preventing intermediate renders that flash the task at the wrong spot.
+   */
+  async addTaskAtIndex(
+    title: string,
+    index: number,
+    overrides?: Partial<PlannerTask>
+  ): Promise<PlannerTask> {
+    const today = getTodayDate();
+    const task: PlannerTask = {
+      id: crypto.randomUUID(),
+      title,
+      status: "Not Started",
+      priority: "Medium",
+      completed: false,
+      parentId: null,
+      collapsed: false,
+      createdDate: today,
+      lastModifiedDate: today,
+      startDate: today,
+    };
+
+    if (overrides) Object.assign(task, overrides);
+
+    // Insert directly at the requested position
+    const clampedIndex = Math.max(0, Math.min(index, this.tasks.length));
+    this.tasks.splice(clampedIndex, 0, task);
+    this.updateProjectTimestamp();
+    await this.save(); // save + emit once
 
     // Sync to markdown if enabled
     if (this.plugin.settings.enableMarkdownSync && this.plugin.settings.autoCreateTaskNotes) {

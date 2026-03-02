@@ -46,7 +46,6 @@ export class GridView extends ItemView {
   private dragInsertAfter: boolean = false;
   private dragDropOnto: boolean = false; // true when dropping onto task to make it a child
   private lastTargetRow: HTMLTableRowElement | null = null; // Track for cleanup
-  private pendingNewTaskId: string | null = null; // Track new task for animation
   private isEditingInline: boolean = false; // Track active inline editing to prevent re-renders
 
   // Column sizing + advanced sorting
@@ -62,8 +61,14 @@ export class GridView extends ItemView {
   private draggedColumnKey: string | null = null;
   private dropTargetColumnKey: string | null = null;
   
-  // Scroll position preservation
+  // Scroll position preservation (vertical + horizontal)
   private savedScrollTop: number | null = null;
+  private savedScrollLeft: number | null = null;
+  private renderVersion = 0; // Monotonic counter — only the latest render restores scroll
+
+  // Cleanup callbacks for mid-operation view close
+  private activeDragCleanup: (() => void) | null = null;
+  private activeResizeCleanup: (() => void) | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
     super(leaf);
@@ -96,6 +101,16 @@ export class GridView extends ItemView {
       this.unsubscribe();
       this.unsubscribe = null;
     }
+    // Clean up any in-progress drag listeners / DOM elements
+    if (this.activeDragCleanup) {
+      this.activeDragCleanup();
+      this.activeDragCleanup = null;
+    }
+    // Clean up any in-progress column resize listeners
+    if (this.activeResizeCleanup) {
+      this.activeResizeCleanup();
+      this.activeResizeCleanup = null;
+    }
   }
 
   getViewType() {
@@ -116,12 +131,14 @@ export class GridView extends ItemView {
 
   render() {
     const container = this.containerEl;
+    const thisRender = ++this.renderVersion;
     
     // Save scroll position before clearing (if content exists)
     const existingContent = container.querySelector('.planner-grid-content') as HTMLElement;
     if (existingContent && this.savedScrollTop === null) {
       // Only save if we haven't explicitly saved already (for operations that need it)
       this.savedScrollTop = existingContent.scrollTop;
+      this.savedScrollLeft = existingContent.scrollLeft;
     }
     
     container.empty();
@@ -334,12 +351,18 @@ export class GridView extends ItemView {
     // -----------------------------------------------------------------------
     const content = wrapper.createDiv("planner-grid-content");
     
-    // Restore scroll position after content is created
-    if (this.savedScrollTop !== null) {
-      // Use requestAnimationFrame to ensure DOM is ready
+    // Restore scroll position (vertical + horizontal) after content is created.
+    // Only the LATEST render's callback fires — earlier (stale) renders are skipped
+    // via the version check, preventing them from clearing savedScrollTop to null.
+    if (this.savedScrollTop !== null || this.savedScrollLeft !== null) {
+      const restoreTop = this.savedScrollTop;
+      const restoreLeft = this.savedScrollLeft;
       requestAnimationFrame(() => {
-        content.scrollTop = this.savedScrollTop!;
-        this.savedScrollTop = null; // Clear after restoring
+        if (this.renderVersion !== thisRender) return; // stale render — skip
+        if (restoreTop !== null) content.scrollTop = restoreTop;
+        if (restoreLeft !== null) content.scrollLeft = restoreLeft;
+        this.savedScrollTop = null;
+        this.savedScrollLeft = null;
       });
     }
     
@@ -521,16 +544,6 @@ export class GridView extends ItemView {
 
     row.dataset.taskId = task.id;
     row.dataset.rowIndex = String(index);
-    
-    // Add animation class for newly created tasks
-    if (this.pendingNewTaskId === task.id) {
-      row.classList.add("planner-row-new");
-      // Remove animation class after animation completes
-      setTimeout(() => {
-        row.classList.remove("planner-row-new");
-        this.pendingNewTaskId = null;
-      }, 400); // Match CSS animation duration
-    }
 
     // Right–click context menu
     row.oncontextmenu = (evt) => {
@@ -1114,71 +1127,54 @@ export class GridView extends ItemView {
     const targetIndex = allIds.indexOf(task.id);
     const insertIndex = targetIndex >= 0 ? targetIndex : 0;
 
-    // Create as root-level first
-    const newTask = await this.taskStore.addTask("New Task");
-    
-    // Mark as pending for animation
-    this.pendingNewTaskId = newTask.id;
+    // Single atomic insert at the correct position with the right parentId.
+    // This emits exactly once — no intermediate renders that flash the task
+    // at the wrong position or cause it to disappear.
+    const newTask = await this.taskStore.addTaskAtIndex(
+      "New Task",
+      insertIndex,
+      task.parentId ? { parentId: task.parentId } : undefined
+    );
 
-    // If the existing task is a subtask, assign the new task the same parent
-    if (task.parentId) {
-      await this.taskStore.updateTask(newTask.id, {
-        parentId: task.parentId,
-      });
-    } else {
-      await this.taskStore.updateTask(newTask.id, {
-        parentId: null,
-      });
-    }
-
-    // Re-fetch and adjust ordering
-    const updated = this.taskStore.getAll();
-    const updatedIds = updated.map((t) => t.id);
-
-    const newIndex = updatedIds.indexOf(newTask.id);
-    if (newIndex !== -1) {
-      updatedIds.splice(newIndex, 1);
-    }
-    updatedIds.splice(insertIndex, 0, newTask.id);
-
-    await this.taskStore.setOrder(updatedIds);
-
-    // Don't call render() here - TaskStore.setOrder() triggers emit() which re-renders via subscription
-    // Focus with timing optimized for smooth animation
+    // Focus title editor
     this.focusNewTaskTitleImmediate(newTask.id);
   }
 
   // Helper: Focus the title input of the newly created task
   private focusNewTaskTitleImmediate(taskId: string) {
-    // Delay to ensure row animation starts before activating editor for smooth transition
-    setTimeout(() => {
+    // Wait for the render triggered by setOrder/emit to complete and DOM to update
+    requestAnimationFrame(() => {
       const titleEl = this.containerEl.querySelector(
         `tr[data-task-id="${taskId}"] .planner-title-inner .planner-editable`
       ) as HTMLElement | null;
 
       if (titleEl) {
-        // Smooth activation of inline editor
         titleEl.click();
-        
+
         // Ensure input field is selected after editor opens
         requestAnimationFrame(() => {
           const inputEl = this.containerEl.querySelector(
             `tr[data-task-id="${taskId}"] .planner-input`
           ) as HTMLInputElement | null;
-          
+
           if (inputEl) {
             inputEl.select();
           }
         });
       }
-    }, 150); // Coordinate with row slide-in animation
+    });
   }
 
-  // Helper: Save current scroll position for restoration after re-render
+  // Helper: Save current scroll position for restoration after re-render.
+  // Idempotent — if a position is already saved (e.g., from an earlier call in
+  // the same operation), we keep it. A second call during a stale re-render
+  // would read scrollTop=0 from a freshly rebuilt DOM and clobber the real value.
   private saveScrollPosition() {
+    if (this.savedScrollTop !== null) return;
     const content = this.containerEl.querySelector('.planner-grid-content') as HTMLElement;
     if (content) {
       this.savedScrollTop = content.scrollTop;
+      this.savedScrollLeft = content.scrollLeft;
     }
   }
 
@@ -1381,6 +1377,7 @@ export class GridView extends ItemView {
 
       window.removeEventListener("pointermove", onMove, true);
       window.removeEventListener("pointerup", onUp, true);
+      this.activeDragCleanup = null;
 
       if (autoScrollInterval !== null) {
         cancelAnimationFrame(autoScrollInterval);
@@ -1422,6 +1419,25 @@ export class GridView extends ItemView {
 
     window.addEventListener("pointermove", onMove, true);
     window.addEventListener("pointerup", onUp, true);
+
+    // Store cleanup in case view is closed mid-drag
+    this.activeDragCleanup = () => {
+      window.removeEventListener("pointermove", onMove, true);
+      window.removeEventListener("pointerup", onUp, true);
+      if (autoScrollInterval !== null) {
+        cancelAnimationFrame(autoScrollInterval);
+      }
+      ghost.remove();
+      indicator.remove();
+      row.classList.remove("planner-row-dragging");
+      document.body.style.userSelect = "";
+      (document.body.style as any).webkitUserSelect = "";
+      document.body.style.cursor = "";
+      if (this.lastTargetRow) {
+        this.lastTargetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
+        this.lastTargetRow = null;
+      }
+    };
   }
 
   private async handleDrop(
@@ -1839,7 +1855,13 @@ export class GridView extends ItemView {
 
       select.focus();
 
+      // Guard: onchange fires first, then container.empty() during render
+      // detaches the select causing a second onblur. Without the guard we
+      // get a redundant updateTask + a stale-DOM scroll position read.
+      let saved = false;
       const save = async () => {
+        if (saved) return;
+        saved = true;
         const newValue = select.value as T;
         await onSave(newValue);
         // Don't call setupDisplay() here - let onSave (which calls this.render()) 
@@ -1941,7 +1963,12 @@ export class GridView extends ItemView {
       span.remove();
       input.focus();
 
+      // Guard: container.empty() during render detaches the date input,
+      // firing a second onblur after the first save already ran.
+      let saved = false;
       const save = async () => {
+        if (saved) return;
+        saved = true;
         const newRaw = input.value; // YYYY-MM-DD or ""
         await onSave(newRaw);
 
@@ -2075,6 +2102,7 @@ export class GridView extends ItemView {
     const onMouseUp = () => {
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
+      this.activeResizeCleanup = null;
       document.body.style.cursor = "";
 
       const finalWidth = th.offsetWidth;
@@ -2093,6 +2121,13 @@ export class GridView extends ItemView {
 
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", onMouseUp);
+
+      // Store cleanup in case view is closed mid-resize
+      this.activeResizeCleanup = () => {
+        window.removeEventListener("mousemove", onMouseMove);
+        window.removeEventListener("mouseup", onMouseUp);
+        document.body.style.cursor = "";
+      };
     });
 
     // Double-click on the handle: auto-fit
