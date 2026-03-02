@@ -454,7 +454,14 @@ export default class ProjectPlannerPlugin extends Plugin {
   }
 
   async saveSettings() {
-    const raw = ((await this.loadData()) || {}) as ProjectPlannerData;
+    // Use TaskStore's cached data when available to avoid overwriting
+    // in-flight task changes with a stale disk read (race condition).
+    let raw: ProjectPlannerData;
+    if (this.taskStore?.getCachedRawData()) {
+      raw = this.taskStore.getCachedRawData() as ProjectPlannerData;
+    } else {
+      raw = ((await this.loadData()) || {}) as ProjectPlannerData;
+    }
 
     // Save ONLY under .settings — Preserve ALL other keys (tasksByProject, etc.)
     raw.settings = this.settings;
@@ -526,7 +533,10 @@ export default class ProjectPlannerPlugin extends Plugin {
 
     if (!activeProject) return;
 
-    const folderPath = `${activeProject.name}/Tasks`;
+    const basePath = this.settings.projectsBasePath;
+    const folderPath = basePath
+      ? `${basePath}/${activeProject.name}/Tasks`
+      : `${activeProject.name}/Tasks`;
 
     // Ensure folder exists
     const folder = this.app.vault.getAbstractFileByPath(folderPath);

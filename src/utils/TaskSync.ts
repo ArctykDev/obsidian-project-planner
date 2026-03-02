@@ -407,22 +407,32 @@ export class TaskSync {
         const basePath = this.plugin.settings.projectsBasePath;
         const folderPath = basePath ? `${basePath}/${projectName}/Tasks` : `${projectName}/Tasks`;
 
+        // Track task IDs by file path so we can delete tasks after the file
+        // (and its metadata cache) are gone. Obsidian clears the cache on
+        // deletion, so reading it inside the 'delete' handler always returns null.
+        const taskIdByPath = new Map<string, string>();
+
         // Watch for metadata cache changes (most reliable for YAML frontmatter changes)
         this.plugin.registerEvent(
             this.app.metadataCache.on('changed', async (file) => {
                 if (file instanceof TFile && file.path.startsWith(folderPath) && file.extension === 'md') {
+                    // Keep our path→ID map up to date on every cache refresh
+                    const cache = this.app.metadataCache.getFileCache(file);
+                    if (cache?.frontmatter?.id) {
+                        taskIdByPath.set(file.path, cache.frontmatter.id);
+                    }
                     await this.syncMarkdownToTask(file, projectId);
                 }
             })
         );
 
-        // Watch for file deletions
+        // Watch for file deletions — use the pre-built path→ID map
         this.plugin.registerEvent(
             this.app.vault.on('delete', async (file) => {
                 if (file instanceof TFile && file.path.startsWith(folderPath) && file.extension === 'md') {
-                    const cache = this.app.metadataCache.getFileCache(file);
-                    const taskId = cache?.frontmatter?.id;
+                    const taskId = taskIdByPath.get(file.path);
                     if (taskId) {
+                        taskIdByPath.delete(file.path);
                         await this.plugin.taskStore.deleteTask(taskId);
                     }
                 }

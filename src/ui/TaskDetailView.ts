@@ -9,6 +9,7 @@ export class TaskDetailView extends ItemView {
   private task: PlannerTask | null = null;
   private unsubscribe: (() => void) | null = null;
   private savedScrollTop: number | null = null;
+  private activeDragCleanup: (() => void) | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
     super(leaf);
@@ -63,6 +64,11 @@ export class TaskDetailView extends ItemView {
     if (this.unsubscribe) {
       this.unsubscribe();
       this.unsubscribe = null;
+    }
+    // Clean up any in-progress subtask drag listeners / DOM elements
+    if (this.activeDragCleanup) {
+      this.activeDragCleanup();
+      this.activeDragCleanup = null;
     }
   }
 
@@ -486,6 +492,7 @@ export class TaskDetailView extends ItemView {
 
         window.removeEventListener("pointermove", onMove, true);
         window.removeEventListener("pointerup", onUp, true);
+        this.activeDragCleanup = null;
 
         ghost.remove();
         indicator.remove();
@@ -502,6 +509,18 @@ export class TaskDetailView extends ItemView {
 
       window.addEventListener("pointermove", onMove, true);
       window.addEventListener("pointerup", onUp, true);
+
+      // Store cleanup in case view is closed mid-drag
+      this.activeDragCleanup = () => {
+        window.removeEventListener("pointermove", onMove, true);
+        window.removeEventListener("pointerup", onUp, true);
+        ghost.remove();
+        indicator.remove();
+        row.classList.remove("planner-subtask-dragging");
+        document.body.style.userSelect = "";
+        (document.body.style as any).webkitUserSelect = "";
+        document.body.style.cursor = "";
+      };
     };
 
     // Checkbox
