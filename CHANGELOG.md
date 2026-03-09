@@ -2,6 +2,94 @@
 
 All notable changes to Obsidian Project Planner will be documented in this file.
 
+## [0.8.0] - 2026-03-08
+
+### Added
+
+#### My Tasks View (Today)
+- **New "My Tasks" view** accessible from the header navigation (sun icon) and the command palette ("Open My Tasks")
+- **Cross-project task aggregation**: Shows all tasks due today across every project in a single grid table
+- **Summary bar** with task count and progress indicator (X/Y done) with animated fill
+- **Filters**: Priority dropdown, text search, and "Show completed" toggle
+- **Sortable rows**: Incomplete tasks first, then sorted by priority weight (Critical → Low)
+- **Inline actions**: Checkbox to toggle completion, clickable title to open Task Detail, right-click context menu
+- **Status & priority pills** reusing existing design system styles
+- **Empty states**: Distinct messages for "no tasks due today" vs. "all tasks filtered out"
+- **Scroll preservation** with `renderVersion` guard to prevent stale restore on rapid re-renders
+
+#### My Tasks View (Week)
+- **Outlook-style weekly layout**: 7 day columns (Monday–Sunday) displayed in a CSS grid
+- **Today/Week segmented toggle** in the view header to switch between modes; filters are shared across both
+- **Today highlight**: Current day column gets an accent border and the date number displays in an accent-colored circle badge
+- **Compact task cards**: Each card shows a checkbox, clickable title, project name, and priority pill
+- **Week navigation**: Previous/next chevron buttons and a "This Week" quick-return button in the toolbar
+- **Date range label** above the columns (e.g., "March 2 – 8, 2026"), adapts when the week spans two months
+- **Per-column task counts** and "Filtered" indicator when all tasks in a day are hidden by filters
+
+#### Cost Tracking System
+- **Per-task cost fields**: `costEstimate`, `costActual`, `costType` ("fixed" or "hourly"), and optional `hourlyRate` override
+- **Two cost modes**:
+  - **Fixed**: User enters estimated and actual cost directly
+  - **Hourly**: Cost auto-calculated from effort hours × hourly rate (read-only display)
+- **TaskDetailView — Cost section**: Cost Type dropdown, Estimated/Actual/Variance display, hourly rate override input with project default hint
+- **GridView — Two new columns**: "Est. Cost" and "Actual Cost", toggleable from the Columns menu, formatted with project currency symbol
+- **Parent task cost roll-up**: Parent tasks automatically aggregate estimated and actual costs from children (same pattern as effort roll-up)
+- **Project-level budget settings**: Total Budget, Default Hourly Rate, and Currency Symbol fields in plugin settings (per-project)
+- **DashboardView — Budget & Cost card**: Budget progress bar (green → yellow at 75% → red at 90%), KPI cards for Budget, Estimated, Actual, Remaining, and Over-Budget task count
+- **Cost Report modal**: Tabbed breakdown (By Bucket, By Status, By Priority, Over Budget) with totals row and variance coloring; accessible via "View Cost Report" button on Dashboard
+- **`costUtils.ts`**: New utility module with all cost calculation logic — per-task estimated/actual, roll-ups, project summary, breakdown grouping, and currency formatting
+- **Fully backward-compatible**: All cost fields are optional; existing data loads without migration
+
+### Fixed
+
+#### Critical & High Severity
+- **Settings save race condition**: `saveSettings()` now uses `getCachedRawData()` to read task data synchronously, preventing concurrent read/write from blanking task buckets
+- **Task note creation path**: `createTaskNotes()` now respects `projectsBasePath` setting instead of always writing to vault root
+- **TaskSync delete handler**: Rebuilt to use a pre-computed `taskIdByPath` map, fixing O(n²) lookup and stale-closure bugs when task markdown files are deleted
+- **Window listener leaks**: GridView and TaskDetailView now clean up `mousemove`/`mouseup` listeners if the view is closed mid-drag (column resize or subtask reorder)
+
+#### Scroll Position Reset
+- **Stale rAF restore**: Added `renderVersion` counter to GridView and BoardView; scroll-restore `requestAnimationFrame` callbacks are discarded if a newer render has occurred
+- **Double-save on inline edits**: `createEditableSelectCell` and `createEditableDateOnlyCell` no longer fire both `onchange` and `onblur` saves — a `let saved = false` guard ensures only one write per edit
+- **Horizontal scroll lost**: `scrollLeft` is now saved and restored alongside `scrollTop` in GridView
+- **`saveScrollPosition()` idempotency**: The method now only captures scroll coordinates when no save is already pending
+
+#### Task Creation UX
+- **New task animation glitch**: Removed the `slideInRow` CSS animation and `planner-row-new` class that caused rows to disappear then pop in; focus now uses `requestAnimationFrame` instead of a 150ms `setTimeout`
+- **"Add Task Above" wrong position**: Rewrote to use new `addTaskAtIndex()` on TaskStore — a single atomic insert at the correct index with one event emit, replacing the old 3-mutation sequence (addTask + updateTask + setOrder)
+
+#### Bug Audit (23 fixes)
+- **GanttView UTC date shift**: `toISODate()` now uses local date components instead of `toISOString().slice()`, preventing off-by-one day errors near midnight
+- **Cross-project task updates**: `taskStore.updateTask()` now searches across all projects via `tasksByProject` when the task isn't found in the active project — fixes My Tasks view edits silently failing
+- **GridView parent drag dropping wrong tasks**: Parent drag now uses recursive `getAllDescendants()` helper to collect all nested children, not just direct children
+- **BoardView checkbox desyncs status**: Checkbox toggle now passes both `completed` and `status` to `updateTask()`, keeping them in sync
+- **TaskDetailView effort remaining not saved**: `commitCompleted` handler now saves both `effortCompleted` and `effortRemaining` in a single update
+- **GanttView checkbox desyncs status**: Same fix as BoardView — checkbox passes both `completed` and `status`
+- **GridView showCompleted filter ignored in renderTableBody**: Added `showCompleted` filtering inside `renderTableBody()` so completed tasks are properly hidden
+- **GridView auto-scroll wrong selector**: Fixed CSS selector from `.planner-grid-wrapper` to `.planner-grid-content` for scroll-into-view on new task creation
+- **GanttView resizer listener leak**: Added `activeResizerCleanup` tracking so each new resize cleanly removes the previous listener pair
+- **DashboardView modal DOM leak + missing Escape handler**: Added `activeModal`/`activeOverlay` tracking, `dismissModal()` cleanup method, Escape key dismissal, and cleanup in `onClose()`
+- **DependencyGraphView double-click opens nothing**: Double-click now calls `plugin.openTaskDetail()` instead of the non-existent local method
+- **DependencyGraphView stale canvas after drag**: Added `needsRefresh` flag that defers refresh during active drag and triggers redraw on drag end
+- **TaskDetailView subtask drag corrupts array**: `handleSubtaskDrop` now clones the subtask array before splice to avoid mutating the shared reference
+- **TaskDetailView duration local date parsing**: `renderDurationRow` now parses YYYY-MM-DD as local midnight instead of UTC, preventing off-by-one day display
+- **uuid.ts fallback not unique**: Fallback now generates `${Date.now()}-${Math.random().toString(36).slice(2, 11)}` instead of a simple counter
+- **DashboardView renderVersion counter**: Added scroll-preservation guard matching GridView's pattern
+- **GridView duration shows "0 days"**: Duration calculation now uses `Math.max(1, diffDays)` for inclusive day count — same-day start/due shows "1 day"
+- **GridView dead `updateSortIndicators` code**: Removed unreferenced method that referenced non-existent DOM
+- **BoardView bucket drag off-by-one**: Adjusted `targetIndex` when dragging left-to-right to account for the removed source element
+- **GanttView scroll sync thrash**: Replaced direct scroll assignment with `requestAnimationFrame` to prevent layout thrashing during synchronized scrolling
+- **DependencyGraphView blurry on HiDPI**: Canvas now scales by `devicePixelRatio` for crisp rendering on Retina/HiDPI displays
+- **DailyNoteTaskScanner batched saves**: Removed per-line `saveTaskLocationMap()` calls in `parseTaskLine` and duplicate branch; single save at end of `scanFile`
+- **DailyNoteTaskScanner file rename colon split**: File rename handler now uses `lastIndexOf(':')` instead of `split(':')[1]` to safely extract line numbers from paths containing colons
+
+### Changed
+- `TaskStore` gained `getCachedRawData()` public accessor and `addTaskAtIndex(title, index, overrides?)` method
+- `TaskStore.rollUpParentFields()` now aggregates cost data (estimated + actual) from children
+- GridView column menu now uses `setChecked()` for native checkmark indicators
+- `PlannerTask` interface extended with `costEstimate`, `costActual`, `costType`, `hourlyRate`
+- `PlannerProject` interface extended with `budgetTotal`, `defaultHourlyRate`, `currencySymbol`
+
 ## [0.7.0] - 2026-02-22
 
 ### Added

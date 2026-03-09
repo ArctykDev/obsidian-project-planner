@@ -32,6 +32,7 @@ export class DependencyGraphView extends ItemView {
     private resizeHandler: (() => void) | null = null;
     private boundMouseMove: ((e: MouseEvent) => void) | null = null;
     private boundMouseUp: ((e: MouseEvent) => void) | null = null;
+    private needsRefresh = false;
 
     constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
         super(leaf);
@@ -131,8 +132,13 @@ export class DependencyGraphView extends ItemView {
         if (!container) return;
 
         const rect = container.getBoundingClientRect();
-        this.canvas.width = rect.width;
-        this.canvas.height = rect.height;
+        const dpr = window.devicePixelRatio || 1;
+        this.canvas.width = rect.width * dpr;
+        this.canvas.height = rect.height * dpr;
+        this.canvas.style.width = `${rect.width}px`;
+        this.canvas.style.height = `${rect.height}px`;
+        const ctx = this.canvas.getContext("2d");
+        if (ctx) ctx.scale(dpr, dpr);
         this.render();
     }
 
@@ -194,26 +200,28 @@ export class DependencyGraphView extends ItemView {
             }
             isDragging = false;
             this.dragNode = null;
+
+            // If a refresh was deferred during the drag, run it now
+            if (this.needsRefresh) {
+                this.refresh();
+            }
         };
         document.addEventListener("mouseup", this.boundMouseUp);
 
         // Double click to open task details
         this.canvas.addEventListener("dblclick", (e: MouseEvent) => {
             if (!this.selectedNode) return;
-
-            const detailLeaves = this.app.workspace.getLeavesOfType("project-planner-task-detail");
-            if (detailLeaves.length > 0) {
-                const detailView: any = detailLeaves[0].view;
-                if (detailView.setTask) {
-                    detailView.setTask(this.selectedNode.task);
-                }
-            }
+            this.plugin.openTaskDetail(this.selectedNode.task);
         });
     }
 
     async refresh() {
         // Don't rebuild graph while user is dragging a node
-        if (this.dragNode) return;
+        if (this.dragNode) {
+            this.needsRefresh = true;
+            return;
+        }
+        this.needsRefresh = false;
         const tasks = this.getAllTasks();
         this.buildGraph(tasks);
         this.startSimulation();
@@ -362,8 +370,11 @@ export class DependencyGraphView extends ItemView {
                 // Keep nodes within bounds
                 const margin = 50;
                 if (this.canvas) {
-                    node.x = Math.max(margin, Math.min(this.canvas.width - margin, node.x));
-                    node.y = Math.max(margin, Math.min(this.canvas.height - margin, node.y));
+                    const dpr = window.devicePixelRatio || 1;
+                    const logicalW = this.canvas.width / dpr;
+                    const logicalH = this.canvas.height / dpr;
+                    node.x = Math.max(margin, Math.min(logicalW - margin, node.x));
+                    node.y = Math.max(margin, Math.min(logicalH - margin, node.y));
                 }
             }
         });
@@ -375,16 +386,19 @@ export class DependencyGraphView extends ItemView {
         const ctx = this.canvas.getContext("2d");
         if (!ctx) return;
 
-        // Clear
-        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        // Clear (use logical dimensions since ctx is already scaled by dpr)
+        const dpr = window.devicePixelRatio || 1;
+        const logicalW = this.canvas.width / dpr;
+        const logicalH = this.canvas.height / dpr;
+        ctx.clearRect(0, 0, logicalW, logicalH);
 
         // Check if empty
         if (this.nodes.length === 0) {
             ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--text-muted");
             ctx.font = "14px var(--font-interface)";
             ctx.textAlign = "center";
-            ctx.fillText("No task dependencies to visualize", this.canvas.width / 2, this.canvas.height / 2);
-            ctx.fillText("Create dependencies in the Task Details panel", this.canvas.width / 2, this.canvas.height / 2 + 25);
+            ctx.fillText("No task dependencies to visualize", logicalW / 2, logicalH / 2);
+            ctx.fillText("Create dependencies in the Task Details panel", logicalW / 2, logicalH / 2 + 25);
             return;
         }
 

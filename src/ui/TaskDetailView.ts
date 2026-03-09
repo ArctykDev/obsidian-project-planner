@@ -1,6 +1,13 @@
 import { ItemView, WorkspaceLeaf, MarkdownRenderer, setIcon } from "obsidian";
 import type ProjectPlannerPlugin from "../main";
 import type { PlannerTask, DependencyType } from "../types";
+import {
+  getEffectiveRate,
+  getTaskEstimatedCost,
+  getTaskActualCost,
+  formatCurrency,
+  formatVariance,
+} from "../utils/costUtils";
 
 export const VIEW_TYPE_TASK_DETAIL = "project-planner-task-detail";
 
@@ -9,6 +16,7 @@ export class TaskDetailView extends ItemView {
   private task: PlannerTask | null = null;
   private unsubscribe: (() => void) | null = null;
   private savedScrollTop: number | null = null;
+  private activeDragCleanup: (() => void) | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
     super(leaf);
@@ -63,6 +71,11 @@ export class TaskDetailView extends ItemView {
     if (this.unsubscribe) {
       this.unsubscribe();
       this.unsubscribe = null;
+    }
+    // Clean up any in-progress subtask drag listeners / DOM elements
+    if (this.activeDragCleanup) {
+      this.activeDragCleanup();
+      this.activeDragCleanup = null;
     }
   }
 
@@ -368,6 +381,11 @@ export class TaskDetailView extends ItemView {
     this.renderEffortSection(container, task, isRolledUp);
 
     //
+    // COST
+    //
+    this.renderCostSection(container, task, isRolledUp);
+
+    //
     // DEPENDENCIES
     //
     container.createEl("h3", { text: "Dependencies" });
@@ -486,6 +504,7 @@ export class TaskDetailView extends ItemView {
 
         window.removeEventListener("pointermove", onMove, true);
         window.removeEventListener("pointerup", onUp, true);
+        this.activeDragCleanup = null;
 
         ghost.remove();
         indicator.remove();
@@ -502,6 +521,18 @@ export class TaskDetailView extends ItemView {
 
       window.addEventListener("pointermove", onMove, true);
       window.addEventListener("pointerup", onUp, true);
+
+      // Store cleanup in case view is closed mid-drag
+      this.activeDragCleanup = () => {
+        window.removeEventListener("pointermove", onMove, true);
+        window.removeEventListener("pointerup", onUp, true);
+        ghost.remove();
+        indicator.remove();
+        row.classList.remove("planner-subtask-dragging");
+        document.body.style.userSelect = "";
+        (document.body.style as any).webkitUserSelect = "";
+        document.body.style.cursor = "";
+      };
     };
 
     // Checkbox
@@ -579,7 +610,9 @@ export class TaskDetailView extends ItemView {
   ) {
     if (!this.task) return;
 
-    const subtasks = this.task.subtasks ?? [];
+    // Clone the array to avoid mutating the store's data in-place before
+    // the async update() call completes.
+    const subtasks = [...(this.task.subtasks ?? [])];
     const dragIndex = subtasks.findIndex((s) => s.id === dragId);
     const targetIndex = subtasks.findIndex((s) => s.id === targetId);
 
@@ -1150,8 +1183,11 @@ export class TaskDetailView extends ItemView {
     const durationValue = wrapper.createDiv("planner-duration-value");
 
     if (task.startDate && task.dueDate) {
-      const start = new Date(task.startDate);
-      const end = new Date(task.dueDate);
+      // Parse as local midnight to match GridView (avoid UTC shift with new Date(string))
+      const sp = task.startDate.split("-").map(Number);
+      const ep = task.dueDate.split("-").map(Number);
+      const start = new Date(sp[0], sp[1] - 1, sp[2]);
+      const end = new Date(ep[0], ep[1] - 1, ep[2]);
       const diffMs = end.getTime() - start.getTime();
       const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
@@ -1226,7 +1262,7 @@ export class TaskDetailView extends ItemView {
         const c = parseFloat(completedInput.value) || 0;
         const tot = (task.effortCompleted ?? 0) + (task.effortRemaining ?? 0);
         const r = Math.max(0, tot - c);
-        await this.update({ effortCompleted: c });
+        await this.update({ effortCompleted: c, effortRemaining: r });
       };
       completedInput.onblur = commitCompleted;
       completedInput.onkeydown = (e) => { if (e.key === "Enter") void commitCompleted(); };
@@ -1283,6 +1319,139 @@ export class TaskDetailView extends ItemView {
     // Unit label
     const unitLabel = grid.createDiv("planner-effort-unit");
     unitLabel.createSpan({ text: "hours" });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Cost section
+  // ---------------------------------------------------------------------------
+
+  private renderCostSection(container: HTMLElement, task: PlannerTask, isRolledUp?: boolean) {
+    const section = container.createDiv("planner-cost-section");
+    const heading = section.createEl("h3", { text: "Cost" });
+    if (isRolledUp) {
+      heading.createSpan({ text: " (rolled up)", cls: "planner-rolled-up-hint" });
+    }
+
+    // Resolve project for rate/currency
+    const settings = this.plugin.settings;
+    const project = settings.projects?.find(p => p.id === settings.activeProjectId);
+    const currency = project?.currencySymbol || "$";
+
+    // --- Cost Type selector (fixed vs hourly) ---
+    if (!isRolledUp) {
+      const typeRow = section.createDiv("planner-cost-type-row");
+      typeRow.createSpan({ text: "Cost Type:", cls: "planner-cost-type-label" });
+
+      const typeSelect = typeRow.createEl("select", { cls: "planner-cost-type-select" });
+      const optionNone = typeSelect.createEl("option", { text: "None", attr: { value: "" } });
+      const optionFixed = typeSelect.createEl("option", { text: "Fixed", attr: { value: "fixed" } });
+      const optionHourly = typeSelect.createEl("option", { text: "Hourly", attr: { value: "hourly" } });
+
+      typeSelect.value = task.costType || "";
+      typeSelect.onchange = async () => {
+        const val = typeSelect.value as "" | "fixed" | "hourly";
+        if (val === "") {
+          await this.update({ costType: undefined, costEstimate: undefined, costActual: undefined, hourlyRate: undefined });
+        } else {
+          await this.update({ costType: val });
+        }
+      };
+    }
+
+    const costType = task.costType;
+    if (!costType) return; // No cost tracking for this task
+
+    // --- Cost values grid ---
+    const grid = section.createDiv("planner-cost-grid");
+
+    const estimated = getTaskEstimatedCost(task, project);
+    const actual = getTaskActualCost(task, project);
+    const variance = estimated - actual;
+
+    // Estimated column
+    const estCol = grid.createDiv("planner-cost-col");
+    estCol.createDiv({ text: "Estimated", cls: "planner-cost-label" });
+
+    if (isRolledUp || costType === "hourly") {
+      const readonlyEst = estCol.createDiv({ cls: "planner-cost-readonly" });
+      if (isRolledUp) readonlyEst.classList.add("planner-rolled-up");
+      readonlyEst.textContent = formatCurrency(estimated, currency);
+      if (costType === "hourly") readonlyEst.title = "Calculated from effort × rate";
+      if (isRolledUp) readonlyEst.title = "Rolled up from subtasks";
+    } else {
+      const estInput = estCol.createEl("input", {
+        attr: { type: "number", min: "0", step: "0.01", placeholder: "0" },
+        cls: "planner-cost-input"
+      });
+      estInput.value = task.costEstimate ? String(task.costEstimate) : "";
+      const commitEst = async () => {
+        const val = parseFloat(estInput.value) || 0;
+        await this.update({ costEstimate: val });
+      };
+      estInput.onblur = commitEst;
+      estInput.onkeydown = (e) => { if (e.key === "Enter") void commitEst(); };
+    }
+
+    // Actual column
+    const actCol = grid.createDiv("planner-cost-col");
+    actCol.createDiv({ text: "Actual", cls: "planner-cost-label" });
+
+    if (isRolledUp || costType === "hourly") {
+      const readonlyAct = actCol.createDiv({ cls: "planner-cost-readonly" });
+      if (isRolledUp) readonlyAct.classList.add("planner-rolled-up");
+      readonlyAct.textContent = formatCurrency(actual, currency);
+      if (costType === "hourly") readonlyAct.title = "Calculated from effort completed × rate";
+      if (isRolledUp) readonlyAct.title = "Rolled up from subtasks";
+    } else {
+      const actInput = actCol.createEl("input", {
+        attr: { type: "number", min: "0", step: "0.01", placeholder: "0" },
+        cls: "planner-cost-input"
+      });
+      actInput.value = task.costActual ? String(task.costActual) : "";
+      const commitAct = async () => {
+        const val = parseFloat(actInput.value) || 0;
+        await this.update({ costActual: val });
+      };
+      actInput.onblur = commitAct;
+      actInput.onkeydown = (e) => { if (e.key === "Enter") void commitAct(); };
+    }
+
+    // Variance column (always read-only)
+    const varCol = grid.createDiv("planner-cost-col");
+    varCol.createDiv({ text: "Variance", cls: "planner-cost-label" });
+    const varDisplay = varCol.createDiv({ cls: "planner-cost-readonly planner-cost-variance" });
+    varDisplay.textContent = formatVariance(variance, currency);
+    if (variance < 0) varDisplay.classList.add("planner-cost-over-budget");
+    else if (variance > 0) varDisplay.classList.add("planner-cost-under-budget");
+
+    // --- Hourly rate override (only for hourly type, non-rolled-up) ---
+    if (costType === "hourly" && !isRolledUp) {
+      const rateRow = section.createDiv("planner-cost-rate-row");
+      const defaultRate = project?.defaultHourlyRate ?? 0;
+      rateRow.createSpan({ text: "Hourly Rate:", cls: "planner-cost-rate-label" });
+
+      const rateInput = rateRow.createEl("input", {
+        attr: { type: "number", min: "0", step: "0.01", placeholder: String(defaultRate) },
+        cls: "planner-cost-rate-input"
+      });
+      rateInput.value = task.hourlyRate != null ? String(task.hourlyRate) : "";
+
+      const rateHint = rateRow.createSpan({ cls: "planner-cost-rate-hint" });
+      rateHint.textContent = task.hourlyRate != null
+        ? `(overrides project default: ${currency}${defaultRate}/hr)`
+        : `(project default: ${currency}${defaultRate}/hr)`;
+
+      const commitRate = async () => {
+        const val = rateInput.value.trim();
+        if (val === "") {
+          await this.update({ hourlyRate: undefined });
+        } else {
+          await this.update({ hourlyRate: parseFloat(val) || 0 });
+        }
+      };
+      rateInput.onblur = commitRate;
+      rateInput.onkeydown = (e) => { if (e.key === "Enter") void commitRate(); };
+    }
   }
 
   private createSubtaskId(): string {

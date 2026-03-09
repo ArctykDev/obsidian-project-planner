@@ -1,5 +1,6 @@
 import type ProjectPlannerPlugin from "../main";
 import type { PlannerTask, DependencyType } from "../types";
+import { getTaskEstimatedCost, getTaskActualCost } from "../utils/costUtils";
 
 // Helper to get today's date in YYYY-MM-DD format
 function getTodayDate(): string {
@@ -153,6 +154,11 @@ export class TaskStore {
     return this.loaded;
   }
 
+  /** Expose cached raw data so plugin.saveSettings() can merge safely */
+  getCachedRawData(): StoredData | null {
+    return this.cachedRawData;
+  }
+
   async ensureLoaded(): Promise<void> {
     if (!this.loaded) {
       await this.load();
@@ -195,6 +201,50 @@ export class TaskStore {
     this.tasks.push(task);
     this.updateProjectTimestamp();
     await this.save();
+
+    // Sync to markdown if enabled
+    if (this.plugin.settings.enableMarkdownSync && this.plugin.settings.autoCreateTaskNotes) {
+      try {
+        await this.plugin.taskSync.syncTaskToMarkdown(task, this.activeProjectId);
+      } catch (error) {
+        console.error("Failed to sync task to markdown:", error);
+      }
+    }
+
+    return task;
+  }
+
+  /**
+   * Create a new task and insert it at a specific index in one atomic
+   * operation. Only emits once after the task is in its final position,
+   * preventing intermediate renders that flash the task at the wrong spot.
+   */
+  async addTaskAtIndex(
+    title: string,
+    index: number,
+    overrides?: Partial<PlannerTask>
+  ): Promise<PlannerTask> {
+    const today = getTodayDate();
+    const task: PlannerTask = {
+      id: crypto.randomUUID(),
+      title,
+      status: "Not Started",
+      priority: "Medium",
+      completed: false,
+      parentId: null,
+      collapsed: false,
+      createdDate: today,
+      lastModifiedDate: today,
+      startDate: today,
+    };
+
+    if (overrides) Object.assign(task, overrides);
+
+    // Insert directly at the requested position
+    const clampedIndex = Math.max(0, Math.min(index, this.tasks.length));
+    this.tasks.splice(clampedIndex, 0, task);
+    this.updateProjectTimestamp();
+    await this.save(); // save + emit once
 
     // Sync to markdown if enabled
     if (this.plugin.settings.enableMarkdownSync && this.plugin.settings.autoCreateTaskNotes) {
@@ -278,7 +328,21 @@ export class TaskStore {
   }
 
   async updateTask(id: string, partial: Partial<PlannerTask>): Promise<void> {
-    const task = this.tasks.find((t) => t.id === id);
+    let task = this.tasks.find((t) => t.id === id);
+    let crossProjectId: string | null = null;
+
+    // If not in the active project, search all projects (needed by MyDayView
+    // which aggregates tasks across every project).
+    if (!task) {
+      for (const [projId, projTasks] of Object.entries(this.tasksByProject)) {
+        task = projTasks.find((t) => t.id === id);
+        if (task) {
+          crossProjectId = projId;
+          break;
+        }
+      }
+    }
+
     if (!task) return;
 
     // Track old title for file rename detection
@@ -339,39 +403,49 @@ export class TaskStore {
     // Set last modified timestamp
     partial.lastModifiedDate = getTodayDate();
 
+    // Object.assign mutates the task in-place. For cross-project tasks
+    // this correctly modifies the reference inside tasksByProject[crossProjectId].
     Object.assign(task, partial);
     this.updateProjectTimestamp();
     // Persist without emitting — cascade/rollup may trigger additional saves.
     // We emit exactly once at the very end to avoid N full DOM rebuilds.
     await this.saveQuietly();
 
+    // Resolve the project ID the task actually belongs to
+    const effectiveProjectId = crossProjectId ?? this.activeProjectId;
+
     // Sync to markdown if enabled
     if (this.plugin.settings.enableMarkdownSync && this.plugin.settings.autoCreateTaskNotes) {
       try {
         // If title changed, delete old file and create new one
         if (titleChanged) {
-          await this.plugin.taskSync.handleTaskRename(task, oldTitle, this.activeProjectId);
+          await this.plugin.taskSync.handleTaskRename(task, oldTitle, effectiveProjectId);
         } else {
-          await this.plugin.taskSync.syncTaskToMarkdown(task, this.activeProjectId);
+          await this.plugin.taskSync.syncTaskToMarkdown(task, effectiveProjectId);
         }
       } catch (error) {
         console.error("Failed to sync task to markdown:", error);
       }
     }
 
-    // Dependency-driven auto-scheduling: cascade date changes to dependent tasks
-    if (this.plugin.settings.enableDependencyScheduling) {
-      const datesChanged =
-        (partial.startDate !== undefined && task.startDate !== oldStartDate) ||
-        (partial.dueDate !== undefined && task.dueDate !== oldDueDate);
-      if (datesChanged) {
-        await this.cascadeDependencyDates(task.id, new Set());
+    // Cascade & roll-up only apply within the active project's task array.
+    // Cross-project updates skip these — the task's dependents and parent
+    // live in its own project and will cascade when that project is active.
+    if (!crossProjectId) {
+      // Dependency-driven auto-scheduling: cascade date changes to dependent tasks
+      if (this.plugin.settings.enableDependencyScheduling) {
+        const datesChanged =
+          (partial.startDate !== undefined && task.startDate !== oldStartDate) ||
+          (partial.dueDate !== undefined && task.dueDate !== oldDueDate);
+        if (datesChanged) {
+          await this.cascadeDependencyDates(task.id, new Set());
+        }
       }
-    }
 
-    // Parent task roll-up: recalculate parent's dates, effort, and % complete
-    if (this.plugin.settings.enableParentRollUp && task.parentId) {
-      await this.rollUpParentFields(task.parentId);
+      // Parent task roll-up: recalculate parent's dates, effort, and % complete
+      if (this.plugin.settings.enableParentRollUp && task.parentId) {
+        await this.rollUpParentFields(task.parentId);
+      }
     }
 
     // Single emit after ALL work is done — views render once with final data
@@ -422,6 +496,16 @@ export class TaskStore {
       totalCompleted += child.effortCompleted ?? 0;
       totalRemaining += child.effortRemaining ?? 0;
     }
+
+    // --- Cost roll-up: sum of children's estimated and actual costs ---
+    const project = this.plugin.settings.projects?.find(p => p.id === this.activeProjectId);
+    let totalCostEstimate = 0;
+    let totalCostActual = 0;
+    for (const child of children) {
+      totalCostEstimate += getTaskEstimatedCost(child, project);
+      totalCostActual += getTaskActualCost(child, project);
+    }
+    const anyCostData = totalCostEstimate > 0 || totalCostActual > 0;
 
     // --- % Complete roll-up: duration-weighted average ---
     let weightedPct = 0;
@@ -481,6 +565,22 @@ export class TaskStore {
     if (rolledPct !== (parent.percentComplete ?? 0)) {
       changes.percentComplete = rolledPct;
       changed = true;
+    }
+    // Cost roll-up
+    if (anyCostData) {
+      if (totalCostEstimate !== (parent.costEstimate ?? 0)) {
+        changes.costEstimate = totalCostEstimate;
+        changed = true;
+      }
+      if (totalCostActual !== (parent.costActual ?? 0)) {
+        changes.costActual = totalCostActual;
+        changed = true;
+      }
+      // Mark parent as fixed cost type so rolled values display correctly
+      if (parent.costType !== "fixed") {
+        changes.costType = "fixed" as const;
+        changed = true;
+      }
     }
     if (newStatus !== undefined && newStatus !== parent.status) {
       changes.status = newStatus;

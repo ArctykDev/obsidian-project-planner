@@ -31,6 +31,7 @@ export class BoardView extends ItemView {
     // Render guard: prevents overlapping async renders that corrupt scroll state
     private isRendering = false;
     private renderPending = false;
+    private renderVersion = 0; // Monotonic counter — only the latest render restores scroll
 
     constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
         super(leaf);
@@ -148,10 +149,12 @@ export class BoardView extends ItemView {
 
     private async renderImpl() {
         const container = this.containerEl;
+        const thisRender = ++this.renderVersion;
 
-        // Save scroll positions before clearing
+        // Save scroll positions before clearing — only if we haven't already
+        // captured them (a rapid re-render would read 0 from a freshly-built DOM).
         const existingBoard = container.querySelector('.planner-board-container') as HTMLElement;
-        if (existingBoard) {
+        if (existingBoard && this.savedBoardScrollLeft === null) {
             this.savedBoardScrollLeft = existingBoard.scrollLeft;
             this.savedColumnScrollTops.clear();
             existingBoard.querySelectorAll('.planner-board-column-content').forEach((col: Element) => {
@@ -244,15 +247,17 @@ export class BoardView extends ItemView {
 
         // Restore scroll positions after board is rendered.
         // Use double-rAF so the browser has completed layout before we set scroll.
+        // Only the LATEST render's callback fires — stale renders are skipped.
         if (this.savedBoardScrollLeft !== null || this.savedColumnScrollTops.size > 0) {
             const scrollLeft = this.savedBoardScrollLeft;
             const columnScrolls = new Map(this.savedColumnScrollTops);
-            // Clear immediately so a queued re-render doesn't clobber with stale 0s
+            // Clear saved values so a queued re-render doesn't read stale 0s
             this.savedBoardScrollLeft = null;
             this.savedColumnScrollTops.clear();
 
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
+                    if (this.renderVersion !== thisRender) return; // stale render — skip
                     const boardEl = container.querySelector('.planner-board-container') as HTMLElement;
                     if (boardEl && scrollLeft !== null) {
                         boardEl.scrollLeft = scrollLeft;
@@ -538,7 +543,11 @@ export class BoardView extends ItemView {
         checkbox.checked = task.completed;
         checkbox.onclick = async (e) => {
             e.stopPropagation(); // Prevent opening details
-            await this.taskStore.updateTask(task.id, { completed: !task.completed });
+            const isDone = !task.completed;
+            await this.taskStore.updateTask(task.id, {
+                completed: isDone,
+                status: isDone ? "Completed" : "Not Started",
+            });
             // No explicit render() — TaskStore.save() → emit() already re-renders via subscription
         };
 
@@ -1272,7 +1281,8 @@ export class BoardView extends ItemView {
 
             // Reorder buckets array
             const [draggedBucket] = this.buckets.splice(draggedIndex, 1);
-            this.buckets.splice(targetIndex, 0, draggedBucket);
+            const adjustedTarget = draggedIndex < targetIndex ? targetIndex - 1 : targetIndex;
+            this.buckets.splice(adjustedTarget, 0, draggedBucket);
 
             // Save new order and re-render
             await this.saveBuckets();

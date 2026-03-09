@@ -1,7 +1,7 @@
 import type ProjectPlannerPlugin from "../main";
 import { App, setIcon } from "obsidian";
 
-type ActiveView = "grid" | "board" | "graph" | "gantt" | "dashboard";
+type ActiveView = "grid" | "board" | "graph" | "gantt" | "dashboard" | "myday";
 
 export interface HeaderOptions {
     active: ActiveView;
@@ -89,6 +89,13 @@ export function renderPlannerHeader(
     });
     setIcon(graphViewBtn, "git-fork");
     graphViewBtn.onclick = async () => await plugin.openDependencyGraph();
+
+    const myDayBtn = viewSwitcher.createEl("button", {
+        cls: `planner-view-btn${options.active === "myday" ? " planner-view-btn-active" : ""}`,
+        title: "My Tasks",
+    });
+    setIcon(myDayBtn, "sun");
+    myDayBtn.onclick = async () => await plugin.activateMyDayView();
 
     // Header actions (Add task, extra, Project Hub, Settings)
     const headerActions = header.createDiv("planner-header-actions");

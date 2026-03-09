@@ -2,6 +2,7 @@ import { ItemView, WorkspaceLeaf, setIcon } from "obsidian";
 import type ProjectPlannerPlugin from "../main";
 import type { PlannerTask } from "../types";
 import { renderPlannerHeader } from "./Header";
+import { getProjectCostSummary, formatCurrency, getCostBreakdown } from "../utils/costUtils";
 
 export const VIEW_TYPE_DASHBOARD = "project-planner-dashboard-view";
 
@@ -24,6 +25,13 @@ interface ProjectStats {
     totalEffortRemaining: number;
     totalEffort: number;
     averagePercentComplete: number;
+    // Cost tracking
+    budgetTotal: number;
+    totalEstimatedCost: number;
+    totalActualCost: number;
+    budgetRemaining: number;
+    budgetUsedPercent: number;
+    overBudgetTaskCount: number;
 }
 
 export class DashboardView extends ItemView {
@@ -31,6 +39,9 @@ export class DashboardView extends ItemView {
     private unsubscribe: (() => void) | null = null;
     private showAllProjects: boolean = false;
     private savedScrollTop: number | null = null;
+    private activeModal: HTMLElement | null = null;
+    private activeOverlay: HTMLElement | null = null;
+    private renderVersion = 0;
 
     constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
         super(leaf);
@@ -56,11 +67,24 @@ export class DashboardView extends ItemView {
     }
 
     async onClose() {
+        this.dismissModal();
         this.containerEl.empty();
         if (this.unsubscribe) {
             this.unsubscribe();
             this.unsubscribe = null;
         }
+    }
+
+    /** Remove modal + overlay from document.body if present. */
+    private dismissModal() {
+        if (this.activeModal && this.activeModal.parentNode) {
+            this.activeModal.parentNode.removeChild(this.activeModal);
+        }
+        if (this.activeOverlay && this.activeOverlay.parentNode) {
+            this.activeOverlay.parentNode.removeChild(this.activeOverlay);
+        }
+        this.activeModal = null;
+        this.activeOverlay = null;
     }
 
     private calculateProjectStats(projectId: string, projectName: string, tasks: PlannerTask[]): ProjectStats {
@@ -110,6 +134,10 @@ export class DashboardView extends ItemView {
             ? Math.round(leafTasks.reduce((sum, t) => sum + (t.percentComplete ?? 0), 0) / leafTasks.length)
             : 0;
 
+        // Cost metrics
+        const project = this.plugin.settings.projects?.find(p => p.id === projectId);
+        const costSummary = getProjectCostSummary(tasks, project);
+
         return {
             projectId,
             projectName,
@@ -128,7 +156,13 @@ export class DashboardView extends ItemView {
             totalEffortCompleted,
             totalEffortRemaining,
             totalEffort,
-            averagePercentComplete
+            averagePercentComplete,
+            budgetTotal: costSummary.budgetTotal,
+            totalEstimatedCost: costSummary.totalEstimated,
+            totalActualCost: costSummary.totalActual,
+            budgetRemaining: costSummary.budgetRemaining,
+            budgetUsedPercent: costSummary.budgetUsedPercent,
+            overBudgetTaskCount: costSummary.overBudgetTasks.length,
         };
     }
 
@@ -174,15 +208,28 @@ export class DashboardView extends ItemView {
     }
 
     private showTaskListModal(title: string, tasks: PlannerTask[]) {
+        // Dismiss any existing modal first
+        this.dismissModal();
+
         const modal = document.createElement("div");
         modal.className = "dashboard-task-modal";
 
         const overlay = document.createElement("div");
         overlay.className = "dashboard-task-modal-overlay";
-        overlay.onclick = () => {
-            document.body.removeChild(modal);
-            document.body.removeChild(overlay);
+        overlay.onclick = () => this.dismissModal();
+
+        // Track so we can clean up on view close
+        this.activeModal = modal;
+        this.activeOverlay = overlay;
+
+        // Escape key dismisses the modal
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                this.dismissModal();
+                document.removeEventListener("keydown", onKeyDown);
+            }
         };
+        document.addEventListener("keydown", onKeyDown);
 
         const content = modal.createDiv("dashboard-task-modal-content");
 
@@ -196,10 +243,7 @@ export class DashboardView extends ItemView {
         const closeIcon = closeBtn.createSpan({ cls: "dashboard-task-modal-close-icon" });
         setIcon(closeIcon, "x");
 
-        closeBtn.onclick = () => {
-            document.body.removeChild(modal);
-            document.body.removeChild(overlay);
-        };
+        closeBtn.onclick = () => this.dismissModal();
 
         // Task list
         const taskList = content.createDiv("dashboard-task-modal-list");
@@ -270,8 +314,7 @@ export class DashboardView extends ItemView {
 
                 // Click to open task detail
                 taskItem.onclick = () => {
-                    document.body.removeChild(modal);
-                    document.body.removeChild(overlay);
+                    this.dismissModal();
                     this.plugin.openTaskDetail(task);
                 };
             });
@@ -452,10 +495,280 @@ export class DashboardView extends ItemView {
                 effortGrid, "Avg % Complete", `${stats.averagePercentComplete}%`, "percent", "#0a84ff"
             );
         }
+
+        // Cost / Budget section (show if any tasks have cost data or budget is set)
+        const hasCostData = stats.totalEstimatedCost > 0 || stats.totalActualCost > 0 || stats.budgetTotal > 0;
+        if (hasCostData) {
+            const activeProj = this.plugin.settings.projects?.find(p => p.id === stats.projectId);
+            const currency = activeProj?.currencySymbol || "$";
+
+            const costSection = projectCard.createDiv("dashboard-section");
+            costSection.createEl("h3", { text: "Budget & Cost" });
+
+            // Budget progress bar (if budget is set)
+            if (stats.budgetTotal > 0) {
+                this.renderBudgetProgressBar(costSection, stats.budgetUsedPercent, currency, stats.totalActualCost, stats.budgetTotal);
+            }
+
+            const costGrid = projectCard.createDiv("dashboard-kpi-grid");
+
+            if (stats.budgetTotal > 0) {
+                this.renderKPICard(
+                    costGrid, "Budget", formatCurrency(stats.budgetTotal, currency), "wallet", "#6366f1"
+                );
+            }
+            this.renderKPICard(
+                costGrid, "Estimated", formatCurrency(stats.totalEstimatedCost, currency), "calculator", "#0a84ff"
+            );
+            this.renderKPICard(
+                costGrid, "Actual", formatCurrency(stats.totalActualCost, currency), "receipt", "#2f9e44"
+            );
+            if (stats.budgetTotal > 0) {
+                const remainingColor = stats.budgetRemaining < 0 ? "#d70022" : "#2f9e44";
+                this.renderKPICard(
+                    costGrid, "Remaining", formatCurrency(stats.budgetRemaining, currency), "piggy-bank", remainingColor
+                );
+            }
+            if (stats.overBudgetTaskCount > 0) {
+                const overBudgetTasks = allTasks.filter(t => {
+                    if (!t.costType) return false;
+                    const est = t.costType === "hourly"
+                        ? ((t.effortCompleted ?? 0) + (t.effortRemaining ?? 0)) * (t.hourlyRate ?? activeProj?.defaultHourlyRate ?? 0)
+                        : (t.costEstimate ?? 0);
+                    const act = t.costType === "hourly"
+                        ? (t.effortCompleted ?? 0) * (t.hourlyRate ?? activeProj?.defaultHourlyRate ?? 0)
+                        : (t.costActual ?? 0);
+                    return est > 0 && act > est;
+                });
+                this.renderKPICard(
+                    costGrid, "Over Budget", stats.overBudgetTaskCount, "alert-triangle", "#d70022",
+                    () => this.showTaskListModal("Over-Budget Tasks", overBudgetTasks)
+                );
+            }
+
+            // "View Cost Report" button
+            const reportBtn = costSection.createEl("button", {
+                text: "View Cost Report",
+                cls: "dashboard-cost-report-btn"
+            });
+            reportBtn.onclick = () => this.showCostReportModal(stats.projectId, allTasks);
+        }
+    }
+
+    private renderBudgetProgressBar(
+        container: HTMLElement,
+        percentage: number,
+        currency: string,
+        actual: number,
+        total: number
+    ) {
+        const barContainer = container.createDiv("dashboard-progress-container dashboard-budget-bar");
+        const bar = barContainer.createDiv("dashboard-progress-bar");
+        const fill = bar.createDiv("dashboard-progress-fill");
+        const clamped = Math.min(100, Math.max(0, percentage));
+        fill.style.width = `${clamped}%`;
+
+        // Color thresholds: green < 75%, yellow 75-90%, red > 90%
+        if (percentage > 90) fill.style.backgroundColor = "#d70022";
+        else if (percentage > 75) fill.style.backgroundColor = "#f59e0b";
+        else fill.style.backgroundColor = "#2f9e44";
+
+        const label = barContainer.createDiv("dashboard-progress-label");
+        label.textContent = `${formatCurrency(actual, currency)} / ${formatCurrency(total, currency)} (${percentage}%)`;
+    }
+
+    private showCostReportModal(projectId: string, tasks: PlannerTask[]) {
+        this.dismissModal();
+
+        const project = this.plugin.settings.projects?.find(p => p.id === projectId);
+        const currency = project?.currencySymbol || "$";
+        const buckets = project?.buckets || [];
+
+        const modal = document.createElement("div");
+        modal.className = "dashboard-task-modal dashboard-cost-report-modal";
+
+        const overlay = document.createElement("div");
+        overlay.className = "dashboard-task-modal-overlay";
+        overlay.onclick = () => this.dismissModal();
+
+        this.activeModal = modal;
+        this.activeOverlay = overlay;
+
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                this.dismissModal();
+                document.removeEventListener("keydown", onKeyDown);
+            }
+        };
+        document.addEventListener("keydown", onKeyDown);
+
+        const content = modal.createDiv("dashboard-task-modal-content dashboard-cost-report-content");
+
+        // Header
+        const header = content.createDiv("dashboard-task-modal-header");
+        header.createEl("h3", { text: "Cost Report" });
+        const closeBtn = header.createEl("button", { cls: "dashboard-task-modal-close" });
+        const closeIcon = closeBtn.createSpan({ cls: "dashboard-task-modal-close-icon" });
+        setIcon(closeIcon, "x");
+        closeBtn.onclick = () => this.dismissModal();
+
+        // Tab bar
+        const tabBar = content.createDiv("dashboard-cost-report-tabs");
+        const tabBody = content.createDiv("dashboard-cost-report-body");
+
+        type TabKey = "bucket" | "status" | "priority" | "overbudget";
+        let activeTab: TabKey = "bucket";
+
+        const renderTab = (tab: TabKey) => {
+            activeTab = tab;
+            tabBar.querySelectorAll(".dashboard-cost-tab").forEach(el => el.removeClass("active"));
+            tabBar.querySelector(`[data-tab="${tab}"]`)?.addClass("active");
+            tabBody.empty();
+
+            if (tab === "overbudget") {
+                this.renderOverBudgetList(tabBody, tasks, project, currency);
+            } else {
+                const groupFn = tab === "bucket"
+                    ? (t: PlannerTask) => {
+                        const b = buckets.find(bk => bk.id === t.bucketId);
+                        return b ? b.name : "Unassigned";
+                    }
+                    : tab === "status"
+                        ? (t: PlannerTask) => t.status || "No Status"
+                        : (t: PlannerTask) => t.priority || "No Priority";
+
+                const rows = getCostBreakdown(tasks, groupFn, project);
+                this.renderCostBreakdownTable(tabBody, rows, currency);
+            }
+        };
+
+        const tabs: { key: TabKey; label: string }[] = [
+            { key: "bucket", label: "By Bucket" },
+            { key: "status", label: "By Status" },
+            { key: "priority", label: "By Priority" },
+            { key: "overbudget", label: "Over Budget" },
+        ];
+
+        tabs.forEach(t => {
+            const btn = tabBar.createEl("button", {
+                text: t.label,
+                cls: "dashboard-cost-tab",
+                attr: { "data-tab": t.key },
+            });
+            if (t.key === activeTab) btn.addClass("active");
+            btn.onclick = () => renderTab(t.key);
+        });
+
+        renderTab(activeTab);
+
+        document.body.appendChild(overlay);
+        document.body.appendChild(modal);
+    }
+
+    private renderCostBreakdownTable(
+        container: HTMLElement,
+        rows: { label: string; estimated: number; actual: number; variance: number; taskCount: number }[],
+        currency: string
+    ) {
+        if (rows.length === 0) {
+            container.createDiv({ text: "No cost data available.", cls: "dashboard-task-modal-empty" });
+            return;
+        }
+
+        const table = container.createEl("table", { cls: "dashboard-cost-table" });
+        const thead = table.createEl("thead");
+        const headerRow = thead.createEl("tr");
+        ["Group", "Tasks", "Estimated", "Actual", "Variance"].forEach(h =>
+            headerRow.createEl("th", { text: h })
+        );
+
+        const tbody = table.createEl("tbody");
+
+        let totalEst = 0, totalAct = 0, totalVar = 0, totalCount = 0;
+
+        rows.forEach(row => {
+            const tr = tbody.createEl("tr");
+            tr.createEl("td", { text: row.label });
+            tr.createEl("td", { text: String(row.taskCount), cls: "dashboard-cost-num" });
+            tr.createEl("td", { text: formatCurrency(row.estimated, currency), cls: "dashboard-cost-num" });
+            tr.createEl("td", { text: formatCurrency(row.actual, currency), cls: "dashboard-cost-num" });
+
+            const varCell = tr.createEl("td", { cls: "dashboard-cost-num" });
+            varCell.textContent = formatCurrency(row.variance, currency);
+            if (row.variance < 0) varCell.classList.add("planner-cost-over-budget");
+            else if (row.variance > 0) varCell.classList.add("planner-cost-under-budget");
+
+            totalEst += row.estimated;
+            totalAct += row.actual;
+            totalVar += row.variance;
+            totalCount += row.taskCount;
+        });
+
+        // Totals row
+        const tfoot = table.createEl("tfoot");
+        const footRow = tfoot.createEl("tr");
+        footRow.createEl("td", { text: "Total", cls: "dashboard-cost-total-label" });
+        footRow.createEl("td", { text: String(totalCount), cls: "dashboard-cost-num" });
+        footRow.createEl("td", { text: formatCurrency(totalEst, currency), cls: "dashboard-cost-num" });
+        footRow.createEl("td", { text: formatCurrency(totalAct, currency), cls: "dashboard-cost-num" });
+        const totalVarCell = footRow.createEl("td", { cls: "dashboard-cost-num" });
+        totalVarCell.textContent = formatCurrency(totalVar, currency);
+        if (totalVar < 0) totalVarCell.classList.add("planner-cost-over-budget");
+        else if (totalVar > 0) totalVarCell.classList.add("planner-cost-under-budget");
+    }
+
+    private renderOverBudgetList(
+        container: HTMLElement,
+        tasks: PlannerTask[],
+        project: { defaultHourlyRate?: number; currencySymbol?: string } | undefined,
+        currency: string
+    ) {
+        const overBudget = tasks.filter(t => {
+            if (!t.costType) return false;
+            const rate = t.hourlyRate ?? project?.defaultHourlyRate ?? 0;
+            const est = t.costType === "hourly"
+                ? ((t.effortCompleted ?? 0) + (t.effortRemaining ?? 0)) * rate
+                : (t.costEstimate ?? 0);
+            const act = t.costType === "hourly"
+                ? (t.effortCompleted ?? 0) * rate
+                : (t.costActual ?? 0);
+            return est > 0 && act > est;
+        });
+
+        if (overBudget.length === 0) {
+            container.createDiv({ text: "No tasks are over budget.", cls: "dashboard-task-modal-empty" });
+            return;
+        }
+
+        overBudget.forEach(task => {
+            const item = container.createDiv("dashboard-task-modal-item");
+
+            const titleEl = item.createDiv({ text: task.title, cls: "dashboard-task-modal-title" });
+
+            const meta = item.createDiv("dashboard-task-modal-meta");
+            const rate = task.hourlyRate ?? project?.defaultHourlyRate ?? 0;
+            const est = task.costType === "hourly"
+                ? ((task.effortCompleted ?? 0) + (task.effortRemaining ?? 0)) * rate
+                : (task.costEstimate ?? 0);
+            const act = task.costType === "hourly"
+                ? (task.effortCompleted ?? 0) * rate
+                : (task.costActual ?? 0);
+            const diff = act - est;
+
+            meta.createSpan({ text: `Est: ${formatCurrency(est, currency)}`, cls: "dashboard-cost-meta" });
+            meta.createSpan({ text: `Act: ${formatCurrency(act, currency)}`, cls: "dashboard-cost-meta" });
+            meta.createSpan({ text: `Over: ${formatCurrency(diff, currency)}`, cls: "dashboard-cost-meta planner-cost-over-budget" });
+
+            item.onclick = () => {
+                this.dismissModal();
+                this.plugin.openTaskDetail(task);
+            };
+        });
     }
 
     render() {
         const container = this.containerEl;
+        const thisRender = ++this.renderVersion;
 
         // Save scroll position before clearing
         const existingWrapper = container.querySelector('.dashboard-wrapper') as HTMLElement;
@@ -496,6 +809,7 @@ export class DashboardView extends ItemView {
             const scrollPos = this.savedScrollTop;
             this.savedScrollTop = null;
             requestAnimationFrame(() => {
+                if (thisRender !== this.renderVersion) return;
                 wrapper.scrollTop = scrollPos;
             });
         }

@@ -12,6 +12,7 @@ import { TaskDetailView, VIEW_TYPE_TASK_DETAIL } from "./ui/TaskDetailView";
 import { DependencyGraphView, VIEW_TYPE_DEPENDENCY_GRAPH } from "./ui/DependencyGraphView";
 import { VIEW_TYPE_GANTT, GanttView } from "./ui/GanttView";
 import { DashboardView, VIEW_TYPE_DASHBOARD } from "./ui/DashboardView";
+import { MyDayView, VIEW_TYPE_MY_DAY } from "./ui/MyDayView";
 
 import { TaskStore } from "./stores/taskStore";
 import { TaskSync } from "./utils/TaskSync";
@@ -134,6 +135,12 @@ export default class ProjectPlannerPlugin extends Plugin {
       (leaf: WorkspaceLeaf) => new DashboardView(leaf, this)
     );
 
+    // Register My Tasks View
+    this.registerView(
+      VIEW_TYPE_MY_DAY,
+      (leaf: WorkspaceLeaf) => new MyDayView(leaf, this)
+    );
+
     // Command palette entry
     this.addCommand({
       id: "open-project-planner",
@@ -167,6 +174,13 @@ export default class ProjectPlannerPlugin extends Plugin {
       id: "open-dashboard-view",
       name: "Open Dashboard",
       callback: async () => await this.activateDashboardView(),
+    });
+
+    // Command: Open My Tasks
+    this.addCommand({
+      id: "open-my-day-view",
+      name: "Open My Tasks",
+      callback: async () => await this.activateMyDayView(),
     });
 
     // Command: Scan Daily Notes
@@ -329,6 +343,28 @@ export default class ProjectPlannerPlugin extends Plugin {
   }
 
   // ---------------------------------------------------------------------------
+  // Open MY TASKS view (center workspace)
+  // ---------------------------------------------------------------------------
+  async activateMyDayView(forceNewTab = false): Promise<WorkspaceLeaf> {
+    const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
+    let leaf: WorkspaceLeaf;
+
+    if (openInNewTab) {
+      leaf = this.app.workspace.getLeaf('tab');
+    } else {
+      leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf(true);
+    }
+
+    await leaf.setViewState({
+      type: VIEW_TYPE_MY_DAY,
+      active: true,
+    });
+
+    this.app.workspace.revealLeaf(leaf);
+    return leaf;
+  }
+
+  // ---------------------------------------------------------------------------
   // Open Task Detail Panel (RIGHT-SIDE split)
   // ---------------------------------------------------------------------------
   async openTaskDetail(task: PlannerTask) {
@@ -454,7 +490,14 @@ export default class ProjectPlannerPlugin extends Plugin {
   }
 
   async saveSettings() {
-    const raw = ((await this.loadData()) || {}) as ProjectPlannerData;
+    // Use TaskStore's cached data when available to avoid overwriting
+    // in-flight task changes with a stale disk read (race condition).
+    let raw: ProjectPlannerData;
+    if (this.taskStore?.getCachedRawData()) {
+      raw = this.taskStore.getCachedRawData() as ProjectPlannerData;
+    } else {
+      raw = ((await this.loadData()) || {}) as ProjectPlannerData;
+    }
 
     // Save ONLY under .settings — Preserve ALL other keys (tasksByProject, etc.)
     raw.settings = this.settings;
@@ -526,7 +569,10 @@ export default class ProjectPlannerPlugin extends Plugin {
 
     if (!activeProject) return;
 
-    const folderPath = `${activeProject.name}/Tasks`;
+    const basePath = this.settings.projectsBasePath;
+    const folderPath = basePath
+      ? `${basePath}/${activeProject.name}/Tasks`
+      : `${activeProject.name}/Tasks`;
 
     // Ensure folder exists
     const folder = this.app.vault.getAbstractFileByPath(folderPath);
