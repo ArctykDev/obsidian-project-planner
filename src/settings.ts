@@ -82,6 +82,11 @@ export interface PlannerProject {
   buckets?: BoardBucket[]; // Board view buckets
   unassignedBucketName?: string; // Custom name for unassigned bucket
   completedSectionsCollapsed?: { [bucketId: string]: boolean }; // Track collapsed state per bucket
+
+  // Cost tracking
+  budgetTotal?: number; // Total project budget
+  defaultHourlyRate?: number; // Default $/hr for hourly cost tasks
+  currencySymbol?: string; // Display symbol (default "$")
 }
 
 export interface ProjectPlannerSettings {
@@ -258,6 +263,56 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
             });
         });
     });
+
+    // -----------------------------------------------------------------
+    // Cost Tracking — per-project budget, rate, and currency settings
+    // -----------------------------------------------------------------
+    const activeProject = this.plugin.settings.projects.find(
+      p => p.id === this.plugin.settings.activeProjectId
+    );
+
+    if (activeProject) {
+      containerEl.createEl("h3", { text: `Cost Tracking — ${activeProject.name}` });
+
+      new Setting(containerEl)
+        .setName("Total Budget")
+        .setDesc("Total budget for this project. Shown on the Dashboard cost card.")
+        .addText((text) => {
+          text
+            .setPlaceholder("0")
+            .setValue(activeProject.budgetTotal != null ? String(activeProject.budgetTotal) : "")
+            .onChange(async (value) => {
+              activeProject.budgetTotal = parseFloat(value) || undefined;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      new Setting(containerEl)
+        .setName("Default Hourly Rate")
+        .setDesc("Applied to tasks with cost type 'Hourly' when no per-task rate is set.")
+        .addText((text) => {
+          text
+            .setPlaceholder("0")
+            .setValue(activeProject.defaultHourlyRate != null ? String(activeProject.defaultHourlyRate) : "")
+            .onChange(async (value) => {
+              activeProject.defaultHourlyRate = parseFloat(value) || undefined;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      new Setting(containerEl)
+        .setName("Currency Symbol")
+        .setDesc("Display symbol for currency (e.g. $, €, £).")
+        .addText((text) => {
+          text
+            .setPlaceholder("$")
+            .setValue(activeProject.currencySymbol || "")
+            .onChange(async (value) => {
+              activeProject.currencySymbol = value.trim() || undefined;
+              await this.plugin.saveSettings();
+            });
+        });
+    }
 
     new Setting(containerEl)
       .setName("Default view")

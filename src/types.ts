@@ -85,4 +85,10 @@ export interface PlannerTask {
   effortCompleted?: number; // Completed hours
   effortRemaining?: number; // Remaining hours
   percentComplete?: number; // 0–100 completion percentage
+
+  // Cost tracking
+  costEstimate?: number; // Planned/budgeted cost for this task
+  costActual?: number; // Actual cost incurred so far
+  costType?: "fixed" | "hourly"; // Fixed amount or derived from effort × rate
+  hourlyRate?: number; // Per-task rate override (uses project default if omitted)
 }

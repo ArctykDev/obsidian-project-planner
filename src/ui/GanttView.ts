@@ -21,6 +21,7 @@ export class GanttView extends ItemView {
     private dragTargetTaskId: string | null = null;
     private dragInsertAfter: boolean = false;
     private activeDragCleanup: (() => void) | null = null;
+    private activeResizerCleanup: (() => void) | null = null;
 
     // Filters
     private currentFilters = {
@@ -123,7 +124,11 @@ export class GanttView extends ItemView {
     }
 
     private toISODate(ms: number): string {
-        return new Date(ms).toISOString().split("T")[0];
+        const d = new Date(ms);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
     }
 
     private async updateTaskDates(taskId: string, startMs: number, endMs: number) {
@@ -1085,6 +1090,8 @@ export class GanttView extends ItemView {
         this.attachResizerHandlers(resizer, layout);
 
         // Synchronize vertical scrolling between left and right columns
+        // Use requestAnimationFrame to reset the guard flag, ensuring the
+        // reciprocal scroll event fires before the flag clears.
         let isLeftScrolling = false;
         let isRightScrolling = false;
 
@@ -1092,7 +1099,7 @@ export class GanttView extends ItemView {
             if (!isLeftScrolling) {
                 isRightScrolling = true;
                 rightColWrap.scrollTop = leftCol.scrollTop;
-                setTimeout(() => { isRightScrolling = false; }, 10);
+                requestAnimationFrame(() => { isRightScrolling = false; });
             }
         });
 
@@ -1100,7 +1107,7 @@ export class GanttView extends ItemView {
             if (!isRightScrolling) {
                 isLeftScrolling = true;
                 leftCol.scrollTop = rightColWrap.scrollTop;
-                setTimeout(() => { isLeftScrolling = false; }, 10);
+                requestAnimationFrame(() => { isLeftScrolling = false; });
             }
         });
 
@@ -1254,8 +1261,9 @@ export class GanttView extends ItemView {
             checkbox.style.marginRight = "8px";
             checkbox.onclick = async (e) => {
                 e.stopPropagation();
-                const newStatus = t.status === "Completed" ? "Not Started" : "Completed";
-                await this.plugin.taskStore.updateTask(t.id, { status: newStatus });
+                const isDone = t.status !== "Completed";
+                const newStatus = isDone ? "Completed" : "Not Started";
+                await this.plugin.taskStore.updateTask(t.id, { status: newStatus, completed: isDone });
             };
 
             this.attachInlineTitle(rowLeft, t, vt.hasChildren);
@@ -1508,6 +1516,12 @@ export class GanttView extends ItemView {
     }
 
     private attachResizerHandlers(resizer: HTMLElement, layout: HTMLElement) {
+        // Clean up listeners from previous render to prevent accumulation
+        if (this.activeResizerCleanup) {
+            this.activeResizerCleanup();
+            this.activeResizerCleanup = null;
+        }
+
         let isResizing = false;
         let startX = 0;
         let startWidth = 0;
@@ -1548,10 +1562,12 @@ export class GanttView extends ItemView {
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
 
-        // Cleanup on view close
-        this.register(() => {
+        // Store cleanup so it can be called on next render or view close
+        const cleanup = () => {
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
-        });
+        };
+        this.activeResizerCleanup = cleanup;
+        this.register(() => cleanup());
     }
 }

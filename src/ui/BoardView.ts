@@ -543,7 +543,11 @@ export class BoardView extends ItemView {
         checkbox.checked = task.completed;
         checkbox.onclick = async (e) => {
             e.stopPropagation(); // Prevent opening details
-            await this.taskStore.updateTask(task.id, { completed: !task.completed });
+            const isDone = !task.completed;
+            await this.taskStore.updateTask(task.id, {
+                completed: isDone,
+                status: isDone ? "Completed" : "Not Started",
+            });
             // No explicit render() — TaskStore.save() → emit() already re-renders via subscription
         };
 
@@ -1277,7 +1281,8 @@ export class BoardView extends ItemView {
 
             // Reorder buckets array
             const [draggedBucket] = this.buckets.splice(draggedIndex, 1);
-            this.buckets.splice(targetIndex, 0, draggedBucket);
+            const adjustedTarget = draggedIndex < targetIndex ? targetIndex - 1 : targetIndex;
+            this.buckets.splice(adjustedTarget, 0, draggedBucket);
 
             // Save new order and re-render
             await this.saveBuckets();

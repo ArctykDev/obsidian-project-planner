@@ -3,6 +3,7 @@ import type ProjectPlannerPlugin from "../main";
 import type { PlannerTask, TaskStatus } from "../types";
 import { TaskStore } from "../stores/taskStore";
 import { renderPlannerHeader } from "./Header";
+import { getTaskEstimatedCost, getTaskActualCost, formatCurrency } from "../utils/costUtils";
 
 export const GRID_VIEW_ICON = "layout-grid";
 
@@ -172,7 +173,7 @@ export class GridView extends ItemView {
               const visible = this.isColumnVisible(col.key);
               menu.addItem((item) => {
                 item.setTitle(col.label);
-                item.setIcon(visible ? "check-small" : "circle-small");
+                item.setChecked(visible);
                 item.onClick(() => this.toggleColumnVisibility(col.key));
               });
             });
@@ -441,7 +442,14 @@ export class GridView extends ItemView {
     // -----------------------------------------------------------------------
     // Build visible hierarchy (with filters)
     // -----------------------------------------------------------------------
-    const all = this.taskStore.getAll();
+    let all = this.taskStore.getAll();
+
+    // Filter out completed tasks if setting is disabled
+    const showCompleted = settings?.showCompleted ?? true;
+    if (!showCompleted) {
+      all = all.filter((t) => !t.completed);
+    }
+
     const matchesFilter = new Map<string, boolean>();
     const f = this.currentFilters;
 
@@ -868,7 +876,8 @@ export class GridView extends ItemView {
           const end = new Date(ep[0], ep[1] - 1, ep[2]);
           const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
           if (diffDays >= 0) {
-            durationText = diffDays === 1 ? "1 day" : `${diffDays} days`;
+            const inclusive = Math.max(1, diffDays);
+            durationText = inclusive === 1 ? "1 day" : `${inclusive} days`;
           } else {
             durationText = "Invalid";
           }
@@ -877,6 +886,40 @@ export class GridView extends ItemView {
         const cell = row.createEl("td", {
           cls: `planner-effort-cell planner-duration-cell${isRolledUp ? " planner-rolled-up" : ""}`,
           text: durationText
+        });
+        if (isRolledUp) cell.setAttribute("title", "Rolled up from subtasks");
+      },
+
+      costEstimate: () => {
+        const settings = this.plugin.settings;
+        const project = settings.projects?.find(p => p.id === settings.activeProjectId);
+        const currency = project?.currencySymbol || "$";
+        const isRolledUp = hasChildren && this.plugin.settings.enableParentRollUp;
+        const est = getTaskEstimatedCost(task, project);
+        if (!task.costType && !isRolledUp) {
+          row.createEl("td", { cls: "planner-effort-cell", text: "-" });
+          return;
+        }
+        const cell = row.createEl("td", {
+          cls: `planner-effort-cell planner-cost-cell${isRolledUp ? " planner-rolled-up" : ""}`,
+          text: est > 0 ? formatCurrency(est, currency) : "-"
+        });
+        if (isRolledUp) cell.setAttribute("title", "Rolled up from subtasks");
+      },
+
+      costActual: () => {
+        const settings = this.plugin.settings;
+        const project = settings.projects?.find(p => p.id === settings.activeProjectId);
+        const currency = project?.currencySymbol || "$";
+        const isRolledUp = hasChildren && this.plugin.settings.enableParentRollUp;
+        const act = getTaskActualCost(task, project);
+        if (!task.costType && !isRolledUp) {
+          row.createEl("td", { cls: "planner-effort-cell", text: "-" });
+          return;
+        }
+        const cell = row.createEl("td", {
+          cls: `planner-effort-cell planner-cost-cell${isRolledUp ? " planner-rolled-up" : ""}`,
+          text: act > 0 ? formatCurrency(act, currency) : "-"
         });
         if (isRolledUp) cell.setAttribute("title", "Rolled up from subtasks");
       },
@@ -1251,7 +1294,7 @@ export class GridView extends ItemView {
 
     const updateAutoScroll = (clientY: number) => {
       const viewportHeight = window.innerHeight;
-      const scrollContainer = this.containerEl.querySelector('.planner-grid-scroll-container') as HTMLElement;
+      const scrollContainer = this.containerEl.querySelector('.planner-grid-content') as HTMLElement;
 
       if (!scrollContainer) {
         if (autoScrollInterval !== null) {
@@ -1471,17 +1514,22 @@ export class GridView extends ItemView {
 
     const ids = tasks.map((t) => t.id);
 
+    // Recursive helper: collect all descendants (children, grandchildren, etc.)
+    const getAllDescendants = (taskId: string): string[] => {
+      const descendants: string[] = [];
+      const children = tasks.filter((t) => t.parentId === taskId);
+      for (const child of children) {
+        descendants.push(child.id);
+        descendants.push(...getAllDescendants(child.id));
+      }
+      return descendants;
+    };
+
     // Handle dropping onto a task (make it a child)
     if (dropOnto) {
-      // If dragging a parent task, move it with all its children
+      // If dragging a parent task, move it with all its descendants
       if (!dragTask.parentId) {
-        const blockIds: string[] = [];
-        blockIds.push(dragTask.id);
-        for (const t of tasks) {
-          if (t.parentId === dragTask.id) {
-            blockIds.push(t.id);
-          }
-        }
+        const blockIds: string[] = [dragTask.id, ...getAllDescendants(dragTask.id)];
         
         // Remove block from current position
         const firstIdx = ids.indexOf(blockIds[0]);
@@ -1519,15 +1567,9 @@ export class GridView extends ItemView {
       }
     }
 
-    // Parent drag: move parent + its children as a contiguous block
+    // Parent drag: move parent + all descendants as a contiguous block
     if (!dragTask.parentId) {
-      const blockIds: string[] = [];
-      blockIds.push(dragTask.id);
-      for (const t of tasks) {
-        if (t.parentId === dragTask.id) {
-          blockIds.push(t.id);
-        }
-      }
+      const blockIds: string[] = [dragTask.id, ...getAllDescendants(dragTask.id)];
 
       // If target is inside the same block, ignore
       if (blockIds.includes(targetTask.id)) return;
@@ -1548,12 +1590,12 @@ export class GridView extends ItemView {
         targetRootIndex = ids.length;
       }
 
-      // If inserting after, move index to after the entire target block
+      // If inserting after, move index to after the entire target block (including all descendants)
       if (insertAfter && targetRootIndex < ids.length) {
+        const targetDescendants = new Set(getAllDescendants(targetRootId));
         let endIndex = targetRootIndex;
         for (let i = targetRootIndex + 1; i < ids.length; i++) {
-          const t = tasks.find((task) => task.id === ids[i]);
-          if (t && t.parentId === targetRootId) {
+          if (targetDescendants.has(ids[i])) {
             endIndex = i;
           } else {
             break;
@@ -2033,6 +2075,8 @@ export class GridView extends ItemView {
       { key: "effortRemaining", label: "Effort Left", hideable: true, reorderable: true },
       { key: "effortTotal", label: "Effort Total", hideable: true, reorderable: true },
       { key: "duration", label: "Duration", hideable: true, reorderable: true },
+      { key: "costEstimate", label: "Est. Cost", hideable: true, reorderable: true },
+      { key: "costActual", label: "Actual Cost", hideable: true, reorderable: true },
     ];
     
     // Apply custom column order if available
@@ -2258,40 +2302,6 @@ export class GridView extends ItemView {
       this.saveGridViewSettings();
       this.render();
     };
-  }
-
-  // ---------------------------------------------------------------------------
-  // Sort indicators
-  // ---------------------------------------------------------------------------
-
-  private updateSortIndicators(
-    headerRow: HTMLTableRowElement,
-    columns: { key: string; label: string; sortable: boolean; sortKey?: SortKey }[]
-  ) {
-    const cells = Array.from(headerRow.children) as HTMLTableCellElement[];
-
-    for (let i = 0; i < columns.length; i++) {
-      const col = columns[i];
-      const th = cells[i];
-      const indicator = th.querySelector(
-        ".planner-sort-indicator"
-      ) as HTMLElement | null;
-
-      if (!indicator || !col.sortable || !col.sortKey) continue;
-
-      if (this.currentFilters.sortKey === col.sortKey) {
-        indicator.textContent =
-          this.currentFilters.sortDirection === "asc" ? "▲" : "▼";
-        indicator.style.opacity = "1";
-      } else if (this.secondarySortKeys.includes(col.sortKey)) {
-        // Secondary keys: subtle indicator
-        indicator.textContent = "▲";
-        indicator.style.opacity = "0.4";
-      } else {
-        indicator.textContent = "";
-        indicator.style.opacity = "0.2";
-      }
-    }
   }
 
   // ---------------------------------------------------------------------------

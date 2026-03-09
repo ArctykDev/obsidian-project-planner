@@ -12,6 +12,7 @@ import { TaskDetailView, VIEW_TYPE_TASK_DETAIL } from "./ui/TaskDetailView";
 import { DependencyGraphView, VIEW_TYPE_DEPENDENCY_GRAPH } from "./ui/DependencyGraphView";
 import { VIEW_TYPE_GANTT, GanttView } from "./ui/GanttView";
 import { DashboardView, VIEW_TYPE_DASHBOARD } from "./ui/DashboardView";
+import { MyDayView, VIEW_TYPE_MY_DAY } from "./ui/MyDayView";
 
 import { TaskStore } from "./stores/taskStore";
 import { TaskSync } from "./utils/TaskSync";
@@ -134,6 +135,12 @@ export default class ProjectPlannerPlugin extends Plugin {
       (leaf: WorkspaceLeaf) => new DashboardView(leaf, this)
     );
 
+    // Register My Tasks View
+    this.registerView(
+      VIEW_TYPE_MY_DAY,
+      (leaf: WorkspaceLeaf) => new MyDayView(leaf, this)
+    );
+
     // Command palette entry
     this.addCommand({
       id: "open-project-planner",
@@ -167,6 +174,13 @@ export default class ProjectPlannerPlugin extends Plugin {
       id: "open-dashboard-view",
       name: "Open Dashboard",
       callback: async () => await this.activateDashboardView(),
+    });
+
+    // Command: Open My Tasks
+    this.addCommand({
+      id: "open-my-day-view",
+      name: "Open My Tasks",
+      callback: async () => await this.activateMyDayView(),
     });
 
     // Command: Scan Daily Notes
@@ -321,6 +335,28 @@ export default class ProjectPlannerPlugin extends Plugin {
 
     await leaf.setViewState({
       type: VIEW_TYPE_GANTT,
+      active: true,
+    });
+
+    this.app.workspace.revealLeaf(leaf);
+    return leaf;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Open MY TASKS view (center workspace)
+  // ---------------------------------------------------------------------------
+  async activateMyDayView(forceNewTab = false): Promise<WorkspaceLeaf> {
+    const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
+    let leaf: WorkspaceLeaf;
+
+    if (openInNewTab) {
+      leaf = this.app.workspace.getLeaf('tab');
+    } else {
+      leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf(true);
+    }
+
+    await leaf.setViewState({
+      type: VIEW_TYPE_MY_DAY,
       active: true,
     });
 

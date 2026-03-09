@@ -238,9 +238,6 @@ export class DailyNoteTaskScanner {
             
             // Always update location map for future lookups
             this.taskLocationMap.set(locationKey, taskId);
-            await this.saveTaskLocationMap().catch(err => {
-                console.warn('[DailyNoteScanner] Failed to save location map:', err);
-            });
         }
 
         // Get today's date in YYYY-MM-DD format
@@ -358,7 +355,6 @@ export class DailyNoteTaskScanner {
                             await this.plugin.taskStore.updateTask(contentDuplicate.id, task);
                             // Update location map to point to existing task
                             this.taskLocationMap.set(locationKey, contentDuplicate.id);
-                            await this.saveTaskLocationMap();
                             locallyProcessed.add(contentDuplicate.id);
                             this.processedTasks.add(contentDuplicate.id);
                         } else {
@@ -394,7 +390,7 @@ export class DailyNoteTaskScanner {
         }
         
         // Save location map if any changes were made
-        if (removedCount > 0) {
+        if (removedCount > 0 || currentFileTasks.size > 0) {
             await this.saveTaskLocationMap();
         }
     }
@@ -487,8 +483,9 @@ export class DailyNoteTaskScanner {
             oldKeys.forEach(oldKey => {
                 const taskId = this.taskLocationMap.get(oldKey);
                 if (taskId) {
-                    // Extract line number from old key
-                    const lineNumber = oldKey.split(':')[1];
+                    // Extract line number from old key (split on last colon to handle paths containing ':')
+                    const lastColon = oldKey.lastIndexOf(':');
+                    const lineNumber = lastColon !== -1 ? oldKey.substring(lastColon + 1) : oldKey;
                     const newKey = `${file.path}:${lineNumber}`;
                     updates.push([oldKey, newKey]);
                 }
