@@ -45,28 +45,23 @@ export class DailyNoteTaskScanner {
     }
 
     /**
-     * Generate a stable hash-based ID for a task
-     * Uses file path + normalized content for deterministic ID generation
+     * Generate a stable ID for a task from a daily note.
+     * Uses the persisted taskLocationMap to return the same ID for a known
+     * file+line, falling back to crypto.randomUUID() for genuinely new tasks.
      */
-    private generateStableTaskId(file: TFile, taskContent: string): string {
-        // Normalize content: remove extra spaces, lowercase, trim
-        const normalized = taskContent.trim().toLowerCase().replace(/\s+/g, ' ');
-        // Create a simple hash (good enough for collision avoidance)
-        const hashStr = `${file.path}|${normalized}`;
-        let hash = 0;
-        for (let i = 0; i < hashStr.length; i++) {
-            const char = hashStr.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32-bit integer
+    private generateStableTaskId(file: TFile, taskContent: string, locationKey?: string): string {
+        // If we already have a persisted ID for this location, reuse it
+        if (locationKey && this.taskLocationMap.has(locationKey)) {
+            return this.taskLocationMap.get(locationKey)!;
         }
-        const hashHex = Math.abs(hash).toString(16).padStart(8, '0');
-        return `daily-task-${hashHex}`;
+        // New task — assign a proper UUID
+        return `daily-task-${crypto.randomUUID()}`;
     }
 
     /**
      * Find existing task by content similarity to avoid duplicates
      */
-    private findDuplicateTaskByContent(title: string, projectId: string): PlannerTask | null {
+    private findDuplicateTaskByContent(title: string): PlannerTask | null {
         // Get all tasks from TaskStore (across all projects)
         const allTasks = this.plugin.taskStore.getAll();
         const normalizedTitle = title.trim().toLowerCase();
@@ -222,18 +217,16 @@ export class DailyNoteTaskScanner {
         let taskId = this.taskLocationMap.get(locationKey);
         let isNewTask = !taskId;
 
-        // If no existing task at this location, try to find by content hash
+        // If no existing task at this location, try to find by content similarity
         if (!taskId) {
-            // Generate stable ID based on file path and task content
-            taskId = this.generateStableTaskId(file, title);
-            
-            // Check if this task ID already exists (content-based deduplication)
-            const existingById = this.plugin.taskStore.getTaskById(taskId);
-            if (!existingById) {
-                isNewTask = true;
-            } else {
+            // Check for duplicate by title before generating a new ID
+            const duplicate = this.findDuplicateTaskByContent(title);
+            if (duplicate) {
+                taskId = duplicate.id;
                 isNewTask = false;
-                // Task exists, just update location mapping
+            } else {
+                taskId = this.generateStableTaskId(file, title, locationKey);
+                isNewTask = true;
             }
             
             // Always update location map for future lookups
@@ -348,7 +341,7 @@ export class DailyNoteTaskScanner {
 
                     if (!existingTask) {
                         // Double-check for content-based duplicates before adding
-                        const contentDuplicate = this.findDuplicateTaskByContent(task.title, projectId);
+                        const contentDuplicate = this.findDuplicateTaskByContent(task.title);
                         if (contentDuplicate) {
                             console.log(`[DailyNoteScanner] Found duplicate by content, updating existing task: ${task.title}`);
                             // Update the existing duplicate instead of creating new task

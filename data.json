@@ -5,7 +5,7 @@
         "id": "b11b178b-baf8-4c28-80db-4330a74c1d65",
         "name": "Project Planner Dev",
         "createdDate": "2026-01-23T18:17:19.333Z",
-        "lastUpdatedDate": "2026-03-09T12:08:58.045Z",
+        "lastUpdatedDate": "2026-03-09T14:58:10.191Z",
         "buckets": [
           {
             "id": "682eb1f0-f99c-4096-9025-a883bbf251f5",
@@ -3559,7 +3559,7 @@
         "parentId": null,
         "collapsed": false,
         "createdDate": "2026-01-29",
-        "lastModifiedDate": "2026-03-08",
+        "lastModifiedDate": "2026-03-09",
         "startDate": "2026-01-28",
         "description": "---\n*Task from Project: Project Planner Dev*",
         "tags": [
@@ -3568,7 +3568,7 @@
         "effortCompleted": 10,
         "effortRemaining": 0,
         "percentComplete": 36,
-        "dueDate": "2026-03-08",
+        "dueDate": "2026-03-09",
         "costEstimate": 200,
         "costType": "fixed",
         "costActual": 120
@@ -3576,20 +3576,20 @@
       {
         "id": "d1ebcee8-952a-4167-8186-2f5f7e763052",
         "title": "Quality test dependencies",
-        "status": "Not Started",
-        "completed": false,
+        "status": "Completed",
+        "completed": true,
         "parentId": "886c5b3d-3560-4e4f-8386-f3bf6a3d1e46",
         "priority": "Medium",
         "startDate": "2026-01-28",
         "createdDate": "2026-01-28",
-        "lastModifiedDate": "2026-03-08",
+        "lastModifiedDate": "2026-03-09",
         "tags": [
           "78bf00ac-a3cc-47d6-92a3-5f4816dc4719"
         ],
         "collapsed": false,
         "description": "Confirm that all dependency types are working and that dependencies work between parent and subtasks.",
         "bucketId": "761e8562-b734-41a8-a920-3d56df4462ad",
-        "dueDate": "2026-03-08",
+        "dueDate": "2026-03-09",
         "costType": "fixed",
         "costEstimate": 200,
         "costActual": 120
@@ -3712,15 +3712,15 @@
         "parentId": null,
         "collapsed": false,
         "createdDate": "2026-01-29",
-        "lastModifiedDate": "2026-03-08",
+        "lastModifiedDate": "2026-03-09",
         "startDate": "2026-01-29",
         "description": "---\n*Task from Project: Project Planner Dev*",
         "tags": [
           "e983767c-4d22-4f34-a6c2-f37ee52ed113"
         ],
-        "dueDate": "2026-02-22",
+        "dueDate": "2026-03-09",
         "effortCompleted": 12,
-        "percentComplete": 27,
+        "percentComplete": 15,
         "bucketId": "682eb1f0-f99c-4096-9025-a883bbf251f5",
         "effortRemaining": 4
       },
@@ -4395,7 +4395,7 @@
         "bucketId": "b985d8b1-da84-4431-96e8-f67c29df5f22",
         "startDate": "2026-02-05",
         "createdDate": "2026-02-21",
-        "lastModifiedDate": "2026-03-08",
+        "lastModifiedDate": "2026-03-09",
         "collapsed": false,
         "description": "The next minor release will be `0.8.0` and include all current patches and features plus improve existing features. See the checklist.",
         "cardPreview": "description",
@@ -4427,7 +4427,7 @@
         ],
         "dueDate": "2026-03-29",
         "effortRemaining": 4,
-        "percentComplete": 33,
+        "percentComplete": 79,
         "effortCompleted": 2
       },
       {
@@ -4574,7 +4574,7 @@
         "priority": "High",
         "startDate": "2026-02-25",
         "createdDate": "2026-02-25",
-        "lastModifiedDate": "2026-03-01",
+        "lastModifiedDate": "2026-03-09",
         "collapsed": false,
         "description": "Verify the auto-dependency system is calculating the numbers accurately.",
         "tags": [
@@ -4583,7 +4583,8 @@
         "cardPreview": "description",
         "bucketId": "761e8562-b734-41a8-a920-3d56df4462ad",
         "effortRemaining": 4,
-        "percentComplete": 0
+        "percentComplete": 0,
+        "dueDate": "2026-03-09"
       },
       {
         "id": "58947deb-1e64-4a21-88e1-aa1641dce431",
@@ -4782,9 +4783,10 @@
         "bucketId": "b985d8b1-da84-4431-96e8-f67c29df5f22",
         "startDate": "2026-03-01",
         "createdDate": "2026-03-01",
-        "lastModifiedDate": "2026-03-01",
+        "lastModifiedDate": "2026-03-09",
         "collapsed": false,
-        "description": "---\n*Task from Project: Project Planner Dev*"
+        "description": "---\n*Task from Project: Project Planner Dev*",
+        "dueDate": "2026-03-09"
       },
       {
         "id": "db644f02-6f3e-4245-9726-a6e4c215f302",
@@ -4796,13 +4798,13 @@
         "bucketId": "f9374e0b-8867-48eb-ae4f-38e60179a27e",
         "startDate": "2026-02-25",
         "createdDate": "2026-02-25",
-        "lastModifiedDate": "2026-03-08",
+        "lastModifiedDate": "2026-03-09",
         "tags": [
           "c2b5b773-cd7c-404b-864c-d89a0842c3fc"
         ],
         "collapsed": false,
         "description": "---\n*Task from Project: Project Planner Dev*",
-        "dueDate": "2026-03-29",
+        "dueDate": "2026-03-11",
         "effortRemaining": 4,
         "percentComplete": 0
       },

@@ -930,6 +930,9 @@ class GridView extends obsidian.ItemView {
         this.savedScrollTop = null;
         this.savedScrollLeft = null;
         this.renderVersion = 0; // Monotonic counter — only the latest render restores scroll
+        // Incremental rendering state
+        this.renderedRowCount = 0;
+        this.scrollRenderPending = false;
         // Cleanup callbacks for mid-operation view close
         this.activeDragCleanup = null;
         this.activeResizeCleanup = null;
@@ -1222,7 +1225,36 @@ class GridView extends obsidian.ItemView {
             numberingMap.set(row.task.id, counter++);
         }
         this.numberingMap = numberingMap;
-        visibleRows.forEach((r, i) => this.renderTaskRow(tbody, r.task, r.isChild, r.hasChildren, i, r.depth));
+        // Incremental rendering: render first batch immediately, rest on scroll
+        this.renderedRowCount = 0;
+        this.renderRowBatch(tbody, visibleRows);
+        if (visibleRows.length > GridView.ROW_BATCH_SIZE) {
+            const onScroll = () => {
+                if (this.scrollRenderPending)
+                    return;
+                if (this.renderedRowCount >= this.visibleRows.length)
+                    return;
+                const el = content;
+                if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200) {
+                    this.scrollRenderPending = true;
+                    requestAnimationFrame(() => {
+                        this.renderRowBatch(tbody, this.visibleRows);
+                        this.scrollRenderPending = false;
+                    });
+                }
+            };
+            content.addEventListener("scroll", onScroll, { passive: true });
+        }
+    }
+    /** Render the next batch of rows into the tbody. */
+    renderRowBatch(tbody, rows) {
+        const start = this.renderedRowCount;
+        const end = Math.min(start + GridView.ROW_BATCH_SIZE, rows.length);
+        for (let i = start; i < end; i++) {
+            const r = rows[i];
+            this.renderTaskRow(tbody, r.task, r.isChild, r.hasChildren, i, r.depth);
+        }
+        this.renderedRowCount = end;
     }
     // ---------------------------------------------------------------------------
     // Re-render only table body (for search filtering)
@@ -2914,6 +2946,7 @@ class GridView extends obsidian.ItemView {
         };
     }
 }
+GridView.ROW_BATCH_SIZE = 100;
 
 const VIEW_TYPE_BOARD = "project-planner-board-view";
 class BoardView extends obsidian.ItemView {
@@ -5242,8 +5275,6 @@ class DependencyGraphView extends obsidian.ItemView {
         this.animationFrame = null;
         this.unsubscribe = null;
         this.resizeHandler = null;
-        this.boundMouseMove = null;
-        this.boundMouseUp = null;
         this.needsRefresh = false;
         this.plugin = plugin;
     }
@@ -5288,7 +5319,7 @@ class DependencyGraphView extends obsidian.ItemView {
         // Set canvas size
         this.resizeCanvas();
         this.resizeHandler = () => this.resizeCanvas();
-        window.addEventListener("resize", this.resizeHandler);
+        this.registerDomEvent(window, "resize", this.resizeHandler);
         // Setup mouse events
         this.setupMouseEvents();
         // Load and render
@@ -5301,18 +5332,7 @@ class DependencyGraphView extends obsidian.ItemView {
             cancelAnimationFrame(this.animationFrame);
             this.animationFrame = null;
         }
-        if (this.resizeHandler) {
-            window.removeEventListener("resize", this.resizeHandler);
-            this.resizeHandler = null;
-        }
-        if (this.boundMouseMove) {
-            document.removeEventListener("mousemove", this.boundMouseMove);
-            this.boundMouseMove = null;
-        }
-        if (this.boundMouseUp) {
-            document.removeEventListener("mouseup", this.boundMouseUp);
-            this.boundMouseUp = null;
-        }
+        // registerDomEvent handles resize, mousemove, mouseup cleanup automatically
         this.containerEl.empty();
         if (this.unsubscribe) {
             this.unsubscribe();
@@ -5370,7 +5390,7 @@ class DependencyGraphView extends obsidian.ItemView {
             this.render();
         });
         // Bind mousemove/mouseup to document so drag continues outside canvas
-        this.boundMouseMove = (e) => {
+        this.registerDomEvent(document, "mousemove", (e) => {
             if (isDragging && this.dragNode && this.canvas) {
                 e.preventDefault();
                 const rect = this.canvas.getBoundingClientRect();
@@ -5380,9 +5400,8 @@ class DependencyGraphView extends obsidian.ItemView {
                 this.dragNode.vy = 0;
                 this.render();
             }
-        };
-        document.addEventListener("mousemove", this.boundMouseMove);
-        this.boundMouseUp = (_e) => {
+        });
+        this.registerDomEvent(document, "mouseup", (_e) => {
             if (isDragging && this.dragNode) {
                 // Zero velocity so the node stays where dropped
                 this.dragNode.vx = 0;
@@ -5394,8 +5413,7 @@ class DependencyGraphView extends obsidian.ItemView {
             if (this.needsRefresh) {
                 this.refresh();
             }
-        };
-        document.addEventListener("mouseup", this.boundMouseUp);
+        });
         // Double click to open task details
         this.canvas.addEventListener("dblclick", (e) => {
             if (!this.selectedNode)
@@ -5723,22 +5741,27 @@ class GanttView extends obsidian.ItemView {
             this.activeDragCleanup = null;
         }
     }
+    parseLocalDate(dateStr) {
+        const parts = dateStr.split("-").map(Number);
+        if (parts.length !== 3 || parts.some(isNaN))
+            return null;
+        const [y, m, d] = parts;
+        const date = new Date(y, m - 1, d);
+        date.setHours(0, 0, 0, 0);
+        return date;
+    }
     getTaskRange(task, todayMs) {
         let start = null;
         let end = null;
         if (task.startDate) {
-            // Parse date correctly to avoid timezone issues (YYYY-MM-DD format)
-            const parts = task.startDate.split("-");
-            const startDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-            startDate.setHours(0, 0, 0, 0);
-            start = startDate.getTime();
+            const startDate = this.parseLocalDate(task.startDate);
+            if (startDate)
+                start = startDate.getTime();
         }
         if (task.dueDate) {
-            // Parse date correctly to avoid timezone issues (YYYY-MM-DD format)
-            const parts = task.dueDate.split("-");
-            const endDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-            endDate.setHours(0, 0, 0, 0);
-            end = endDate.getTime();
+            const endDate = this.parseLocalDate(task.dueDate);
+            if (endDate)
+                end = endDate.getTime();
         }
         if (start === null && end !== null)
             start = end;
@@ -8364,7 +8387,10 @@ function getTodayDate() {
 }
 // Helper to parse YYYY-MM-DD date string without timezone issues
 function parseDate(dateStr) {
-    const [y, m, d] = dateStr.split("-").map(Number);
+    const parts = dateStr.split("-").map(Number);
+    if (parts.length !== 3 || parts.some(isNaN))
+        return new Date(NaN);
+    const [y, m, d] = parts;
     return new Date(y, m - 1, d);
 }
 // Helper to format a Date to YYYY-MM-DD
@@ -8384,6 +8410,7 @@ class TaskStore {
     constructor(plugin) {
         this.tasks = [];
         this.tasksByProject = {};
+        this.taskIndex = new Map();
         this.listeners = new Set();
         this.loaded = false;
         /** Cached non-task data from data.json, loaded once and kept in sync */
@@ -8424,8 +8451,16 @@ class TaskStore {
         }
         // Set the working tasks reference
         this.tasks = this.tasksByProject[projectId];
+        this.rebuildIndex();
         this.loaded = true;
         this.emit();
+    }
+    /** Rebuild the O(1) lookup index from the current tasks array. */
+    rebuildIndex() {
+        this.taskIndex.clear();
+        for (const t of this.tasks) {
+            this.taskIndex.set(t.id, t);
+        }
     }
     // ---------------------------------------------------------------------------
     // NON-DESTRUCTIVE SAVE (MERGES INTO EXISTING DATA)
@@ -8515,6 +8550,7 @@ class TaskStore {
             startDate: today, // Set start date to today by default
         };
         this.tasks.push(task);
+        this.taskIndex.set(task.id, task);
         this.updateProjectTimestamp();
         await this.save();
         // Sync to markdown if enabled
@@ -8552,6 +8588,7 @@ class TaskStore {
         // Insert directly at the requested position
         const clampedIndex = Math.max(0, Math.min(index, this.tasks.length));
         this.tasks.splice(clampedIndex, 0, task);
+        this.taskIndex.set(task.id, task);
         this.updateProjectTimestamp();
         await this.save(); // save + emit once
         // Sync to markdown if enabled
@@ -8587,6 +8624,7 @@ class TaskStore {
             if (!task.lastModifiedDate)
                 task.lastModifiedDate = getTodayDate();
             this.tasks.push(task);
+            this.taskIndex.set(task.id, task);
         }
         this.updateProjectTimestamp();
         await this.save();
@@ -8611,6 +8649,7 @@ class TaskStore {
             if (!task.lastModifiedDate)
                 task.lastModifiedDate = getTodayDate();
             projectTasks.push(task);
+            this.taskIndex.set(task.id, task);
         }
         // Update the project bucket
         this.tasksByProject[projectId] = projectTasks;
@@ -9016,6 +9055,7 @@ class TaskStore {
         }
         // Remove the task itself
         this.tasks = this.tasks.filter(t => t.id !== id);
+        this.taskIndex.delete(id);
         this.updateProjectTimestamp();
         await this.saveQuietly();
         // Delete markdown note if enabled
@@ -9037,6 +9077,7 @@ class TaskStore {
         this.tasks = ids
             .map((id) => idToTask.get(id))
             .filter((t) => !!t);
+        this.rebuildIndex();
         await this.save();
     }
     async toggleCollapsed(id) {
@@ -9063,7 +9104,7 @@ class TaskStore {
         this.emit();
     }
     getTaskById(id) {
-        return this.tasks.find(t => t.id === id);
+        return this.taskIndex.get(id);
     }
     getTasks() {
         return this.tasks;
@@ -9402,7 +9443,12 @@ class TaskSync {
                 const folderPath = filePath.substring(0, filePath.lastIndexOf('/'));
                 const folder = this.app.vault.getAbstractFileByPath(folderPath);
                 if (!folder) {
-                    await this.app.vault.createFolder(folderPath);
+                    try {
+                        await this.app.vault.createFolder(folderPath);
+                    }
+                    catch {
+                        // Folder may already exist from a concurrent sync
+                    }
                 }
                 await this.app.vault.create(filePath, content);
             }
@@ -9583,27 +9629,22 @@ class DailyNoteTaskScanner {
         await this.plugin.saveSettings();
     }
     /**
-     * Generate a stable hash-based ID for a task
-     * Uses file path + normalized content for deterministic ID generation
+     * Generate a stable ID for a task from a daily note.
+     * Uses the persisted taskLocationMap to return the same ID for a known
+     * file+line, falling back to crypto.randomUUID() for genuinely new tasks.
      */
-    generateStableTaskId(file, taskContent) {
-        // Normalize content: remove extra spaces, lowercase, trim
-        const normalized = taskContent.trim().toLowerCase().replace(/\s+/g, ' ');
-        // Create a simple hash (good enough for collision avoidance)
-        const hashStr = `${file.path}|${normalized}`;
-        let hash = 0;
-        for (let i = 0; i < hashStr.length; i++) {
-            const char = hashStr.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32-bit integer
+    generateStableTaskId(file, taskContent, locationKey) {
+        // If we already have a persisted ID for this location, reuse it
+        if (locationKey && this.taskLocationMap.has(locationKey)) {
+            return this.taskLocationMap.get(locationKey);
         }
-        const hashHex = Math.abs(hash).toString(16).padStart(8, '0');
-        return `daily-task-${hashHex}`;
+        // New task — assign a proper UUID
+        return `daily-task-${crypto.randomUUID()}`;
     }
     /**
      * Find existing task by content similarity to avoid duplicates
      */
-    findDuplicateTaskByContent(title, projectId) {
+    findDuplicateTaskByContent(title) {
         // Get all tasks from TaskStore (across all projects)
         const allTasks = this.plugin.taskStore.getAll();
         const normalizedTitle = title.trim().toLowerCase();
@@ -9737,18 +9778,17 @@ class DailyNoteTaskScanner {
         // Check if we already have a task at this location
         let taskId = this.taskLocationMap.get(locationKey);
         let isNewTask = !taskId;
-        // If no existing task at this location, try to find by content hash
+        // If no existing task at this location, try to find by content similarity
         if (!taskId) {
-            // Generate stable ID based on file path and task content
-            taskId = this.generateStableTaskId(file, title);
-            // Check if this task ID already exists (content-based deduplication)
-            const existingById = this.plugin.taskStore.getTaskById(taskId);
-            if (!existingById) {
-                isNewTask = true;
+            // Check for duplicate by title before generating a new ID
+            const duplicate = this.findDuplicateTaskByContent(title);
+            if (duplicate) {
+                taskId = duplicate.id;
+                isNewTask = false;
             }
             else {
-                isNewTask = false;
-                // Task exists, just update location mapping
+                taskId = this.generateStableTaskId(file, title, locationKey);
+                isNewTask = true;
             }
             // Always update location map for future lookups
             this.taskLocationMap.set(locationKey, taskId);
@@ -9845,7 +9885,7 @@ class DailyNoteTaskScanner {
                     const existingTask = this.plugin.taskStore.getTaskById(task.id);
                     if (!existingTask) {
                         // Double-check for content-based duplicates before adding
-                        const contentDuplicate = this.findDuplicateTaskByContent(task.title, projectId);
+                        const contentDuplicate = this.findDuplicateTaskByContent(task.title);
                         if (contentDuplicate) {
                             console.log(`[DailyNoteScanner] Found duplicate by content, updating existing task: ${task.title}`);
                             // Update the existing duplicate instead of creating new task
@@ -10159,9 +10199,10 @@ class ProjectPlannerPlugin extends obsidian.Plugin {
         }
     }
     // ---------------------------------------------------------------------------
-    // Open MAIN planner view (center workspace)
     // ---------------------------------------------------------------------------
-    async activateView(forceNewTab = false) {
+    // Shared view opener — reduces duplication across view activation methods
+    // ---------------------------------------------------------------------------
+    async openViewByType(viewType, forceNewTab = false) {
         const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
         let leaf;
         if (openInNewTab) {
@@ -10171,87 +10212,41 @@ class ProjectPlannerPlugin extends obsidian.Plugin {
             leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf(true);
         }
         await leaf.setViewState({
-            type: VIEW_TYPE_PLANNER,
+            type: viewType,
             active: true,
         });
         this.app.workspace.revealLeaf(leaf);
         return leaf;
+    }
+    // ---------------------------------------------------------------------------
+    // Open MAIN planner view (center workspace)
+    // ---------------------------------------------------------------------------
+    async activateView(forceNewTab = false) {
+        return this.openViewByType(VIEW_TYPE_PLANNER, forceNewTab);
     }
     // ---------------------------------------------------------------------------
     // Open BOARD view (center workspace)
     // ---------------------------------------------------------------------------
     async activateBoardView(forceNewTab = false) {
-        const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
-        let leaf;
-        if (openInNewTab) {
-            leaf = this.app.workspace.getLeaf('tab');
-        }
-        else {
-            leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf(true);
-        }
-        await leaf.setViewState({
-            type: VIEW_TYPE_BOARD,
-            active: true,
-        });
-        this.app.workspace.revealLeaf(leaf);
-        return leaf;
+        return this.openViewByType(VIEW_TYPE_BOARD, forceNewTab);
     }
     // ---------------------------------------------------------------------------
     // Open DASHBOARD view (center workspace)
     // ---------------------------------------------------------------------------
     async activateDashboardView(forceNewTab = false) {
-        const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
-        let leaf;
-        if (openInNewTab) {
-            leaf = this.app.workspace.getLeaf('tab');
-        }
-        else {
-            leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf(true);
-        }
-        await leaf.setViewState({
-            type: VIEW_TYPE_DASHBOARD,
-            active: true,
-        });
-        this.app.workspace.revealLeaf(leaf);
-        return leaf;
+        return this.openViewByType(VIEW_TYPE_DASHBOARD, forceNewTab);
     }
     // ---------------------------------------------------------------------------
     // Open GANTT view (center workspace)
     // ---------------------------------------------------------------------------
     async activateGanttView(forceNewTab = false) {
-        const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
-        let leaf;
-        if (openInNewTab) {
-            leaf = this.app.workspace.getLeaf('tab');
-        }
-        else {
-            leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf(true);
-        }
-        await leaf.setViewState({
-            type: VIEW_TYPE_GANTT,
-            active: true,
-        });
-        this.app.workspace.revealLeaf(leaf);
-        return leaf;
+        return this.openViewByType(VIEW_TYPE_GANTT, forceNewTab);
     }
     // ---------------------------------------------------------------------------
     // Open MY TASKS view (center workspace)
     // ---------------------------------------------------------------------------
     async activateMyDayView(forceNewTab = false) {
-        const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
-        let leaf;
-        if (openInNewTab) {
-            leaf = this.app.workspace.getLeaf('tab');
-        }
-        else {
-            leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf(true);
-        }
-        await leaf.setViewState({
-            type: VIEW_TYPE_MY_DAY,
-            active: true,
-        });
-        this.app.workspace.revealLeaf(leaf);
-        return leaf;
+        return this.openViewByType(VIEW_TYPE_MY_DAY, forceNewTab);
     }
     // ---------------------------------------------------------------------------
     // Open Task Detail Panel (RIGHT-SIDE split)
@@ -10272,7 +10267,9 @@ class ProjectPlannerPlugin extends obsidian.Plugin {
             active: true,
         });
         const view = detailLeaf.view;
-        view.setTask(task);
+        if (view && 'setTask' in view && typeof view.setTask === 'function') {
+            view.setTask(task);
+        }
         workspace.revealLeaf(detailLeaf);
     }
     // ---------------------------------------------------------------------------
@@ -10373,19 +10370,7 @@ class ProjectPlannerPlugin extends obsidian.Plugin {
     // Open Dependency Graph View
     // ---------------------------------------------------------------------------
     async openDependencyGraph() {
-        const openInNewTab = this.settings?.openViewsInNewTab === true;
-        let leaf;
-        if (openInNewTab) {
-            leaf = this.app.workspace.getLeaf('tab');
-        }
-        else {
-            leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf(true);
-        }
-        await leaf.setViewState({
-            type: VIEW_TYPE_DEPENDENCY_GRAPH,
-            active: true,
-        });
-        this.app.workspace.revealLeaf(leaf);
+        await this.openViewByType(VIEW_TYPE_DEPENDENCY_GRAPH);
     }
     // ---------------------------------------------------------------------------
     // Open Task by ID (from URI link)
@@ -10425,7 +10410,12 @@ class ProjectPlannerPlugin extends obsidian.Plugin {
         // Ensure folder exists
         const folder = this.app.vault.getAbstractFileByPath(folderPath);
         if (!folder) {
-            await this.app.vault.createFolder(folderPath);
+            try {
+                await this.app.vault.createFolder(folderPath);
+            }
+            catch {
+                // Folder may already exist from a concurrent call
+            }
         }
         for (const task of tasks) {
             const fileName = `${folderPath}/${task.title.replace(/[\\/:*?"<>|]/g, '_')}.md`;

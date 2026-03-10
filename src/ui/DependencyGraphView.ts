@@ -30,8 +30,6 @@ export class DependencyGraphView extends ItemView {
     private animationFrame: number | null = null;
     private unsubscribe: (() => void) | null = null;
     private resizeHandler: (() => void) | null = null;
-    private boundMouseMove: ((e: MouseEvent) => void) | null = null;
-    private boundMouseUp: ((e: MouseEvent) => void) | null = null;
     private needsRefresh = false;
 
     constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
@@ -89,7 +87,7 @@ export class DependencyGraphView extends ItemView {
         // Set canvas size
         this.resizeCanvas();
         this.resizeHandler = () => this.resizeCanvas();
-        window.addEventListener("resize", this.resizeHandler);
+        this.registerDomEvent(window, "resize", this.resizeHandler);
 
         // Setup mouse events
         this.setupMouseEvents();
@@ -105,18 +103,7 @@ export class DependencyGraphView extends ItemView {
             cancelAnimationFrame(this.animationFrame);
             this.animationFrame = null;
         }
-        if (this.resizeHandler) {
-            window.removeEventListener("resize", this.resizeHandler);
-            this.resizeHandler = null;
-        }
-        if (this.boundMouseMove) {
-            document.removeEventListener("mousemove", this.boundMouseMove);
-            this.boundMouseMove = null;
-        }
-        if (this.boundMouseUp) {
-            document.removeEventListener("mouseup", this.boundMouseUp);
-            this.boundMouseUp = null;
-        }
+        // registerDomEvent handles resize, mousemove, mouseup cleanup automatically
         this.containerEl.empty();
         if (this.unsubscribe) {
             this.unsubscribe();
@@ -179,7 +166,7 @@ export class DependencyGraphView extends ItemView {
         });
 
         // Bind mousemove/mouseup to document so drag continues outside canvas
-        this.boundMouseMove = (e: MouseEvent) => {
+        this.registerDomEvent(document, "mousemove", (e: MouseEvent) => {
             if (isDragging && this.dragNode && this.canvas) {
                 e.preventDefault();
                 const rect = this.canvas.getBoundingClientRect();
@@ -189,10 +176,9 @@ export class DependencyGraphView extends ItemView {
                 this.dragNode.vy = 0;
                 this.render();
             }
-        };
-        document.addEventListener("mousemove", this.boundMouseMove);
+        });
 
-        this.boundMouseUp = (_e: MouseEvent) => {
+        this.registerDomEvent(document, "mouseup", (_e: MouseEvent) => {
             if (isDragging && this.dragNode) {
                 // Zero velocity so the node stays where dropped
                 this.dragNode.vx = 0;
@@ -205,8 +191,7 @@ export class DependencyGraphView extends ItemView {
             if (this.needsRefresh) {
                 this.refresh();
             }
-        };
-        document.addEventListener("mouseup", this.boundMouseUp);
+        });
 
         // Double click to open task details
         this.canvas.addEventListener("dblclick", (e: MouseEvent) => {

@@ -257,12 +257,13 @@ export default class ProjectPlannerPlugin extends Plugin {
   }
 
   // ---------------------------------------------------------------------------
-  // Open MAIN planner view (center workspace)
   // ---------------------------------------------------------------------------
-  async activateView(forceNewTab = false): Promise<WorkspaceLeaf> {
+  // Shared view opener — reduces duplication across view activation methods
+  // ---------------------------------------------------------------------------
+  private async openViewByType(viewType: string, forceNewTab = false): Promise<WorkspaceLeaf> {
     const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
     let leaf: WorkspaceLeaf;
-    
+
     if (openInNewTab) {
       leaf = this.app.workspace.getLeaf('tab');
     } else {
@@ -270,98 +271,47 @@ export default class ProjectPlannerPlugin extends Plugin {
     }
 
     await leaf.setViewState({
-      type: VIEW_TYPE_PLANNER,
+      type: viewType,
       active: true,
     });
 
     this.app.workspace.revealLeaf(leaf);
     return leaf;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Open MAIN planner view (center workspace)
+  // ---------------------------------------------------------------------------
+  async activateView(forceNewTab = false): Promise<WorkspaceLeaf> {
+    return this.openViewByType(VIEW_TYPE_PLANNER, forceNewTab);
   }
 
   // ---------------------------------------------------------------------------
   // Open BOARD view (center workspace)
   // ---------------------------------------------------------------------------
   async activateBoardView(forceNewTab = false): Promise<WorkspaceLeaf> {
-    const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
-    let leaf: WorkspaceLeaf;
-    
-    if (openInNewTab) {
-      leaf = this.app.workspace.getLeaf('tab');
-    } else {
-      leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf(true);
-    }
-
-    await leaf.setViewState({
-      type: VIEW_TYPE_BOARD,
-      active: true,
-    });
-
-    this.app.workspace.revealLeaf(leaf);
-    return leaf;
+    return this.openViewByType(VIEW_TYPE_BOARD, forceNewTab);
   }
+
   // ---------------------------------------------------------------------------
   // Open DASHBOARD view (center workspace)
   // ---------------------------------------------------------------------------
   async activateDashboardView(forceNewTab = false): Promise<WorkspaceLeaf> {
-    const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
-    let leaf: WorkspaceLeaf;
-    
-    if (openInNewTab) {
-      leaf = this.app.workspace.getLeaf('tab');
-    } else {
-      leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf(true);
-    }
-
-    await leaf.setViewState({
-      type: VIEW_TYPE_DASHBOARD,
-      active: true,
-    });
-
-    this.app.workspace.revealLeaf(leaf);
-    return leaf;
+    return this.openViewByType(VIEW_TYPE_DASHBOARD, forceNewTab);
   }
+
   // ---------------------------------------------------------------------------
   // Open GANTT view (center workspace)
   // ---------------------------------------------------------------------------
   async activateGanttView(forceNewTab = false): Promise<WorkspaceLeaf> {
-    const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
-    let leaf: WorkspaceLeaf;
-    
-    if (openInNewTab) {
-      leaf = this.app.workspace.getLeaf('tab');
-    } else {
-      leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf(true);
-    }
-
-    await leaf.setViewState({
-      type: VIEW_TYPE_GANTT,
-      active: true,
-    });
-
-    this.app.workspace.revealLeaf(leaf);
-    return leaf;
+    return this.openViewByType(VIEW_TYPE_GANTT, forceNewTab);
   }
 
   // ---------------------------------------------------------------------------
   // Open MY TASKS view (center workspace)
   // ---------------------------------------------------------------------------
   async activateMyDayView(forceNewTab = false): Promise<WorkspaceLeaf> {
-    const openInNewTab = forceNewTab || this.settings?.openViewsInNewTab === true;
-    let leaf: WorkspaceLeaf;
-
-    if (openInNewTab) {
-      leaf = this.app.workspace.getLeaf('tab');
-    } else {
-      leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf(true);
-    }
-
-    await leaf.setViewState({
-      type: VIEW_TYPE_MY_DAY,
-      active: true,
-    });
-
-    this.app.workspace.revealLeaf(leaf);
-    return leaf;
+    return this.openViewByType(VIEW_TYPE_MY_DAY, forceNewTab);
   }
 
   // ---------------------------------------------------------------------------
@@ -386,8 +336,10 @@ export default class ProjectPlannerPlugin extends Plugin {
       active: true,
     });
 
-    const view = detailLeaf.view as TaskDetailView;
-    view.setTask(task);
+    const view = detailLeaf.view;
+    if (view && 'setTask' in view && typeof (view as TaskDetailView).setTask === 'function') {
+      (view as TaskDetailView).setTask(task);
+    }
 
     workspace.revealLeaf(detailLeaf);
   }
@@ -517,21 +469,7 @@ export default class ProjectPlannerPlugin extends Plugin {
   // Open Dependency Graph View
   // ---------------------------------------------------------------------------
   async openDependencyGraph() {
-    const openInNewTab = this.settings?.openViewsInNewTab === true;
-    let leaf: WorkspaceLeaf;
-    
-    if (openInNewTab) {
-      leaf = this.app.workspace.getLeaf('tab');
-    } else {
-      leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf(true);
-    }
-
-    await leaf.setViewState({
-      type: VIEW_TYPE_DEPENDENCY_GRAPH,
-      active: true,
-    });
-
-    this.app.workspace.revealLeaf(leaf);
+    await this.openViewByType(VIEW_TYPE_DEPENDENCY_GRAPH);
   }
 
   // ---------------------------------------------------------------------------
@@ -577,7 +515,11 @@ export default class ProjectPlannerPlugin extends Plugin {
     // Ensure folder exists
     const folder = this.app.vault.getAbstractFileByPath(folderPath);
     if (!folder) {
-      await this.app.vault.createFolder(folderPath);
+      try {
+        await this.app.vault.createFolder(folderPath);
+      } catch {
+        // Folder may already exist from a concurrent call
+      }
     }
 
     for (const task of tasks) {

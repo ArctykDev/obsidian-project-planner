@@ -8,9 +8,16 @@ function getTodayDate(): string {
   return now.toISOString().slice(0, 10);
 }
 
+// Validate YYYY-MM-DD format
+function isValidDateStr(dateStr: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateStr);
+}
+
 // Helper to parse YYYY-MM-DD date string without timezone issues
 function parseDate(dateStr: string): Date {
-  const [y, m, d] = dateStr.split("-").map(Number);
+  const parts = dateStr.split("-").map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return new Date(NaN);
+  const [y, m, d] = parts;
   return new Date(y, m - 1, d);
 }
 
@@ -41,6 +48,7 @@ export class TaskStore {
 
   private tasks: PlannerTask[] = [];
   private tasksByProject: Record<string, PlannerTask[]> = {};
+  private taskIndex: Map<string, PlannerTask> = new Map();
   private listeners: Set<() => void> = new Set();
   private loaded = false;
   /** Cached non-task data from data.json, loaded once and kept in sync */
@@ -95,8 +103,17 @@ export class TaskStore {
 
     // Set the working tasks reference
     this.tasks = this.tasksByProject[projectId];
+    this.rebuildIndex();
     this.loaded = true;
     this.emit();
+  }
+
+  /** Rebuild the O(1) lookup index from the current tasks array. */
+  private rebuildIndex(): void {
+    this.taskIndex.clear();
+    for (const t of this.tasks) {
+      this.taskIndex.set(t.id, t);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -199,6 +216,7 @@ export class TaskStore {
     };
 
     this.tasks.push(task);
+    this.taskIndex.set(task.id, task);
     this.updateProjectTimestamp();
     await this.save();
 
@@ -243,6 +261,7 @@ export class TaskStore {
     // Insert directly at the requested position
     const clampedIndex = Math.max(0, Math.min(index, this.tasks.length));
     this.tasks.splice(clampedIndex, 0, task);
+    this.taskIndex.set(task.id, task);
     this.updateProjectTimestamp();
     await this.save(); // save + emit once
 
@@ -277,6 +296,7 @@ export class TaskStore {
       if (!task.createdDate) task.createdDate = getTodayDate();
       if (!task.lastModifiedDate) task.lastModifiedDate = getTodayDate();
       this.tasks.push(task);
+      this.taskIndex.set(task.id, task);
     }
 
     this.updateProjectTimestamp();
@@ -302,6 +322,7 @@ export class TaskStore {
       if (!task.createdDate) task.createdDate = getTodayDate();
       if (!task.lastModifiedDate) task.lastModifiedDate = getTodayDate();
       projectTasks.push(task);
+      this.taskIndex.set(task.id, task);
     }
 
     // Update the project bucket
@@ -750,6 +771,7 @@ export class TaskStore {
 
     // Remove the task itself
     this.tasks = this.tasks.filter(t => t.id !== id);
+    this.taskIndex.delete(id);
 
     this.updateProjectTimestamp();
     await this.saveQuietly();
@@ -776,7 +798,7 @@ export class TaskStore {
     this.tasks = ids
       .map((id) => idToTask.get(id))
       .filter((t): t is PlannerTask => !!t);
-
+    this.rebuildIndex();
     await this.save();
   }
 
@@ -805,7 +827,7 @@ export class TaskStore {
   }
 
   getTaskById(id: string): PlannerTask | undefined {
-    return this.tasks.find(t => t.id === id);
+    return this.taskIndex.get(id);
   }
 
   getTasks(): PlannerTask[] {

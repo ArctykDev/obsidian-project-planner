@@ -1,13 +1,13 @@
 {
   "name": "obsidian-project-planner",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "A Microsoft Planner–style project management plugin for Obsidian with grid, board, and timeline views.",
   "main": "main.js",
   "type": "module",
   "scripts": {
     "dev": "rollup -c -w",
     "build": "rollup -c",
-    "clean": "powershell -Command \"Remove-Item -Recurse -Force node_modules,dist,build,main.js,main.js.map -ErrorAction SilentlyContinue\"",
+    "clean": "rm -rf node_modules dist build main.js main.js.map",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

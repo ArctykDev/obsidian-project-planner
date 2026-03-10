@@ -88,24 +88,27 @@ export class GanttView extends ItemView {
         }
     }
 
+    private parseLocalDate(dateStr: string): Date | null {
+        const parts = dateStr.split("-").map(Number);
+        if (parts.length !== 3 || parts.some(isNaN)) return null;
+        const [y, m, d] = parts;
+        const date = new Date(y, m - 1, d);
+        date.setHours(0, 0, 0, 0);
+        return date;
+    }
+
     private getTaskRange(task: PlannerTask, todayMs: number): { start: number; end: number } {
         let start: number | null = null;
         let end: number | null = null;
 
         if (task.startDate) {
-            // Parse date correctly to avoid timezone issues (YYYY-MM-DD format)
-            const parts = task.startDate.split("-");
-            const startDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-            startDate.setHours(0, 0, 0, 0);
-            start = startDate.getTime();
+            const startDate = this.parseLocalDate(task.startDate);
+            if (startDate) start = startDate.getTime();
         }
 
         if (task.dueDate) {
-            // Parse date correctly to avoid timezone issues (YYYY-MM-DD format)
-            const parts = task.dueDate.split("-");
-            const endDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-            endDate.setHours(0, 0, 0, 0);
-            end = endDate.getTime();
+            const endDate = this.parseLocalDate(task.dueDate);
+            if (endDate) end = endDate.getTime();
         }
 
         if (start === null && end !== null) start = end;

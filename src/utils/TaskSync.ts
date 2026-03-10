@@ -327,7 +327,11 @@ export class TaskSync {
                 const folderPath = filePath.substring(0, filePath.lastIndexOf('/'));
                 const folder = this.app.vault.getAbstractFileByPath(folderPath);
                 if (!folder) {
-                    await this.app.vault.createFolder(folderPath);
+                    try {
+                        await this.app.vault.createFolder(folderPath);
+                    } catch {
+                        // Folder may already exist from a concurrent sync
+                    }
                 }
                 await this.app.vault.create(filePath, content);
             }

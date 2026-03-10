@@ -67,6 +67,11 @@ export class GridView extends ItemView {
   private savedScrollLeft: number | null = null;
   private renderVersion = 0; // Monotonic counter — only the latest render restores scroll
 
+  // Incremental rendering state
+  private renderedRowCount = 0;
+  private static readonly ROW_BATCH_SIZE = 100;
+  private scrollRenderPending = false;
+
   // Cleanup callbacks for mid-operation view close
   private activeDragCleanup: (() => void) | null = null;
   private activeResizeCleanup: (() => void) | null = null;
@@ -421,9 +426,36 @@ export class GridView extends ItemView {
 
     this.numberingMap = numberingMap;
 
-    visibleRows.forEach((r, i) =>
-      this.renderTaskRow(tbody, r.task, r.isChild, r.hasChildren, i, r.depth)
-    );
+    // Incremental rendering: render first batch immediately, rest on scroll
+    this.renderedRowCount = 0;
+    this.renderRowBatch(tbody, visibleRows);
+
+    if (visibleRows.length > GridView.ROW_BATCH_SIZE) {
+      const onScroll = () => {
+        if (this.scrollRenderPending) return;
+        if (this.renderedRowCount >= this.visibleRows.length) return;
+        const el = content;
+        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200) {
+          this.scrollRenderPending = true;
+          requestAnimationFrame(() => {
+            this.renderRowBatch(tbody, this.visibleRows);
+            this.scrollRenderPending = false;
+          });
+        }
+      };
+      content.addEventListener("scroll", onScroll, { passive: true });
+    }
+  }
+
+  /** Render the next batch of rows into the tbody. */
+  private renderRowBatch(tbody: HTMLElement, rows: VisibleRow[]) {
+    const start = this.renderedRowCount;
+    const end = Math.min(start + GridView.ROW_BATCH_SIZE, rows.length);
+    for (let i = start; i < end; i++) {
+      const r = rows[i];
+      this.renderTaskRow(tbody, r.task, r.isChild, r.hasChildren, i, r.depth);
+    }
+    this.renderedRowCount = end;
   }
 
   // ---------------------------------------------------------------------------
