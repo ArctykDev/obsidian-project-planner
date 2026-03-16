@@ -2,6 +2,33 @@
 
 All notable changes to Obsidian Project Planner will be documented in this file.
 
+## [0.8.1] - 2026-03-15
+
+### Fixed
+
+#### Obsidian Community Plugin Guidelines
+- **`.gitignore` updated**: Removed `main.js` and `main.js.map` from ignore list so build outputs are tracked in version control (required by Obsidian plugin registry)
+- **`isDesktopOnly` set to `true`**: Plugin uses Node `crypto` and desktop-only APIs — now correctly declared in `manifest.json`
+- **Cross-platform clean script**: Replaced PowerShell-only `Remove-Item` in `package.json` with portable `rm -rf`
+
+#### Event Listener & Resource Cleanup
+- **DependencyGraphView listener leaks**: Replaced manual `window.addEventListener("resize")` and `document.addEventListener("mousemove/mouseup")` with Obsidian's `registerDomEvent()` for automatic cleanup on view close
+- **Unsafe TaskDetailView cast**: Replaced `as TaskDetailView` cast with duck-type check (`'setTask' in view`) to safely handle cases where the view hasn't initialized
+
+#### Data Integrity
+- **Hash collision in daily note task IDs**: Replaced 32-bit hash-based `generateStableTaskId()` with `crypto.randomUUID()`, eliminating collision risk for imported daily note tasks
+- **Invalid date handling**: Added `isValidDateStr()` validation in TaskStore and `parseLocalDate()` in GanttView — invalid or malformed date strings no longer produce `NaN` dates or silent rendering errors
+- **`createFolder` crash**: Wrapped `vault.createFolder()` calls in `main.ts` and `TaskSync.ts` with try-catch to prevent crashes when the folder already exists
+
+#### Performance
+- **O(1) task lookups**: Added `taskIndex` Map to TaskStore — `getTaskById()` now uses Map lookup instead of `Array.find()`, improving performance for large task lists
+- **`taskIndex` not updated in `addTaskToProject`**: Fixed a regression where tasks added via DailyNoteTaskScanner were missing from the index, causing `getTaskById()` to return `undefined`
+- **Incremental grid rendering**: GridView now renders rows in batches of 100 with scroll-triggered loading, reducing initial render time for projects with hundreds of tasks
+
+### Changed
+- **View activation deduplicated**: Six near-identical view activation methods (`activateView`, `activateBoardView`, `activateDashboardView`, `activateGanttView`, `activateMyDayView`, `openDependencyGraph`) consolidated into a shared `openViewByType()` helper
+- **Dead code removed**: Deleted unused `uuid.ts` utility and its test file
+
 ## [0.8.0] - 2026-03-08
 
 ### Added
