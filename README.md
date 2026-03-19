@@ -111,7 +111,9 @@ A full-featured project planner for [Obsidian](https://obidian.md) based on [Mic
 
 ---
 
-**Read the full changelog:** [Obsidian Project Planner Changlog](https://projectplanner.md/changelog/)
+**Read the full changelog:** [Obsidian Project Planner Changlog](https://projectplanner.md/docs/changelog/)
+
+**View the roadmap:** [Obsidian Project Planner Roadmap](https://projectplanner.md/docs/roadmap/)
 
 ## Support
 
