@@ -97,7 +97,9 @@ A full-featured project planner for [Obsidian](https://obidian.md) based on [Mic
 
 **Full documentation:** [Obsidian Project Planner Docs](https://projectplanner.md)
 
-**Full changelog:** [Obsidian Project Planner Changlog](https://projectplanner.md/changelog/)
+**Full changelog:** [Obsidian Project Planner Changlog](https://projectplanner.md/docs/changelog/)
+
+**View the roadmap:** [Obsidian Project Planner Roadmap](https://projectplanner.md/docs/roadmap/)
 
 ---
 
@@ -110,10 +112,6 @@ A full-featured project planner for [Obsidian](https://obidian.md) based on [Mic
 **YouTube:** [Project Planner YouTube Channel](https://youtube.com/@ArctykDev)
 
 ---
-
-**Read the full changelog:** [Obsidian Project Planner Changlog](https://projectplanner.md/docs/changelog/)
-
-**View the roadmap:** [Obsidian Project Planner Roadmap](https://projectplanner.md/docs/roadmap/)
 
 ## Support
 
