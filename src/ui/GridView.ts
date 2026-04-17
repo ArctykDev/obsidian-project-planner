@@ -199,7 +199,7 @@ export class GridView extends ItemView {
       cls: "planner-filter",
     });
     const statusOptions = settings.availableStatuses || [];
-    const statusNames = statusOptions.map((s: any) => s.name);
+    const statusNames = statusOptions.map((s) => s.name);
 
     ["All", ...statusNames].forEach((s) =>
       statusFilter.createEl("option", { text: s })
@@ -213,7 +213,7 @@ export class GridView extends ItemView {
       cls: "planner-filter",
     });
     const priorityOptions = settings.availablePriorities || [];
-    const priorityNames = priorityOptions.map((p: any) => p.name);
+    const priorityNames = priorityOptions.map((p) => p.name);
 
     ["All", ...priorityNames].forEach((p) =>
       priorityFilter.createEl("option", { text: p })
@@ -725,7 +725,7 @@ export class GridView extends ItemView {
               if (value === "Unassigned") {
                 await this.taskStore.updateTask(task.id, { bucketId: undefined });
               } else {
-                const selectedBucket = buckets.find((b: any) => b.name === value);
+                const selectedBucket = buckets.find((b) => b.name === value);
                 if (selectedBucket) {
                   await this.taskStore.updateTask(task.id, { bucketId: selectedBucket.id });
                 }
@@ -1123,6 +1123,15 @@ export class GridView extends ItemView {
         })
     );
 
+    menu.addItem((item) =>
+      item
+        .setTitle("Add new task below")
+        .setIcon("plus")
+        .onClick(async () => {
+          await this.addTaskBelow(task);
+        })
+    );
+
     const canMakeSubtask = rowIndex > 0;
     const canPromote = !!task.parentId;
 
@@ -1212,6 +1221,26 @@ export class GridView extends ItemView {
     );
 
     // Focus title editor
+    this.focusNewTaskTitleImmediate(newTask.id);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Add new task below
+  // ---------------------------------------------------------------------------
+
+  private async addTaskBelow(task: PlannerTask) {
+    const all = this.taskStore.getAll();
+    const allIds = all.map((t) => t.id);
+
+    const targetIndex = allIds.indexOf(task.id);
+    const insertIndex = targetIndex >= 0 ? targetIndex + 1 : all.length;
+
+    const newTask = await this.taskStore.addTaskAtIndex(
+      "New Task",
+      insertIndex,
+      task.parentId ? { parentId: task.parentId } : undefined
+    );
+
     this.focusNewTaskTitleImmediate(newTask.id);
   }
 
@@ -1310,7 +1339,7 @@ export class GridView extends ItemView {
 
     row.classList.add("planner-row-dragging");
     document.body.style.userSelect = "none";
-    (document.body.style as any).webkitUserSelect = "none";
+    document.body.style.setProperty("-webkit-user-select", "none");
     document.body.style.cursor = "grabbing";
 
     const offsetY = evt.clientY - rowRect.top;
@@ -1469,7 +1498,7 @@ export class GridView extends ItemView {
 
       row.classList.remove("planner-row-dragging");
       document.body.style.userSelect = "";
-      (document.body.style as any).webkitUserSelect = "";
+      document.body.style.removeProperty("-webkit-user-select");
       document.body.style.cursor = "";
 
       if (this.lastTargetRow) {
@@ -1506,7 +1535,7 @@ export class GridView extends ItemView {
       indicator.remove();
       row.classList.remove("planner-row-dragging");
       document.body.style.userSelect = "";
-      (document.body.style as any).webkitUserSelect = "";
+      document.body.style.removeProperty("-webkit-user-select");
       document.body.style.cursor = "";
       if (this.lastTargetRow) {
         this.lastTargetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
@@ -2303,7 +2332,7 @@ export class GridView extends ItemView {
 
       // Get all reorderable columns
       const allColumns = this.getColumnDefinitions();
-      const reorderableColumns = allColumns.filter((c: any) => c.reorderable);
+      const reorderableColumns = allColumns.filter((c) => c.reorderable);
       
       // Initialize columnOrder if empty, or sync missing columns
       if (this.columnOrder.length === 0) {

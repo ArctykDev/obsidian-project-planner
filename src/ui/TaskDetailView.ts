@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, MarkdownRenderer, setIcon } from "obsidian";
+import { ItemView, WorkspaceLeaf, MarkdownRenderer, setIcon, Notice } from "obsidian";
 import type ProjectPlannerPlugin from "../main";
 import type { PlannerTask, DependencyType } from "../types";
 import {
@@ -151,7 +151,12 @@ export class TaskDetailView extends ItemView {
       const projectId = this.plugin.settings?.activeProjectId || "";
       const uri = `obsidian://open-planner-task?id=${encodeURIComponent(task.id)}&project=${encodeURIComponent(projectId)}`;
 
-      await navigator.clipboard.writeText(uri);
+      try {
+        await navigator.clipboard.writeText(uri);
+      } catch {
+        new Notice("Failed to copy link to clipboard");
+        return;
+      }
 
       // Visual feedback
       copyLinkBtn.classList.add("planner-btn-success");
@@ -461,7 +466,7 @@ export class TaskDetailView extends ItemView {
 
       row.classList.add("planner-subtask-dragging");
       document.body.style.userSelect = "none";
-      (document.body.style as any).webkitUserSelect = "none";
+      document.body.style.setProperty("-webkit-user-select", "none");
       document.body.style.cursor = "grabbing";
 
       const offsetY = evt.clientY - rowRect.top;
@@ -511,7 +516,7 @@ export class TaskDetailView extends ItemView {
 
         row.classList.remove("planner-subtask-dragging");
         document.body.style.userSelect = "";
-        (document.body.style as any).webkitUserSelect = "";
+        document.body.style.removeProperty("-webkit-user-select");
         document.body.style.cursor = "";
 
         if (dragTargetId && dragTargetId !== sub.id) {
@@ -530,7 +535,7 @@ export class TaskDetailView extends ItemView {
         indicator.remove();
         row.classList.remove("planner-subtask-dragging");
         document.body.style.userSelect = "";
-        (document.body.style as any).webkitUserSelect = "";
+        document.body.style.removeProperty("-webkit-user-select");
         document.body.style.cursor = "";
       };
     };
@@ -918,8 +923,7 @@ export class TaskDetailView extends ItemView {
 
           // Check for circular dependencies
           if (this.wouldCreateCircularDependency(task.id, newDep.predecessorId)) {
-            // Show error (simple alert for now)
-            alert("Cannot add dependency: This would create a circular dependency chain.");
+            new Notice("Cannot add dependency: This would create a circular dependency chain.");
             return;
           }
 

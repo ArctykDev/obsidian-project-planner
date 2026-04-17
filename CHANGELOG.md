@@ -2,6 +2,33 @@
 
 All notable changes to Obsidian Project Planner will be documented in this file.
 
+## [0.8.2] - 2026-04-17
+
+### Fixed
+
+#### Code Audit — Obsidian Community Plugin Guidelines & Best Practices
+
+- **`alert()` replaced with `Notice`** (TaskDetailView): Removed browser `alert()` call in favor of Obsidian's `Notice` API, as required by community plugin guidelines
+- **Canvas event listeners migrated** (DependencyGraphView): Replaced manual `canvas.addEventListener("mousedown"/"dblclick")` with `this.registerDomEvent()` for automatic cleanup on view close
+- **`any` type annotations removed** (GridView, TaskSync): Eliminated 4× `any` casts in GridView (`statusOptions.map`, `priorityOptions.map`, `buckets.find`, `reorderableColumns.filter`) and replaced `yaml: any` with `Record<string, unknown>` in TaskSync
+- **Path traversal sanitization** (Settings): `projectsBasePath` now strips `..` segments and leading `/` to prevent directory traversal
+
+#### Resource & Lifecycle Cleanup
+- **DashboardView keydown listener leak**: Modal keydown handlers (`showTaskListModal`, `showCostReportModal`) are now tracked and removed in `dismissModal()`, preventing orphaned listeners
+- **DependencyGraphView post-close guard**: Added `closed` flag to prevent `refresh()` and `startSimulation()` animation loop from executing after view close
+- **DailyNoteTaskScanner timeout cleanup**: Added `destroy()` method that clears pending `scanTimeout`; called from `main.ts` `onunload()` to prevent post-unload scan callbacks
+- **GanttView render guard**: Added `isRendering`/`renderPending` guard (matching BoardView pattern) to prevent overlapping renders from corrupting scroll state
+
+#### Performance
+- **BoardView dragover optimization**: Replaced `document.querySelectorAll()` on every `dragover` event with tracked `lastHighlightedCard` reference — O(1) class toggle instead of full DOM scan
+
+#### Type Safety
+- **`webkitUserSelect` `any` casts removed**: Replaced 9× `(document.body.style as any).webkitUserSelect` across TaskDetailView, GanttView, and GridView with `style.setProperty("-webkit-user-select", ...)` / `style.removeProperty("-webkit-user-select")`
+
+#### Input Validation
+- **Clipboard API error handling** (TaskDetailView): `navigator.clipboard.writeText()` now wrapped in try/catch with `Notice` fallback for denied permissions
+- **Numeric settings validation** (Settings): Budget and hourly rate inputs now validate `Number.isFinite()` and `>= 0`, rejecting NaN and negative values
+
 ## [0.8.1] - 2026-03-15
 
 ### Fixed

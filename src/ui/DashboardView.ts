@@ -41,6 +41,7 @@ export class DashboardView extends ItemView {
     private savedScrollTop: number | null = null;
     private activeModal: HTMLElement | null = null;
     private activeOverlay: HTMLElement | null = null;
+    private activeKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
     private renderVersion = 0;
 
     constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
@@ -77,6 +78,10 @@ export class DashboardView extends ItemView {
 
     /** Remove modal + overlay from document.body if present. */
     private dismissModal() {
+        if (this.activeKeydownHandler) {
+            document.removeEventListener("keydown", this.activeKeydownHandler);
+            this.activeKeydownHandler = null;
+        }
         if (this.activeModal && this.activeModal.parentNode) {
             this.activeModal.parentNode.removeChild(this.activeModal);
         }
@@ -226,9 +231,9 @@ export class DashboardView extends ItemView {
         const onKeyDown = (e: KeyboardEvent) => {
             if (e.key === "Escape") {
                 this.dismissModal();
-                document.removeEventListener("keydown", onKeyDown);
             }
         };
+        this.activeKeydownHandler = onKeyDown;
         document.addEventListener("keydown", onKeyDown);
 
         const content = modal.createDiv("dashboard-task-modal-content");
@@ -597,9 +602,9 @@ export class DashboardView extends ItemView {
         const onKeyDown = (e: KeyboardEvent) => {
             if (e.key === "Escape") {
                 this.dismissModal();
-                document.removeEventListener("keydown", onKeyDown);
             }
         };
+        this.activeKeydownHandler = onKeyDown;
         document.addEventListener("keydown", onKeyDown);
 
         const content = modal.createDiv("dashboard-task-modal-content dashboard-cost-report-content");

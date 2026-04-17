@@ -27,6 +27,17 @@ export class DailyNoteTaskScanner {
     }
 
     /**
+     * Clean up pending timeouts and state
+     */
+    destroy() {
+        if (this.scanTimeout) {
+            clearTimeout(this.scanTimeout);
+            this.scanTimeout = null;
+        }
+        this.pendingScans.clear();
+    }
+
+    /**
      * Load taskLocationMap from persisted settings
      */
     private loadTaskLocationMap() {

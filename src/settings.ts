@@ -282,7 +282,8 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
             .setPlaceholder("0")
             .setValue(activeProject.budgetTotal != null ? String(activeProject.budgetTotal) : "")
             .onChange(async (value) => {
-              activeProject.budgetTotal = parseFloat(value) || undefined;
+              const parsed = parseFloat(value);
+              activeProject.budgetTotal = value === "" ? undefined : (Number.isFinite(parsed) && parsed >= 0 ? parsed : activeProject.budgetTotal);
               await this.plugin.saveSettings();
             });
         });
@@ -295,7 +296,8 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
             .setPlaceholder("0")
             .setValue(activeProject.defaultHourlyRate != null ? String(activeProject.defaultHourlyRate) : "")
             .onChange(async (value) => {
-              activeProject.defaultHourlyRate = parseFloat(value) || undefined;
+              const parsed = parseFloat(value);
+              activeProject.defaultHourlyRate = value === "" ? undefined : (Number.isFinite(parsed) && parsed >= 0 ? parsed : activeProject.defaultHourlyRate);
               await this.plugin.saveSettings();
             });
         });
@@ -476,7 +478,10 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
           .setPlaceholder("Project Planner")
           .setValue(this.plugin.settings.projectsBasePath)
           .onChange(async (value) => {
-            this.plugin.settings.projectsBasePath = value.trim() || "Project Planner";
+            // Sanitize against path traversal
+            let sanitized = value.trim() || "Project Planner";
+            sanitized = sanitized.replace(/\.\./g, "").replace(/^\/+/, "");
+            this.plugin.settings.projectsBasePath = sanitized;
             await this.plugin.saveSettings();
           })
       );

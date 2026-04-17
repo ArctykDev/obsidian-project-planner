@@ -128,7 +128,8 @@ class ProjectPlannerSettingTab extends obsidian.PluginSettingTab {
                     .setPlaceholder("0")
                     .setValue(activeProject.budgetTotal != null ? String(activeProject.budgetTotal) : "")
                     .onChange(async (value) => {
-                    activeProject.budgetTotal = parseFloat(value) || undefined;
+                    const parsed = parseFloat(value);
+                    activeProject.budgetTotal = value === "" ? undefined : (Number.isFinite(parsed) && parsed >= 0 ? parsed : activeProject.budgetTotal);
                     await this.plugin.saveSettings();
                 });
             });
@@ -140,7 +141,8 @@ class ProjectPlannerSettingTab extends obsidian.PluginSettingTab {
                     .setPlaceholder("0")
                     .setValue(activeProject.defaultHourlyRate != null ? String(activeProject.defaultHourlyRate) : "")
                     .onChange(async (value) => {
-                    activeProject.defaultHourlyRate = parseFloat(value) || undefined;
+                    const parsed = parseFloat(value);
+                    activeProject.defaultHourlyRate = value === "" ? undefined : (Number.isFinite(parsed) && parsed >= 0 ? parsed : activeProject.defaultHourlyRate);
                     await this.plugin.saveSettings();
                 });
             });
@@ -284,7 +286,10 @@ class ProjectPlannerSettingTab extends obsidian.PluginSettingTab {
             .setPlaceholder("Project Planner")
             .setValue(this.plugin.settings.projectsBasePath)
             .onChange(async (value) => {
-            this.plugin.settings.projectsBasePath = value.trim() || "Project Planner";
+            // Sanitize against path traversal
+            let sanitized = value.trim() || "Project Planner";
+            sanitized = sanitized.replace(/\.\./g, "").replace(/^\/+/, "");
+            this.plugin.settings.projectsBasePath = sanitized;
             await this.plugin.saveSettings();
         }));
         new obsidian.Setting(containerEl)
@@ -745,13 +750,15 @@ function renderPlannerHeader(parent, plugin, options) {
     myDayBtn.onclick = async () => await plugin.activateMyDayView();
     // Header actions (Add task, extra, Project Hub, Settings)
     const headerActions = header.createDiv("planner-header-actions");
-    const addBtn = headerActions.createEl("button", {
-        cls: "planner-add-btn",
-        text: "Add Task",
-    });
-    addBtn.onclick = async () => {
-        await plugin.taskStore.addTask("New Task");
-    };
+    if (!options.hideAddTask) {
+        const addBtn = headerActions.createEl("button", {
+            cls: "planner-add-btn",
+            text: "Add Task",
+        });
+        addBtn.onclick = async () => {
+            await plugin.taskStore.addTask("New Task");
+        };
+    }
     if (options.buildExtraActions) {
         options.buildExtraActions(headerActions);
     }
@@ -1817,6 +1824,12 @@ class GridView extends obsidian.ItemView {
             .onClick(async () => {
             await this.addTaskAbove(task, rowIndex);
         }));
+        menu.addItem((item) => item
+            .setTitle("Add new task below")
+            .setIcon("plus")
+            .onClick(async () => {
+            await this.addTaskBelow(task);
+        }));
         const canMakeSubtask = rowIndex > 0;
         const canPromote = !!task.parentId;
         menu.addItem((item) => item
@@ -1885,6 +1898,17 @@ class GridView extends obsidian.ItemView {
         // at the wrong position or cause it to disappear.
         const newTask = await this.taskStore.addTaskAtIndex("New Task", insertIndex, task.parentId ? { parentId: task.parentId } : undefined);
         // Focus title editor
+        this.focusNewTaskTitleImmediate(newTask.id);
+    }
+    // ---------------------------------------------------------------------------
+    // Add new task below
+    // ---------------------------------------------------------------------------
+    async addTaskBelow(task) {
+        const all = this.taskStore.getAll();
+        const allIds = all.map((t) => t.id);
+        const targetIndex = allIds.indexOf(task.id);
+        const insertIndex = targetIndex >= 0 ? targetIndex + 1 : all.length;
+        const newTask = await this.taskStore.addTaskAtIndex("New Task", insertIndex, task.parentId ? { parentId: task.parentId } : undefined);
         this.focusNewTaskTitleImmediate(newTask.id);
     }
     // Helper: Focus the title input of the newly created task
@@ -1965,7 +1989,7 @@ class GridView extends obsidian.ItemView {
         this.dragDropOnto = false;
         row.classList.add("planner-row-dragging");
         document.body.style.userSelect = "none";
-        document.body.style.webkitUserSelect = "none";
+        document.body.style.setProperty("-webkit-user-select", "none");
         document.body.style.cursor = "grabbing";
         const offsetY = evt.clientY - rowRect.top;
         // Throttle drop zone calculations for better performance
@@ -2102,7 +2126,7 @@ class GridView extends obsidian.ItemView {
             }, 100);
             row.classList.remove("planner-row-dragging");
             document.body.style.userSelect = "";
-            document.body.style.webkitUserSelect = "";
+            document.body.style.removeProperty("-webkit-user-select");
             document.body.style.cursor = "";
             if (this.lastTargetRow) {
                 this.lastTargetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
@@ -2133,7 +2157,7 @@ class GridView extends obsidian.ItemView {
             indicator.remove();
             row.classList.remove("planner-row-dragging");
             document.body.style.userSelect = "";
-            document.body.style.webkitUserSelect = "";
+            document.body.style.removeProperty("-webkit-user-select");
             document.body.style.cursor = "";
             if (this.lastTargetRow) {
                 this.lastTargetRow.classList.remove("planner-row-drop-target", "planner-row-drop-onto");
@@ -2971,6 +2995,7 @@ class BoardView extends obsidian.ItemView {
         this.isRendering = false;
         this.renderPending = false;
         this.renderVersion = 0; // Monotonic counter — only the latest render restores scroll
+        this.lastHighlightedCard = null;
         this.plugin = plugin;
         this.taskStore = plugin.taskStore;
     }
@@ -3298,9 +3323,10 @@ class BoardView extends obsidian.ItemView {
             this.draggedTaskId = null;
             card.classList.remove("planner-board-card-dragging");
             // Clear drop indicators
-            document.querySelectorAll(".planner-board-card-drop-before, .planner-board-card-drop-after").forEach(el => {
-                el.classList.remove("planner-board-card-drop-before", "planner-board-card-drop-after");
-            });
+            if (this.lastHighlightedCard) {
+                this.lastHighlightedCard.classList.remove("planner-board-card-drop-before", "planner-board-card-drop-after");
+                this.lastHighlightedCard = null;
+            }
         };
         // Drag over card - determine drop position (before/after)
         card.ondragover = (e) => {
@@ -3312,9 +3338,9 @@ class BoardView extends obsidian.ItemView {
             const midpoint = rect.top + rect.height / 2;
             const dropBefore = e.clientY < midpoint;
             // Clear previous indicators
-            document.querySelectorAll(".planner-board-card-drop-before, .planner-board-card-drop-after").forEach(el => {
-                el.classList.remove("planner-board-card-drop-before", "planner-board-card-drop-after");
-            });
+            if (this.lastHighlightedCard && this.lastHighlightedCard !== card) {
+                this.lastHighlightedCard.classList.remove("planner-board-card-drop-before", "planner-board-card-drop-after");
+            }
             // Add indicator
             if (dropBefore) {
                 card.classList.add("planner-board-card-drop-before");
@@ -3324,6 +3350,7 @@ class BoardView extends obsidian.ItemView {
                 card.classList.add("planner-board-card-drop-after");
                 this.dropPosition = "after";
             }
+            this.lastHighlightedCard = card;
             this.dropTargetCardId = task.id;
         };
         // Drop on card - reorder within bucket or move between buckets
@@ -3331,9 +3358,10 @@ class BoardView extends obsidian.ItemView {
             e.preventDefault();
             e.stopPropagation();
             // Clear indicators
-            document.querySelectorAll(".planner-board-card-drop-before, .planner-board-card-drop-after").forEach(el => {
-                el.classList.remove("planner-board-card-drop-before", "planner-board-card-drop-after");
-            });
+            if (this.lastHighlightedCard) {
+                this.lastHighlightedCard.classList.remove("planner-board-card-drop-before", "planner-board-card-drop-after");
+                this.lastHighlightedCard = null;
+            }
             if (!this.draggedTaskId || !this.dropTargetCardId || this.draggedTaskId === this.dropTargetCardId)
                 return;
             const draggedTask = this.taskStore.getAll().find(t => t.id === this.draggedTaskId);
@@ -3530,12 +3558,59 @@ class BoardView extends obsidian.ItemView {
             .setIcon("pencil")
             .onClick(() => this.plugin.openTaskDetail(task)));
         menu.addSeparator();
+        // Copy link to task
+        menu.addItem((item) => item
+            .setTitle("Copy link to task")
+            .setIcon("link")
+            .onClick(async () => {
+            const projectId = this.plugin.settings.activeProjectId;
+            const uri = `obsidian://open-planner-task?id=${encodeURIComponent(task.id)}&project=${encodeURIComponent(projectId)}`;
+            try {
+                await navigator.clipboard.writeText(uri);
+                new obsidian.Notice("Task link copied to clipboard");
+            }
+            catch (err) {
+                console.error("Failed to copy link:", err);
+                new obsidian.Notice("Failed to copy link");
+            }
+        }));
+        // View Task Notes
+        menu.addItem((item) => item
+            .setTitle("View Task Notes")
+            .setIcon("file-text")
+            .setDisabled(!this.plugin.settings.enableMarkdownSync)
+            .onClick(async () => {
+            if (!this.plugin.settings.enableMarkdownSync)
+                return;
+            const projectId = this.plugin.settings.activeProjectId;
+            const project = this.plugin.settings.projects.find((p) => p.id === projectId);
+            if (!project)
+                return;
+            const filePath = this.plugin.taskSync.getTaskFilePath(task, project.name);
+            try {
+                const file = this.app.vault.getAbstractFileByPath(filePath);
+                if (file && file instanceof obsidian.TFile) {
+                    await this.app.workspace.openLinkText(filePath, "", true);
+                }
+                else {
+                    new obsidian.Notice("Creating task note...");
+                    await this.plugin.taskSync.syncTaskToMarkdown(task, projectId);
+                    setTimeout(async () => {
+                        await this.app.workspace.openLinkText(filePath, "", true);
+                    }, 100);
+                }
+            }
+            catch (err) {
+                console.error("Failed to open task note:", err);
+                new obsidian.Notice("Failed to open task note");
+            }
+        }));
+        menu.addSeparator();
         menu.addItem((item) => item
             .setTitle("Delete task")
             .setIcon("trash")
             .onClick(async () => {
             await this.taskStore.deleteTask(task.id);
-            // No explicit render() — TaskStore.save() → emit() already re-renders via subscription
         }));
         menu.showAtMouseEvent(evt);
     }
@@ -4150,7 +4225,13 @@ class TaskDetailView extends obsidian.ItemView {
         copyLinkBtn.onclick = async () => {
             const projectId = this.plugin.settings?.activeProjectId || "";
             const uri = `obsidian://open-planner-task?id=${encodeURIComponent(task.id)}&project=${encodeURIComponent(projectId)}`;
-            await navigator.clipboard.writeText(uri);
+            try {
+                await navigator.clipboard.writeText(uri);
+            }
+            catch {
+                new obsidian.Notice("Failed to copy link to clipboard");
+                return;
+            }
             // Visual feedback
             copyLinkBtn.classList.add("planner-btn-success");
             linkIcon.empty();
@@ -4412,7 +4493,7 @@ class TaskDetailView extends obsidian.ItemView {
             let dragInsertAfter = false;
             row.classList.add("planner-subtask-dragging");
             document.body.style.userSelect = "none";
-            document.body.style.webkitUserSelect = "none";
+            document.body.style.setProperty("-webkit-user-select", "none");
             document.body.style.cursor = "grabbing";
             const offsetY = evt.clientY - rowRect.top;
             const onMove = (moveEvt) => {
@@ -4446,7 +4527,7 @@ class TaskDetailView extends obsidian.ItemView {
                 indicator.remove();
                 row.classList.remove("planner-subtask-dragging");
                 document.body.style.userSelect = "";
-                document.body.style.webkitUserSelect = "";
+                document.body.style.removeProperty("-webkit-user-select");
                 document.body.style.cursor = "";
                 if (dragTargetId && dragTargetId !== sub.id) {
                     await this.handleSubtaskDrop(sub.id, dragTargetId, dragInsertAfter);
@@ -4462,7 +4543,7 @@ class TaskDetailView extends obsidian.ItemView {
                 indicator.remove();
                 row.classList.remove("planner-subtask-dragging");
                 document.body.style.userSelect = "";
-                document.body.style.webkitUserSelect = "";
+                document.body.style.removeProperty("-webkit-user-select");
                 document.body.style.cursor = "";
             };
         };
@@ -4767,8 +4848,7 @@ class TaskDetailView extends obsidian.ItemView {
                     };
                     // Check for circular dependencies
                     if (this.wouldCreateCircularDependency(task.id, newDep.predecessorId)) {
-                        // Show error (simple alert for now)
-                        alert("Cannot add dependency: This would create a circular dependency chain.");
+                        new obsidian.Notice("Cannot add dependency: This would create a circular dependency chain.");
                         return;
                     }
                     const newDeps = [...dependencies, newDep];
@@ -5276,6 +5356,7 @@ class DependencyGraphView extends obsidian.ItemView {
         this.unsubscribe = null;
         this.resizeHandler = null;
         this.needsRefresh = false;
+        this.closed = false;
         this.plugin = plugin;
     }
     getViewType() {
@@ -5328,6 +5409,7 @@ class DependencyGraphView extends obsidian.ItemView {
         await this.refresh();
     }
     async onClose() {
+        this.closed = true;
         if (this.animationFrame) {
             cancelAnimationFrame(this.animationFrame);
             this.animationFrame = null;
@@ -5363,7 +5445,7 @@ class DependencyGraphView extends obsidian.ItemView {
         let isDragging = false;
         let offsetX = 0;
         let offsetY = 0;
-        this.canvas.addEventListener("mousedown", (e) => {
+        this.registerDomEvent(this.canvas, "mousedown", (e) => {
             if (!this.canvas)
                 return;
             const rect = this.canvas.getBoundingClientRect();
@@ -5415,13 +5497,15 @@ class DependencyGraphView extends obsidian.ItemView {
             }
         });
         // Double click to open task details
-        this.canvas.addEventListener("dblclick", (e) => {
+        this.registerDomEvent(this.canvas, "dblclick", (e) => {
             if (!this.selectedNode)
                 return;
             this.plugin.openTaskDetail(this.selectedNode.task);
         });
     }
     async refresh() {
+        if (this.closed)
+            return;
         // Don't rebuild graph while user is dragging a node
         if (this.dragNode) {
             this.needsRefresh = true;
@@ -5487,6 +5571,8 @@ class DependencyGraphView extends obsidian.ItemView {
         let iterations = 0;
         const maxIterations = 300;
         const animate = () => {
+            if (this.closed)
+                return;
             if (iterations < maxIterations) {
                 this.applyForces();
                 this.render();
@@ -5711,6 +5797,9 @@ class GanttView extends obsidian.ItemView {
         this.savedRightScrollLeft = null;
         // Scroll-to-date target (set by scrollToDate, consumed by render)
         this.scrollTargetDate = null;
+        // Render guard: prevents overlapping renders that corrupt scroll state
+        this.isRendering = false;
+        this.renderPending = false;
         this.plugin = plugin;
         // Load column width from settings
         this.leftColumnWidth = plugin.settings.ganttLeftColumnWidth || 300;
@@ -6036,7 +6125,25 @@ class GanttView extends obsidian.ItemView {
                         await store.setOrder(reordered.map((t) => t.id));
                     }
                 }
-                // No explicit render() — TaskStore.save() → emit() already re-renders via subscription
+            });
+        });
+        menu.addItem((item) => {
+            item.setTitle("Add new task below");
+            item.setIcon("plus");
+            item.onClick(async () => {
+                const store = this.plugin.taskStore;
+                const newTask = await store.addTask("New Task");
+                const allTasks = store.getAll();
+                const taskIndex = allTasks.findIndex((t) => t.id === task.id);
+                if (taskIndex >= 0) {
+                    const reordered = [...allTasks];
+                    const newIndex = reordered.findIndex((t) => t.id === newTask.id);
+                    if (newIndex >= 0) {
+                        const [moved] = reordered.splice(newIndex, 1);
+                        reordered.splice(taskIndex + 1, 0, moved);
+                        await store.setOrder(reordered.map((t) => t.id));
+                    }
+                }
             });
         });
         menu.addItem((item) => {
@@ -6315,7 +6422,7 @@ class GanttView extends obsidian.ItemView {
         this.dragInsertAfter = false;
         row.classList.add("planner-gantt-row-dragging");
         document.body.style.userSelect = "none";
-        document.body.style.webkitUserSelect = "none";
+        document.body.style.setProperty("-webkit-user-select", "none");
         document.body.style.cursor = "grabbing";
         const offsetY = evt.clientY - rowRect.top;
         const onMove = (moveEvt) => {
@@ -6347,7 +6454,7 @@ class GanttView extends obsidian.ItemView {
             indicator.remove();
             row.classList.remove("planner-gantt-row-dragging");
             document.body.style.userSelect = "";
-            document.body.style.webkitUserSelect = "";
+            document.body.style.removeProperty("-webkit-user-select");
             document.body.style.cursor = "";
             const dragId = this.currentDragId;
             const targetId = this.dragTargetTaskId;
@@ -6368,11 +6475,16 @@ class GanttView extends obsidian.ItemView {
             ghost.remove();
             indicator.remove();
             document.body.style.userSelect = "";
-            document.body.style.webkitUserSelect = "";
+            document.body.style.removeProperty("-webkit-user-select");
             document.body.style.cursor = "";
         };
     }
     render() {
+        if (this.isRendering) {
+            this.renderPending = true;
+            return;
+        }
+        this.isRendering = true;
         const container = this.containerEl;
         // Save scroll positions before clearing
         const existingLeft = container.querySelector('.planner-gantt-left');
@@ -6800,6 +6912,11 @@ class GanttView extends obsidian.ItemView {
                 }, 0);
             }
         }
+        this.isRendering = false;
+        if (this.renderPending) {
+            this.renderPending = false;
+            this.render();
+        }
     }
     // ---------------------------------------------------------------------------
     // Dependency arrow rendering (MS Project / GanttProject style)
@@ -7020,6 +7137,7 @@ class DashboardView extends obsidian.ItemView {
         this.savedScrollTop = null;
         this.activeModal = null;
         this.activeOverlay = null;
+        this.activeKeydownHandler = null;
         this.renderVersion = 0;
         this.plugin = plugin;
     }
@@ -7047,6 +7165,10 @@ class DashboardView extends obsidian.ItemView {
     }
     /** Remove modal + overlay from document.body if present. */
     dismissModal() {
+        if (this.activeKeydownHandler) {
+            document.removeEventListener("keydown", this.activeKeydownHandler);
+            this.activeKeydownHandler = null;
+        }
         if (this.activeModal && this.activeModal.parentNode) {
             this.activeModal.parentNode.removeChild(this.activeModal);
         }
@@ -7175,9 +7297,9 @@ class DashboardView extends obsidian.ItemView {
         const onKeyDown = (e) => {
             if (e.key === "Escape") {
                 this.dismissModal();
-                document.removeEventListener("keydown", onKeyDown);
             }
         };
+        this.activeKeydownHandler = onKeyDown;
         document.addEventListener("keydown", onKeyDown);
         const content = modal.createDiv("dashboard-task-modal-content");
         // Header
@@ -7447,9 +7569,9 @@ class DashboardView extends obsidian.ItemView {
         const onKeyDown = (e) => {
             if (e.key === "Escape") {
                 this.dismissModal();
-                document.removeEventListener("keydown", onKeyDown);
             }
         };
+        this.activeKeydownHandler = onKeyDown;
         document.addEventListener("keydown", onKeyDown);
         const content = modal.createDiv("dashboard-task-modal-content dashboard-cost-report-content");
         // Header
@@ -7655,7 +7777,6 @@ class DashboardView extends obsidian.ItemView {
 }
 
 const VIEW_TYPE_MY_DAY = "project-planner-my-day-view";
-const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DAY_NAMES_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_NAMES = [
     "January", "February", "March", "April", "May", "June",
@@ -7868,67 +7989,43 @@ class MyDayView extends obsidian.ItemView {
     // Header
     // ---------------------------------------------------------------------------
     renderHeader(wrapper) {
-        const header = wrapper.createDiv("myday-header");
-        // Left: icon + title + date
-        const titleSection = header.createDiv("myday-header-title");
-        const iconEl = titleSection.createDiv("myday-header-icon");
-        obsidian.setIcon(iconEl, "sun");
-        const titleText = titleSection.createDiv("myday-header-text");
-        const now = new Date();
-        titleText.createDiv({ text: "My Tasks", cls: "myday-title" });
-        titleText.createDiv({
-            text: `${DAY_NAMES[now.getDay()]}, ${MONTH_NAMES[now.getMonth()]} ${now.getDate()}`,
-            cls: "myday-date-subtitle",
-        });
-        // Center: Today / Week segmented toggle
-        const modeToggle = header.createDiv("myday-mode-toggle");
-        const todayBtn = modeToggle.createEl("button", {
-            text: "Today",
-            cls: `myday-mode-btn${this.viewMode === "today" ? " myday-mode-btn-active" : ""}`,
-        });
-        todayBtn.onclick = () => {
-            if (this.viewMode !== "today") {
-                this.viewMode = "today";
-                this.savedScrollTop = null;
-                this.savedScrollLeft = null;
+        renderPlannerHeader(wrapper, this.plugin, {
+            active: "myday",
+            hideAddTask: true,
+            onProjectChange: async () => {
+                await this.plugin.taskStore.load();
                 this.render();
-            }
-        };
-        const weekBtn = modeToggle.createEl("button", {
-            text: "Week",
-            cls: `myday-mode-btn${this.viewMode === "week" ? " myday-mode-btn-active" : ""}`,
+            },
+            buildExtraActions: (actionsEl) => {
+                // Today / Week segmented toggle
+                const modeToggle = actionsEl.createDiv("myday-mode-toggle");
+                const todayBtn = modeToggle.createEl("button", {
+                    text: "Today",
+                    cls: `myday-mode-btn${this.viewMode === "today" ? " myday-mode-btn-active" : ""}`,
+                });
+                todayBtn.onclick = () => {
+                    if (this.viewMode !== "today") {
+                        this.viewMode = "today";
+                        this.savedScrollTop = null;
+                        this.savedScrollLeft = null;
+                        this.render();
+                    }
+                };
+                const weekBtn = modeToggle.createEl("button", {
+                    text: "Week",
+                    cls: `myday-mode-btn${this.viewMode === "week" ? " myday-mode-btn-active" : ""}`,
+                });
+                weekBtn.onclick = () => {
+                    if (this.viewMode !== "week") {
+                        this.viewMode = "week";
+                        this.weekAnchor = new Date();
+                        this.savedScrollTop = null;
+                        this.savedScrollLeft = null;
+                        this.render();
+                    }
+                };
+            },
         });
-        weekBtn.onclick = () => {
-            if (this.viewMode !== "week") {
-                this.viewMode = "week";
-                this.weekAnchor = new Date();
-                this.savedScrollTop = null;
-                this.savedScrollLeft = null;
-                this.render();
-            }
-        };
-        // Right: view switcher
-        const viewSwitcher = header.createDiv("planner-view-switcher");
-        const dashBtn = viewSwitcher.createEl("button", { cls: "planner-view-btn", title: "Dashboard" });
-        obsidian.setIcon(dashBtn, "layout-dashboard");
-        dashBtn.onclick = async () => await this.plugin.activateDashboardView();
-        const gridBtn = viewSwitcher.createEl("button", { cls: "planner-view-btn", title: "Grid" });
-        obsidian.setIcon(gridBtn, "table");
-        gridBtn.onclick = async () => await this.plugin.activateView();
-        const boardBtn = viewSwitcher.createEl("button", { cls: "planner-view-btn", title: "Board" });
-        obsidian.setIcon(boardBtn, "layout-list");
-        boardBtn.onclick = async () => await this.plugin.activateBoardView();
-        const ganttBtn = viewSwitcher.createEl("button", { cls: "planner-view-btn", title: "Timeline" });
-        obsidian.setIcon(ganttBtn, "calendar-range");
-        ganttBtn.onclick = async () => await this.plugin.activateGanttView();
-        const graphBtn = viewSwitcher.createEl("button", { cls: "planner-view-btn", title: "Graph" });
-        obsidian.setIcon(graphBtn, "git-fork");
-        graphBtn.onclick = async () => await this.plugin.openDependencyGraph();
-        const myDayBtn = viewSwitcher.createEl("button", {
-            cls: "planner-view-btn planner-view-btn-active",
-            title: "My Tasks",
-        });
-        obsidian.setIcon(myDayBtn, "sun");
     }
     // ---------------------------------------------------------------------------
     // Toolbar
@@ -9613,6 +9710,16 @@ class DailyNoteTaskScanner {
         this.loadTaskLocationMap();
     }
     /**
+     * Clean up pending timeouts and state
+     */
+    destroy() {
+        if (this.scanTimeout) {
+            clearTimeout(this.scanTimeout);
+            this.scanTimeout = null;
+        }
+        this.pendingScans.clear();
+    }
+    /**
      * Load taskLocationMap from persisted settings
      */
     loadTaskLocationMap() {
@@ -10472,6 +10579,9 @@ class ProjectPlannerPlugin extends obsidian.Plugin {
     // Cleanup
     // ---------------------------------------------------------------------------
     onunload() {
+        if (this.dailyNoteScanner) {
+            this.dailyNoteScanner.destroy();
+        }
         if (this.inlineStyleEl && this.inlineStyleEl.parentElement) {
             this.inlineStyleEl.parentElement.removeChild(this.inlineStyleEl);
             this.inlineStyleEl = null;

@@ -20,7 +20,7 @@ export class TaskSync {
      * Convert a PlannerTask to YAML frontmatter + markdown content
      */
     taskToMarkdown(task: PlannerTask, projectName: string): string {
-        const yaml: any = {
+        const yaml: Record<string, unknown> = {
             id: task.id,
             title: task.title,
             status: task.status,

@@ -577,6 +577,9 @@ export default class ProjectPlannerPlugin extends Plugin {
   // Cleanup
   // ---------------------------------------------------------------------------
   onunload() {
+    if (this.dailyNoteScanner) {
+      this.dailyNoteScanner.destroy();
+    }
     if (this.inlineStyleEl && this.inlineStyleEl.parentElement) {
       this.inlineStyleEl.parentElement.removeChild(this.inlineStyleEl);
       this.inlineStyleEl = null;

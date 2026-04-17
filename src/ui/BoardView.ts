@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Menu, setIcon, MarkdownRenderer } from "obsidian";
+import { ItemView, WorkspaceLeaf, Menu, setIcon, MarkdownRenderer, Notice, TFile } from "obsidian";
 import type ProjectPlannerPlugin from "../main";
 import type { PlannerTask } from "../types";
 import { TaskStore } from "../stores/taskStore";
@@ -32,6 +32,7 @@ export class BoardView extends ItemView {
     private isRendering = false;
     private renderPending = false;
     private renderVersion = 0; // Monotonic counter — only the latest render restores scroll
+    private lastHighlightedCard: HTMLElement | null = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
         super(leaf);
@@ -418,9 +419,10 @@ export class BoardView extends ItemView {
             this.draggedTaskId = null;
             card.classList.remove("planner-board-card-dragging");
             // Clear drop indicators
-            document.querySelectorAll(".planner-board-card-drop-before, .planner-board-card-drop-after").forEach(el => {
-                el.classList.remove("planner-board-card-drop-before", "planner-board-card-drop-after");
-            });
+            if (this.lastHighlightedCard) {
+                this.lastHighlightedCard.classList.remove("planner-board-card-drop-before", "planner-board-card-drop-after");
+                this.lastHighlightedCard = null;
+            }
         };
 
         // Drag over card - determine drop position (before/after)
@@ -435,9 +437,9 @@ export class BoardView extends ItemView {
             const dropBefore = e.clientY < midpoint;
 
             // Clear previous indicators
-            document.querySelectorAll(".planner-board-card-drop-before, .planner-board-card-drop-after").forEach(el => {
-                el.classList.remove("planner-board-card-drop-before", "planner-board-card-drop-after");
-            });
+            if (this.lastHighlightedCard && this.lastHighlightedCard !== card) {
+                this.lastHighlightedCard.classList.remove("planner-board-card-drop-before", "planner-board-card-drop-after");
+            }
 
             // Add indicator
             if (dropBefore) {
@@ -447,6 +449,7 @@ export class BoardView extends ItemView {
                 card.classList.add("planner-board-card-drop-after");
                 this.dropPosition = "after";
             }
+            this.lastHighlightedCard = card;
             this.dropTargetCardId = task.id;
         };
 
@@ -456,9 +459,10 @@ export class BoardView extends ItemView {
             e.stopPropagation();
 
             // Clear indicators
-            document.querySelectorAll(".planner-board-card-drop-before, .planner-board-card-drop-after").forEach(el => {
-                el.classList.remove("planner-board-card-drop-before", "planner-board-card-drop-after");
-            });
+            if (this.lastHighlightedCard) {
+                this.lastHighlightedCard.classList.remove("planner-board-card-drop-before", "planner-board-card-drop-after");
+                this.lastHighlightedCard = null;
+            }
 
             if (!this.draggedTaskId || !this.dropTargetCardId || this.draggedTaskId === this.dropTargetCardId) return;
 
@@ -696,13 +700,70 @@ export class BoardView extends ItemView {
 
         menu.addSeparator();
 
+        // Copy link to task
+        menu.addItem((item) =>
+            item
+                .setTitle("Copy link to task")
+                .setIcon("link")
+                .onClick(async () => {
+                    const projectId = this.plugin.settings.activeProjectId;
+                    const uri = `obsidian://open-planner-task?id=${encodeURIComponent(
+                        task.id
+                    )}&project=${encodeURIComponent(projectId)}`;
+
+                    try {
+                        await navigator.clipboard.writeText(uri);
+                        new Notice("Task link copied to clipboard");
+                    } catch (err) {
+                        console.error("Failed to copy link:", err);
+                        new Notice("Failed to copy link");
+                    }
+                })
+        );
+
+        // View Task Notes
+        menu.addItem((item) =>
+            item
+                .setTitle("View Task Notes")
+                .setIcon("file-text")
+                .setDisabled(!this.plugin.settings.enableMarkdownSync)
+                .onClick(async () => {
+                    if (!this.plugin.settings.enableMarkdownSync) return;
+
+                    const projectId = this.plugin.settings.activeProjectId;
+                    const project = this.plugin.settings.projects.find(
+                        (p) => p.id === projectId
+                    );
+                    if (!project) return;
+
+                    const filePath = this.plugin.taskSync.getTaskFilePath(task, project.name);
+
+                    try {
+                        const file = this.app.vault.getAbstractFileByPath(filePath);
+                        if (file && file instanceof TFile) {
+                            await this.app.workspace.openLinkText(filePath, "", true);
+                        } else {
+                            new Notice("Creating task note...");
+                            await this.plugin.taskSync.syncTaskToMarkdown(task, projectId);
+                            setTimeout(async () => {
+                                await this.app.workspace.openLinkText(filePath, "", true);
+                            }, 100);
+                        }
+                    } catch (err) {
+                        console.error("Failed to open task note:", err);
+                        new Notice("Failed to open task note");
+                    }
+                })
+        );
+
+        menu.addSeparator();
+
         menu.addItem((item) =>
             item
                 .setTitle("Delete task")
                 .setIcon("trash")
                 .onClick(async () => {
                     await this.taskStore.deleteTask(task.id);
-                    // No explicit render() — TaskStore.save() → emit() already re-renders via subscription
                 })
         );
 

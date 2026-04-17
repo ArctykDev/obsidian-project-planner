@@ -2,6 +2,7 @@ import { ItemView, WorkspaceLeaf, Menu, setIcon } from "obsidian";
 import type ProjectPlannerPlugin from "../main";
 import type { PlannerTask } from "../types";
 import { TaskStore } from "../stores/taskStore";
+import { renderPlannerHeader } from "./Header";
 
 export const VIEW_TYPE_MY_DAY = "project-planner-my-day-view";
 
@@ -259,79 +260,45 @@ export class MyDayView extends ItemView {
   // ---------------------------------------------------------------------------
 
   private renderHeader(wrapper: HTMLElement) {
-    const header = wrapper.createDiv("myday-header");
-
-    // Left: icon + title + date
-    const titleSection = header.createDiv("myday-header-title");
-    const iconEl = titleSection.createDiv("myday-header-icon");
-    setIcon(iconEl, "sun");
-
-    const titleText = titleSection.createDiv("myday-header-text");
-    const now = new Date();
-    titleText.createDiv({ text: "My Tasks", cls: "myday-title" });
-    titleText.createDiv({
-      text: `${DAY_NAMES[now.getDay()]}, ${MONTH_NAMES[now.getMonth()]} ${now.getDate()}`,
-      cls: "myday-date-subtitle",
-    });
-
-    // Center: Today / Week segmented toggle
-    const modeToggle = header.createDiv("myday-mode-toggle");
-
-    const todayBtn = modeToggle.createEl("button", {
-      text: "Today",
-      cls: `myday-mode-btn${this.viewMode === "today" ? " myday-mode-btn-active" : ""}`,
-    });
-    todayBtn.onclick = () => {
-      if (this.viewMode !== "today") {
-        this.viewMode = "today";
-        this.savedScrollTop = null;
-        this.savedScrollLeft = null;
+    renderPlannerHeader(wrapper, this.plugin, {
+      active: "myday",
+      hideAddTask: true,
+      onProjectChange: async () => {
+        await this.plugin.taskStore.load();
         this.render();
-      }
-    };
+      },
+      buildExtraActions: (actionsEl) => {
+        // Today / Week segmented toggle
+        const modeToggle = actionsEl.createDiv("myday-mode-toggle");
 
-    const weekBtn = modeToggle.createEl("button", {
-      text: "Week",
-      cls: `myday-mode-btn${this.viewMode === "week" ? " myday-mode-btn-active" : ""}`,
+        const todayBtn = modeToggle.createEl("button", {
+          text: "Today",
+          cls: `myday-mode-btn${this.viewMode === "today" ? " myday-mode-btn-active" : ""}`,
+        });
+        todayBtn.onclick = () => {
+          if (this.viewMode !== "today") {
+            this.viewMode = "today";
+            this.savedScrollTop = null;
+            this.savedScrollLeft = null;
+            this.render();
+          }
+        };
+
+        const weekBtn = modeToggle.createEl("button", {
+          text: "Week",
+          cls: `myday-mode-btn${this.viewMode === "week" ? " myday-mode-btn-active" : ""}`,
+        });
+        weekBtn.onclick = () => {
+          if (this.viewMode !== "week") {
+            this.viewMode = "week";
+            this.weekAnchor = new Date();
+            this.savedScrollTop = null;
+            this.savedScrollLeft = null;
+            this.render();
+          }
+        };
+      },
     });
-    weekBtn.onclick = () => {
-      if (this.viewMode !== "week") {
-        this.viewMode = "week";
-        this.weekAnchor = new Date();
-        this.savedScrollTop = null;
-        this.savedScrollLeft = null;
-        this.render();
-      }
-    };
-
-    // Right: view switcher
-    const viewSwitcher = header.createDiv("planner-view-switcher");
-
-    const dashBtn = viewSwitcher.createEl("button", { cls: "planner-view-btn", title: "Dashboard" });
-    setIcon(dashBtn, "layout-dashboard");
-    dashBtn.onclick = async () => await this.plugin.activateDashboardView();
-
-    const gridBtn = viewSwitcher.createEl("button", { cls: "planner-view-btn", title: "Grid" });
-    setIcon(gridBtn, "table");
-    gridBtn.onclick = async () => await this.plugin.activateView();
-
-    const boardBtn = viewSwitcher.createEl("button", { cls: "planner-view-btn", title: "Board" });
-    setIcon(boardBtn, "layout-list");
-    boardBtn.onclick = async () => await this.plugin.activateBoardView();
-
-    const ganttBtn = viewSwitcher.createEl("button", { cls: "planner-view-btn", title: "Timeline" });
-    setIcon(ganttBtn, "calendar-range");
-    ganttBtn.onclick = async () => await this.plugin.activateGanttView();
-
-    const graphBtn = viewSwitcher.createEl("button", { cls: "planner-view-btn", title: "Graph" });
-    setIcon(graphBtn, "git-fork");
-    graphBtn.onclick = async () => await this.plugin.openDependencyGraph();
-
-    const myDayBtn = viewSwitcher.createEl("button", {
-      cls: "planner-view-btn planner-view-btn-active",
-      title: "My Tasks",
-    });
-    setIcon(myDayBtn, "sun");
   }
 
   // ---------------------------------------------------------------------------

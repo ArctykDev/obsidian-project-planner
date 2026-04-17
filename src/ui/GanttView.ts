@@ -50,6 +50,10 @@ export class GanttView extends ItemView {
     // Scroll-to-date target (set by scrollToDate, consumed by render)
     private scrollTargetDate: Date | null = null;
 
+    // Render guard: prevents overlapping renders that corrupt scroll state
+    private isRendering = false;
+    private renderPending = false;
+
     constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
         super(leaf);
         this.plugin = plugin;
@@ -417,7 +421,26 @@ export class GanttView extends ItemView {
                         await store.setOrder(reordered.map((t: PlannerTask) => t.id));
                     }
                 }
-                // No explicit render() — TaskStore.save() → emit() already re-renders via subscription
+            });
+        });
+
+        menu.addItem((item) => {
+            item.setTitle("Add new task below");
+            item.setIcon("plus");
+            item.onClick(async () => {
+                const store = this.plugin.taskStore;
+                const newTask = await store.addTask("New Task");
+                const allTasks = store.getAll();
+                const taskIndex = allTasks.findIndex((t: PlannerTask) => t.id === task.id);
+                if (taskIndex >= 0) {
+                    const reordered = [...allTasks];
+                    const newIndex = reordered.findIndex((t: PlannerTask) => t.id === newTask.id);
+                    if (newIndex >= 0) {
+                        const [moved] = reordered.splice(newIndex, 1);
+                        reordered.splice(taskIndex + 1, 0, moved);
+                        await store.setOrder(reordered.map((t: PlannerTask) => t.id));
+                    }
+                }
             });
         });
 
@@ -754,7 +777,7 @@ export class GanttView extends ItemView {
 
         row.classList.add("planner-gantt-row-dragging");
         document.body.style.userSelect = "none";
-        (document.body.style as any).webkitUserSelect = "none";
+        document.body.style.setProperty("-webkit-user-select", "none");
         document.body.style.cursor = "grabbing";
 
         const offsetY = evt.clientY - rowRect.top;
@@ -798,7 +821,7 @@ export class GanttView extends ItemView {
 
             row.classList.remove("planner-gantt-row-dragging");
             document.body.style.userSelect = "";
-            (document.body.style as any).webkitUserSelect = "";
+            document.body.style.removeProperty("-webkit-user-select");
             document.body.style.cursor = "";
 
             const dragId = this.currentDragId;
@@ -824,12 +847,18 @@ export class GanttView extends ItemView {
             ghost.remove();
             indicator.remove();
             document.body.style.userSelect = "";
-            (document.body.style as any).webkitUserSelect = "";
+            document.body.style.removeProperty("-webkit-user-select");
             document.body.style.cursor = "";
         };
     }
 
     private render() {
+        if (this.isRendering) {
+            this.renderPending = true;
+            return;
+        }
+        this.isRendering = true;
+
         const container = this.containerEl;
 
         // Save scroll positions before clearing
@@ -1320,6 +1349,12 @@ export class GanttView extends ItemView {
                     rightColWrap.scrollLeft = Math.max(0, scrollLeft);
                 }, 0);
             }
+        }
+
+        this.isRendering = false;
+        if (this.renderPending) {
+            this.renderPending = false;
+            this.render();
         }
     }
 

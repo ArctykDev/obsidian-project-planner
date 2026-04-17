@@ -7,6 +7,7 @@ export interface HeaderOptions {
     active: ActiveView;
     onProjectChange?: () => Promise<void> | void;
     buildExtraActions?: (actionsEl: HTMLElement) => void;
+    hideAddTask?: boolean;
 }
 
 export function renderPlannerHeader(
@@ -100,13 +101,15 @@ export function renderPlannerHeader(
     // Header actions (Add task, extra, Project Hub, Settings)
     const headerActions = header.createDiv("planner-header-actions");
 
-    const addBtn = headerActions.createEl("button", {
-        cls: "planner-add-btn",
-        text: "Add Task",
-    });
-    addBtn.onclick = async () => {
-        await plugin.taskStore.addTask("New Task");
-    };
+    if (!options.hideAddTask) {
+        const addBtn = headerActions.createEl("button", {
+            cls: "planner-add-btn",
+            text: "Add Task",
+        });
+        addBtn.onclick = async () => {
+            await plugin.taskStore.addTask("New Task");
+        };
+    }
 
     if (options.buildExtraActions) {
         options.buildExtraActions(headerActions);

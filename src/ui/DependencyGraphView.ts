@@ -31,6 +31,7 @@ export class DependencyGraphView extends ItemView {
     private unsubscribe: (() => void) | null = null;
     private resizeHandler: (() => void) | null = null;
     private needsRefresh = false;
+    private closed = false;
 
     constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
         super(leaf);
@@ -99,6 +100,7 @@ export class DependencyGraphView extends ItemView {
     }
 
     async onClose() {
+        this.closed = true;
         if (this.animationFrame) {
             cancelAnimationFrame(this.animationFrame);
             this.animationFrame = null;
@@ -136,7 +138,7 @@ export class DependencyGraphView extends ItemView {
         let offsetX = 0;
         let offsetY = 0;
 
-        this.canvas.addEventListener("mousedown", (e: MouseEvent) => {
+        this.registerDomEvent(this.canvas, "mousedown", (e: MouseEvent) => {
             if (!this.canvas) return;
             const rect = this.canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -194,13 +196,14 @@ export class DependencyGraphView extends ItemView {
         });
 
         // Double click to open task details
-        this.canvas.addEventListener("dblclick", (e: MouseEvent) => {
+        this.registerDomEvent(this.canvas, "dblclick", (e: MouseEvent) => {
             if (!this.selectedNode) return;
             this.plugin.openTaskDetail(this.selectedNode.task);
         });
     }
 
     async refresh() {
+        if (this.closed) return;
         // Don't rebuild graph while user is dragging a node
         if (this.dragNode) {
             this.needsRefresh = true;
@@ -278,6 +281,7 @@ export class DependencyGraphView extends ItemView {
         const maxIterations = 300;
 
         const animate = () => {
+            if (this.closed) return;
             if (iterations < maxIterations) {
                 this.applyForces();
                 this.render();

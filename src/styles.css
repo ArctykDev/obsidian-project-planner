@@ -3508,46 +3508,11 @@ td.planner-rolled-up::after {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  padding: 12px 18px 0 18px;
+  box-sizing: border-box;
 }
 
-/* Header */
-.myday-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--background-modifier-border);
-  flex-shrink: 0;
-}
-
-.myday-header-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.myday-header-icon {
-  color: var(--interactive-accent);
-  display: flex;
-  align-items: center;
-}
-
-.myday-header-icon svg {
-  width: 24px;
-  height: 24px;
-}
-
-.myday-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-normal);
-}
-
-.myday-date-subtitle {
-  font-size: 13px;
-  color: var(--text-muted);
-  font-weight: 400;
-}
+/* Header — now uses shared .planner-grid-header via renderPlannerHeader */
 
 /* Toolbar */
 .myday-toolbar {
