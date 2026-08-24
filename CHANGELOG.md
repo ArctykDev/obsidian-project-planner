@@ -2,6 +2,20 @@
 
 All notable changes to Obsidian Project Planner will be documented in this file.
 
+## [0.8.3] - 2026-08-24 (Release fixes)
+
+### Fixed
+
+- **Stable project storage keys** (TaskStore, TaskSync, Settings): Added `storageKey` field to `PlannerProject`. Vault folder paths for `.planner-tasks.json` and markdown task notes now use a stable key set at project creation, so renaming a project no longer orphans existing files.
+- **Markdown sync watches all projects** (main.ts, TaskSync): `initializeTaskSync()` now registers file watchers for every project folder, not only the active one. Edits, creates, and deletes in non-active project folders were previously invisible to the sync layer.
+- **Path helpers accept project ID or display name** (TaskSync): `getTaskFilePath()`, `deleteTaskMarkdown()`, `watchProjectFolder()`, and `initialSync()` resolve either a project ID or project name, maintaining backward compatibility for existing call sites.
+- **New and duplicated projects register sync watchers immediately** (Settings): Adding or duplicating a project now calls `initializeTaskSync()` when markdown sync is enabled, so the new project folder is watched without requiring a plugin reload.
+
+### Internal
+
+- **Lint CI fix** (tsconfig.json): Removed `"ignoreDeprecations": "6.0"`, which is not a recognised value in TypeScript 5.x. `tsc --noEmit` now exits cleanly in CI.
+- **devDependency security updates** (package-lock.json): Resolved 5 Dependabot-reported vulnerabilities in the build/test toolchain — `handlebars`, `ws`, `brace-expansion`, `js-yaml`, and `@babel/core`. No end-user impact; none of these packages are bundled into `main.js`.
+
 ## [0.8.3] - 2026-04-30
 
 ### Added
