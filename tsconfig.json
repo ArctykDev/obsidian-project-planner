@@ -1,7 +1,6 @@
 {
     "compilerOptions": {
       "baseUrl": ".",
-      "ignoreDeprecations": "6.0",
       "inlineSourceMap": true,
       "inlineSources": true,
       "target": "ES2020",
