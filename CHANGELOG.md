@@ -2,6 +2,43 @@
 
 All notable changes to Obsidian Project Planner will be documented in this file.
 
+## [0.8.3] - 2026-04-30
+
+### Added
+
+- **Duplicate project** (Settings): Each project in Settings → Projects now has a **copy** button. Clicking it creates a new project named `"{original} (Copy)"`, duplicates all board buckets with fresh IDs, and copies all tasks into the new project's vault file. Task IDs, parent–child hierarchy, board bucket assignments, Gantt dependency links, and checklist item IDs are all remapped to new UUIDs so the duplicate is fully independent of the original.
+- **Board view: Cut, Copy, Paste context menu** (BoardView): Card right-click menu now includes Cut, Copy, and Paste actions, matching the existing Grid view behaviour. Cut moves the task to the target bucket; Copy duplicates it (new ID, no dependencies carried over). Paste is disabled when the clipboard is empty.
+- **Move task between projects** (GridView, BoardView, MyDayView, TaskDetailView): Right-click context menus in Grid, Board, and My Tasks now include "Move to: {Project}" items for every other project. TaskDetailView gains a **Project** dropdown (shown when more than one project exists) that moves the task on change. Moved tasks are cleared of their bucket, parent, and dependency links; any children are promoted to top-level in the source project.
+- **My Tasks — New Task form**: A **New Task** button in the My Tasks toolbar opens a slide-in form with title input (auto-focused, Enter to submit, Escape to cancel), optional Project selector (multi-project vaults only), and Priority selector. Created tasks are due today and appear immediately in the view.
+- **My Tasks — Month view**: A third **Month** tab joins Today and Week. The calendar grid runs Sunday–Saturday, shows up to 3 task pills per day (priority-coloured left border, completed tasks struck through) with a "+N more" overflow count. Clicking a pill opens Task Detail; right-click shows the full context menu.
+- **My Tasks — Settings section**: Plugin settings now include a dedicated **My Tasks** section with a **Default view** dropdown (Today / Week / Month) and a **My Tasks icon** ribbon toggle.
+
+### Changed
+
+- **My Tasks — navigation button order**: The My Tasks button is now the second entry in the view switcher (Dashboard → My Tasks → Grid → Board → Timeline → Graph), placing it beside Dashboard as a personal-productivity shortcut.
+- **My Tasks — toolbar and header layout**: New Task and Add Tasks buttons are now in the header actions area (matching Grid and Board); Today / Week / Month toggle moves to the toolbar alongside filters (matching Gantt). This keeps action buttons consistently right-aligned in the header across all views.
+- **My Tasks — New Task and Add Tasks buttons are text-only**: Removed the inline icons from both buttons so they match the text-only style of Add Task on all other views.
+- **My Tasks — Today/Week/Month toggle styled to match header view switcher**: Toggle wrapper and button sizing (padding, gap, border-radius) now mirrors the header view switcher and Gantt zoom buttons for visual consistency.
+- **Hover effects standardised across all views**: Gantt search input hover now uses `--interactive-accent` border + `--background-secondary` fill; My Tasks new-task form inputs use the same pattern. All interactive controls in the plugin now follow the same hover language.
+
+- **My Tasks — Week view starts on Sunday**: The week grid now runs Sunday–Saturday (previously Monday–Sunday).
+- **Per-project vault file storage** (TaskStore): Task data is no longer stored inside `data.json` (which lives in `.obsidian/` and is git-ignored). Each project's tasks are now written to `{projectsBasePath}/{Project Name}/.planner-tasks.json` inside the vault, making task history Git-trackable and keeping per-project diffs clean. `data.json` now holds settings only.
+  - **Automatic migration**: On first load after upgrading, any existing `tasksByProject` or `tasks` data in `data.json` is silently migrated to the new per-project files and removed from `data.json`. No manual steps required.
+
+### Fixed
+
+- **Active button highlight overridden by Obsidian themes**: Theme stylesheets use single-class selectors (specificity `0,1,0`) that silently won the cascade against the plugin's own active-state rules. All active-state selectors for the header view switcher (`.planner-view-btn.planner-view-btn-active`) and the My Tasks mode toggle (`.myday-mode-btn.myday-mode-btn-active`) are now compound selectors (specificity `0,2,0`), ensuring the correct highlight always wins regardless of the active theme.
+- **Priority and status pill hover: white text overridden to accent colour**: `.planner-editable:hover` sets `color: var(--text-accent)`, which was overriding the `color: white` set on coloured priority/status pills. Added compound hover rules for `.priority-pill.planner-editable:hover` and `.status-pill.planner-editable:hover` that re-assert `color: white` and use a semi-transparent dark overlay instead of replacing the pill's background colour.
+- **Board bucket header context menu: white flash on hover**: The `--hover-color` CSS custom property fell back to `rgba(255,255,255,0.8)` — near-solid white — when a bucket had no custom colour. Changed the fallback to `var(--background-modifier-hover)` so the hover tint adapts to the current theme. For buckets with a custom colour, the JS-set overlay values were also adjusted (`rgba(255,255,255,0.2)` on dark, `rgba(0,0,0,0.15)` on light) for better contrast.
+
+- **My Tasks — adding a child task no longer pulls in its parent** (MyDayView): Using the "Add Tasks" picker to set a child task's due date to today previously triggered the parent roll-up logic, which propagated the date to the parent task and caused it to appear in My Tasks as well. The picker now skips parent roll-up when adding a task to My Day.
+
+### Internal
+
+- **Header CSS class renamed** (`planner-grid-header` → `planner-header`): The shared header element used across all views now carries a view-agnostic class name, removing the misleading grid-specific label.
+- **Wrapper class naming standardised**: `dashboard-wrapper` → `planner-dashboard-wrapper` and `myday-wrapper` → `planner-myday-wrapper`, bringing both in line with the `planner-*-wrapper` convention used by Grid, Board, Gantt, and Graph views.
+- **Grid view wrapper background**: `planner-grid-wrapper` now explicitly sets `background: var(--background-primary)`, matching every other view's wrapper.
+
 ## [0.8.2] - 2026-04-17
 
 ### Fixed

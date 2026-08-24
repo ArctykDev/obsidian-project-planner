@@ -15,7 +15,7 @@ export function renderPlannerHeader(
     plugin: ProjectPlannerPlugin,
     options: HeaderOptions
 ): { headerEl: HTMLElement; actionsEl: HTMLElement } {
-    const header = parent.createDiv("planner-grid-header");
+    const header = parent.createDiv("planner-header");
 
     // Project switcher
     const projectContainer = header.createDiv("planner-project-switcher");
@@ -63,6 +63,13 @@ export function renderPlannerHeader(
     setIcon(dashboardViewBtn, "layout-dashboard");
     dashboardViewBtn.onclick = async () => await plugin.activateDashboardView();
 
+    const myDayBtn = viewSwitcher.createEl("button", {
+        cls: `planner-view-btn${options.active === "myday" ? " planner-view-btn-active" : ""}`,
+        title: "My Tasks",
+    });
+    setIcon(myDayBtn, "sun");
+    myDayBtn.onclick = async () => await plugin.activateMyDayView();
+
     const gridViewBtn = viewSwitcher.createEl("button", {
         cls: `planner-view-btn${options.active === "grid" ? " planner-view-btn-active" : ""}`,
         title: "Grid",
@@ -90,13 +97,6 @@ export function renderPlannerHeader(
     });
     setIcon(graphViewBtn, "git-fork");
     graphViewBtn.onclick = async () => await plugin.openDependencyGraph();
-
-    const myDayBtn = viewSwitcher.createEl("button", {
-        cls: `planner-view-btn${options.active === "myday" ? " planner-view-btn-active" : ""}`,
-        title: "My Tasks",
-    });
-    setIcon(myDayBtn, "sun");
-    myDayBtn.onclick = async () => await plugin.activateMyDayView();
 
     // Header actions (Add task, extra, Project Hub, Settings)
     const headerActions = header.createDiv("planner-header-actions");

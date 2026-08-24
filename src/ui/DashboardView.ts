@@ -776,14 +776,14 @@ export class DashboardView extends ItemView {
         const thisRender = ++this.renderVersion;
 
         // Save scroll position before clearing
-        const existingWrapper = container.querySelector('.dashboard-wrapper') as HTMLElement;
+        const existingWrapper = container.querySelector('.planner-dashboard-wrapper') as HTMLElement;
         if (existingWrapper && this.savedScrollTop === null) {
             this.savedScrollTop = existingWrapper.scrollTop;
         }
 
         container.empty();
 
-        const wrapper = container.createDiv("dashboard-wrapper");
+        const wrapper = container.createDiv("planner-dashboard-wrapper");
 
         // Header
         renderPlannerHeader(wrapper, this.plugin, {

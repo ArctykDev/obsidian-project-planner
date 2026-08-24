@@ -76,6 +76,7 @@ export interface BoardBucket {
 export interface PlannerProject {
   id: string;
   name: string;
+  storageKey?: string;
   createdDate?: string;
   lastUpdatedDate?: string;
   lastSyncTimestamp?: number; // Unix timestamp of last successful sync
@@ -138,6 +139,10 @@ export interface ProjectPlannerSettings {
   showRibbonIconBoard: boolean; // Show ribbon icon for Board view
   showRibbonIconGraph: boolean; // Show ribbon icon for Dependency Graph view
   showRibbonIconDailyNoteScan: boolean; // Show ribbon icon for Daily Note scanning
+  showRibbonIconMyTasks: boolean; // Show ribbon icon for My Tasks view
+
+  // My Tasks view settings
+  myDayDefaultView: "today" | "week" | "month"; // Default tab when opening My Tasks
 }
 
 export const DEFAULT_SETTINGS: ProjectPlannerSettings = {
@@ -177,6 +182,8 @@ export const DEFAULT_SETTINGS: ProjectPlannerSettings = {
   showRibbonIconBoard: false,
   showRibbonIconGraph: false,
   showRibbonIconDailyNoteScan: false,
+  showRibbonIconMyTasks: false,
+  myDayDefaultView: "today",
 };
 
 export class ProjectPlannerSettingTab extends PluginSettingTab {
@@ -220,11 +227,15 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
           this.plugin.settings.projects.push({
             id,
             name: "New Project",
+            storageKey: "New Project",
             createdDate: now,
             lastUpdatedDate: now,
           });
           this.plugin.settings.activeProjectId = id;
           await this.plugin.saveSettings();
+          if (this.plugin.settings.enableMarkdownSync) {
+            await this.plugin.initializeTaskSync();
+          }
           this.display(); // rebuild settings UI
         });
       });
@@ -239,6 +250,51 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
             .onChange(async (value) => {
               project.name = value.trim() || "Untitled Project";
               await this.plugin.saveSettings();
+            });
+        })
+        .addExtraButton((btn) => {
+          btn
+            .setIcon("copy")
+            .setTooltip("Duplicate project")
+            .onClick(async () => {
+              const newId = crypto.randomUUID();
+              const now = new Date().toISOString();
+
+              // Copy buckets with fresh IDs so board columns are independent
+              const bucketIdMap = new Map<string, string>();
+              const newBuckets = (project.buckets ?? []).map((b) => {
+                const newBucketId = crypto.randomUUID();
+                bucketIdMap.set(b.id, newBucketId);
+                return { ...b, id: newBucketId };
+              });
+
+              const newProject = {
+                ...project,
+                id: newId,
+                name: `${project.name} (Copy)`,
+                storageKey: `${project.name} (Copy)`,
+                createdDate: now,
+                lastUpdatedDate: now,
+                buckets: newBuckets,
+              };
+
+              this.plugin.settings.projects.push(newProject);
+              await this.plugin.saveSettings();
+
+              // Copy tasks into the new project's vault file
+              await this.plugin.taskStore.copyProjectTasks(project.id, newId, bucketIdMap);
+
+              // Load the new project into the store
+              await this.plugin.taskStore.load();
+
+              if (this.plugin.settings.enableMarkdownSync) {
+                await this.plugin.initializeTaskSync();
+              }
+
+              this.plugin.settings.activeProjectId = newId;
+              await this.plugin.saveSettings();
+
+              this.display();
             });
         })
         .addExtraButton((btn) => {
@@ -443,6 +499,38 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.showRibbonIconDailyNoteScan)
           .onChange(async (value) => {
             this.plugin.settings.showRibbonIconDailyNoteScan = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("My Tasks icon")
+      .setDesc("Show ribbon icon for opening My Tasks view")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showRibbonIconMyTasks)
+          .onChange(async (value) => {
+            this.plugin.settings.showRibbonIconMyTasks = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // -----------------------------------------------------------------------
+    // My Tasks Section
+    // -----------------------------------------------------------------------
+    new Setting(containerEl).setName("My Tasks").setHeading();
+
+    new Setting(containerEl)
+      .setName("Default view")
+      .setDesc("Which tab opens when you open My Tasks.")
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("today", "Today")
+          .addOption("week", "Week")
+          .addOption("month", "Month")
+          .setValue(this.plugin.settings.myDayDefaultView)
+          .onChange(async (value) => {
+            this.plugin.settings.myDayDefaultView = value as "today" | "week" | "month";
             await this.plugin.saveSettings();
           })
       );

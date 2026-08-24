@@ -33,6 +33,7 @@ export class BoardView extends ItemView {
     private renderPending = false;
     private renderVersion = 0; // Monotonic counter — only the latest render restores scroll
     private lastHighlightedCard: HTMLElement | null = null;
+    private clipboardTask: { task: PlannerTask; isCut: boolean } | null = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
         super(leaf);
@@ -327,7 +328,7 @@ export class BoardView extends ItemView {
             });
             // Set hover color on the button based on bucket background
             if (bucket.color) {
-                bucketMenuBtn.style.setProperty('--hover-color', isDarkBackground ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)');
+                bucketMenuBtn.style.setProperty('--hover-color', isDarkBackground ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.15)');
             }
             bucketMenuBtn.onclick = (evt) => {
                 evt.stopPropagation();
@@ -700,6 +701,62 @@ export class BoardView extends ItemView {
 
         menu.addSeparator();
 
+        // Cut
+        menu.addItem((item) =>
+            item
+                .setTitle("Cut")
+                .setIcon("scissors")
+                .onClick(() => {
+                    this.clipboardTask = { task: { ...task }, isCut: true };
+                })
+        );
+
+        // Copy
+        menu.addItem((item) =>
+            item
+                .setTitle("Copy")
+                .setIcon("copy")
+                .onClick(() => {
+                    this.clipboardTask = { task: { ...task }, isCut: false };
+                })
+        );
+
+        // Paste
+        menu.addItem((item) =>
+            item
+                .setTitle("Paste")
+                .setIcon("clipboard")
+                .setDisabled(!this.clipboardTask)
+                .onClick(async () => {
+                    if (!this.clipboardTask) return;
+
+                    const { task: clipTask, isCut } = this.clipboardTask;
+
+                    if (isCut) {
+                        await this.taskStore.updateTask(clipTask.id, {
+                            bucketId: task.bucketId,
+                        });
+                        this.clipboardTask = null;
+                    } else {
+                        const newTask = await this.taskStore.addTask(clipTask.title);
+                        await this.taskStore.updateTask(newTask.id, {
+                            description: clipTask.description,
+                            status: clipTask.status,
+                            priority: clipTask.priority,
+                            startDate: clipTask.startDate,
+                            dueDate: clipTask.dueDate,
+                            tags: clipTask.tags ? [...clipTask.tags] : [],
+                            completed: clipTask.completed,
+                            bucketId: task.bucketId,
+                            links: clipTask.links ? [...clipTask.links] : [],
+                            dependencies: [],
+                        });
+                    }
+                })
+        );
+
+        menu.addSeparator();
+
         // Copy link to task
         menu.addItem((item) =>
             item
@@ -736,7 +793,7 @@ export class BoardView extends ItemView {
                     );
                     if (!project) return;
 
-                    const filePath = this.plugin.taskSync.getTaskFilePath(task, project.name);
+                    const filePath = this.plugin.taskSync.getTaskFilePath(task, project.id);
 
                     try {
                         const file = this.app.vault.getAbstractFileByPath(filePath);
@@ -757,6 +814,21 @@ export class BoardView extends ItemView {
         );
 
         menu.addSeparator();
+
+        // Move to project (one item per target project, only shown when >1 project exists)
+        const otherProjects = (this.plugin.settings.projects || []).filter(
+            (p) => p.id !== this.plugin.settings.activeProjectId
+        );
+        for (const proj of otherProjects) {
+            menu.addItem((item) =>
+                item
+                    .setTitle(`Move to: ${proj.name}`)
+                    .setIcon("folder-input")
+                    .onClick(async () => {
+                        await this.taskStore.moveTaskToProject(task.id, proj.id);
+                    })
+            );
+        }
 
         menu.addItem((item) =>
             item

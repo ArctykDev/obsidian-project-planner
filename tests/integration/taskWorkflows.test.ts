@@ -43,8 +43,17 @@ describe("Integration: Task Workflows", () => {
         createdFiles = new Map();
         mockPluginData = {}; // Reset plugin data
 
+        // In-memory vault adapter (used by TaskStore's vault file I/O)
+        const mockAdapter = {
+            exists: jest.fn(async (path: string) => createdFiles.has(path)),
+            mkdir: jest.fn(async () => undefined),
+            read: jest.fn(async (path: string) => createdFiles.get(path) ?? '{}'),
+            write: jest.fn(async (path: string, data: string) => { createdFiles.set(path, data); }),
+        };
+
         // Mock Vault with in-memory file storage
         mockVault = {
+            adapter: mockAdapter,
             getAbstractFileByPath: jest.fn((path: string) => {
                 if (createdFiles.has(path)) {
                     return createMockTFile(path);

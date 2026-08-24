@@ -1,15 +1,33 @@
 import { TaskStore } from '../../src/stores/taskStore';
 import type { PlannerTask } from '../../src/types';
 
+// In-memory vault adapter — simulates Obsidian's file system API
+const createMockAdapter = () => {
+  const files: Record<string, string> = {};
+  return {
+    exists: jest.fn(async (path: string) => path in files),
+    mkdir: jest.fn(async () => undefined),
+    read:  jest.fn(async (path: string) => files[path] ?? '{}'),
+    write: jest.fn(async (path: string, data: string) => { files[path] = data; }),
+    _files: files, // expose for assertions
+  };
+};
+
 // Mock plugin
-const createMockPlugin = () => ({
-  settings: {
-    activeProjectId: 'test-project',
-    projects: [{ id: 'test-project', name: 'Test Project' }]
-  },
-  loadData: jest.fn().mockResolvedValue({}),
-  saveData: jest.fn().mockResolvedValue(undefined),
-});
+const createMockPlugin = () => {
+  const adapter = createMockAdapter();
+  return {
+    settings: {
+      activeProjectId: 'test-project',
+      projectsBasePath: 'Project Planner',
+      projects: [{ id: 'test-project', name: 'Test Project' }],
+    },
+    loadData: jest.fn().mockResolvedValue({}),
+    saveData: jest.fn().mockResolvedValue(undefined),
+    app: { vault: { adapter } },
+    _adapter: adapter, // expose for assertions
+  };
+};
 
 describe('TaskStore', () => {
   let taskStore: TaskStore;
@@ -457,34 +475,68 @@ describe('TaskStore', () => {
   });
 
   describe('legacy migration', () => {
-    it('should migrate legacy single-project data', async () => {
+    it('should migrate legacy single-project tasks to vault file', async () => {
       const legacyData = {
         tasks: [
           { id: '1', title: 'Legacy Task 1', status: 'Not Started', completed: false },
           { id: '2', title: 'Legacy Task 2', status: 'Completed', completed: true }
         ]
       };
-      
+
       mockPlugin.loadData.mockResolvedValueOnce(legacyData);
-      
+
       await taskStore.load();
-      
+
+      // Tasks should be accessible in-memory
       const tasks = taskStore.getAll();
       expect(tasks).toHaveLength(2);
       expect(tasks[0].title).toBe('Legacy Task 1');
-      
-      // Should have saved migrated data
+
+      // Vault file should have been written with the migrated tasks
+      const vaultPath = 'Project Planner/Test Project/.planner-tasks.json';
+      expect(mockPlugin._adapter.write).toHaveBeenCalledWith(
+        vaultPath,
+        expect.stringContaining('Legacy Task 1')
+      );
+
+      // data.json should no longer contain tasksByProject or tasks
       expect(mockPlugin.saveData).toHaveBeenCalled();
       const savedData = mockPlugin.saveData.mock.calls[0][0];
-      expect(savedData.tasksByProject).toBeDefined();
-      expect(savedData.tasksByProject['test-project']).toHaveLength(2);
+      expect(savedData.tasksByProject).toBeUndefined();
+      expect(savedData.tasks).toBeUndefined();
+    });
+
+    it('should migrate legacy tasksByProject to vault files', async () => {
+      const legacyData = {
+        tasksByProject: {
+          'test-project': [
+            { id: '1', title: 'Project Task', status: 'Not Started', completed: false }
+          ]
+        }
+      };
+
+      mockPlugin.loadData.mockResolvedValueOnce(legacyData);
+
+      await taskStore.load();
+
+      expect(taskStore.getAll()).toHaveLength(1);
+
+      const vaultPath = 'Project Planner/Test Project/.planner-tasks.json';
+      expect(mockPlugin._adapter.write).toHaveBeenCalledWith(
+        vaultPath,
+        expect.stringContaining('Project Task')
+      );
+
+      // tasksByProject should be removed from data.json
+      const savedData = mockPlugin.saveData.mock.calls[0][0];
+      expect(savedData.tasksByProject).toBeUndefined();
     });
 
     it('should handle empty legacy data', async () => {
       mockPlugin.loadData.mockResolvedValueOnce({ tasks: [] });
-      
+
       await taskStore.load();
-      
+
       expect(taskStore.getAll()).toHaveLength(0);
     });
   });

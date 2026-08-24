@@ -10,10 +10,16 @@ export class TaskSync {
     private app: App;
     private plugin: ProjectPlannerPlugin;
     private syncInProgress = new Set<string>(); // Prevent infinite loops
+    private watchedProjects = new Map<string, string>();
 
     constructor(app: App, plugin: ProjectPlannerPlugin) {
         this.app = app;
         this.plugin = plugin;
+    }
+
+    private resolveProject(projectIdentifier: string) {
+        return this.plugin.settings.projects.find(p => p.id === projectIdentifier)
+            ?? this.plugin.settings.projects.find(p => p.name === projectIdentifier);
     }
 
     /**
@@ -265,26 +271,31 @@ export class TaskSync {
     /**
      * Get the file path for a task's markdown note
      */
-    getTaskFilePath(task: PlannerTask, projectName: string): string {
+    getTaskFilePath(task: PlannerTask, projectId: string): string {
+        const project = this.resolveProject(projectId);
+        if (!project) {
+            return `${task.title.replace(/[\\/:*?"<>|]/g, '-')}.md`;
+        }
         // Sanitize title for filename
         const safeName = task.title.replace(/[\\/:*?"<>|]/g, '-');
         const basePath = this.plugin.settings.projectsBasePath;
+        const projectFolder = project.storageKey ?? project.name;
         if (basePath) {
-            return `${basePath}/${projectName}/Tasks/${safeName}.md`;
+            return `${basePath}/${projectFolder}/Tasks/${safeName}.md`;
         }
-        return `${projectName}/Tasks/${safeName}.md`;
+        return `${projectFolder}/Tasks/${safeName}.md`;
     }
 
     /**
      * Handle task rename by deleting old file and creating new one
      */
     async handleTaskRename(task: PlannerTask, oldTitle: string, projectId: string): Promise<void> {
-        const project = this.plugin.settings.projects.find(p => p.id === projectId);
+        const project = this.resolveProject(projectId);
         if (!project) return;
 
         // Get old file path using old title
         const oldTask = { ...task, title: oldTitle };
-        const oldFilePath = this.getTaskFilePath(oldTask, project.name);
+        const oldFilePath = this.getTaskFilePath(oldTask, projectId);
         
         // Delete old file if it exists
         const oldFile = this.app.vault.getAbstractFileByPath(oldFilePath);
@@ -307,10 +318,10 @@ export class TaskSync {
      * guard only blocks reverse sync (markdown→task) to prevent infinite loops.
      */
     async syncTaskToMarkdown(task: PlannerTask, projectId: string): Promise<void> {
-        const project = this.plugin.settings.projects.find(p => p.id === projectId);
+        const project = this.resolveProject(projectId);
         if (!project) return;
 
-        const filePath = this.getTaskFilePath(task, project.name);
+        const filePath = this.getTaskFilePath(task, projectId);
 
         // Mark forward sync in progress so reverse sync (md→task) is blocked.
         // Always allow forward writes — reset timer if already set.
@@ -368,9 +379,9 @@ export class TaskSync {
                 
                 // If title changed, rename the markdown file to match new title
                 if (titleChanged) {
-                    const project = this.plugin.settings.projects.find(p => p.id === projectId);
+                    const project = this.resolveProject(projectId);
                     if (project) {
-                        const newFilePath = this.getTaskFilePath(task, project.name);
+                        const newFilePath = this.getTaskFilePath(task, projectId);
                         // Only rename if the file path actually changed
                         if (file.path !== newFilePath) {
                             try {
@@ -395,8 +406,8 @@ export class TaskSync {
     /**
      * Delete a task's markdown note
      */
-    async deleteTaskMarkdown(task: PlannerTask, projectName: string): Promise<void> {
-        const filePath = this.getTaskFilePath(task, projectName);
+    async deleteTaskMarkdown(task: PlannerTask, projectId: string): Promise<void> {
+        const filePath = this.getTaskFilePath(task, projectId);
         const file = this.app.vault.getAbstractFileByPath(filePath);
 
         if (file instanceof TFile) {
@@ -407,9 +418,19 @@ export class TaskSync {
     /**
      * Watch for changes to markdown files in project folders
      */
-    watchProjectFolder(projectId: string, projectName: string) {
+    watchProjectFolder(projectId: string) {
+        const project = this.resolveProject(projectId);
+        if (!project) return;
+
         const basePath = this.plugin.settings.projectsBasePath;
-        const folderPath = basePath ? `${basePath}/${projectName}/Tasks` : `${projectName}/Tasks`;
+        const projectFolder = project.storageKey ?? project.name;
+        const folderPath = basePath ? `${basePath}/${projectFolder}/Tasks` : `${projectFolder}/Tasks`;
+
+        const existingFolder = this.watchedProjects.get(projectId);
+        if (existingFolder === folderPath) {
+            return;
+        }
+        this.watchedProjects.set(projectId, folderPath);
 
         // Track task IDs by file path so we can delete tasks after the file
         // (and its metadata cache) are gone. Obsidian clears the cache on
@@ -459,8 +480,8 @@ export class TaskSync {
     /**
      * Perform initial sync - scan project folder and sync all markdown files
      */
-    async initialSync(projectId: string, projectName: string): Promise<void> {
-        const project = this.plugin.settings.projects.find(p => p.id === projectId);
+    async initialSync(projectId: string): Promise<void> {
+        const project = this.resolveProject(projectId);
         if (!project) return;
 
         // Check if we've synced recently (within last 5 minutes) to avoid repeated syncs
@@ -471,7 +492,8 @@ export class TaskSync {
         }
 
         const basePath = this.plugin.settings.projectsBasePath;
-        const folderPath = basePath ? `${basePath}/${projectName}/Tasks` : `${projectName}/Tasks`;
+        const projectFolder = project.storageKey ?? project.name;
+        const folderPath = basePath ? `${basePath}/${projectFolder}/Tasks` : `${projectFolder}/Tasks`;
         const folder = this.app.vault.getAbstractFileByPath(folderPath);
 
         if (!folder) {

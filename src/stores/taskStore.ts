@@ -43,6 +43,13 @@ interface StoredData {
   [key: string]: unknown; // allow other plugin data to coexist
 }
 
+/** Shape of per-project vault files: {basePath}/{projectName}/.planner-tasks.json */
+interface ProjectFileData {
+  version: number;
+  projectId: string;
+  tasks: PlannerTask[];
+}
+
 export class TaskStore {
   private plugin: ProjectPlannerPlugin;
 
@@ -51,11 +58,89 @@ export class TaskStore {
   private taskIndex: Map<string, PlannerTask> = new Map();
   private listeners: Set<() => void> = new Set();
   private loaded = false;
-  /** Cached non-task data from data.json, loaded once and kept in sync */
-  private cachedRawData: StoredData | null = null;
 
   constructor(plugin: ProjectPlannerPlugin) {
     this.plugin = plugin;
+  }
+
+  // ---------------------------------------------------------------------------
+  // VAULT FILE HELPERS — per-project .planner-tasks.json
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns the vault-relative path for a project's task file.
+   * e.g. "Project Planner/My Project/.planner-tasks.json"
+   */
+  private getProjectFilePath(projectId: string): string | null {
+    const project = this.plugin.settings.projects.find(p => p.id === projectId);
+    if (!project) return null;
+    const basePath = (this.plugin.settings.projectsBasePath || "Project Planner").trim();
+    const projectFolder = project.storageKey ?? project.name;
+    return `${basePath}/${projectFolder}/.planner-tasks.json`;
+  }
+
+  /** Read a project's tasks from its vault file. Returns null if file doesn't exist yet. */
+  private async readProjectFile(projectId: string): Promise<PlannerTask[] | null> {
+    const filePath = this.getProjectFilePath(projectId);
+    if (!filePath) return null;
+    try {
+      const adapter = this.plugin.app.vault.adapter;
+      if (!(await adapter.exists(filePath))) return null;
+      const raw = await adapter.read(filePath);
+      const data = JSON.parse(raw) as ProjectFileData;
+      return Array.isArray(data.tasks) ? data.tasks : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Write a project's tasks to its vault file, creating the folder if needed. */
+  private async writeProjectFile(projectId: string, tasks: PlannerTask[]): Promise<void> {
+    const filePath = this.getProjectFilePath(projectId);
+    if (!filePath) return;
+    const adapter = this.plugin.app.vault.adapter;
+    const folder = filePath.substring(0, filePath.lastIndexOf("/"));
+    if (folder && !(await adapter.exists(folder))) {
+      await adapter.mkdir(folder);
+    }
+    const data: ProjectFileData = { version: 1, projectId, tasks };
+    await adapter.write(filePath, JSON.stringify(data, null, 2));
+  }
+
+  /**
+   * Copy all tasks from sourceProjectId to targetProjectId, assigning fresh IDs
+   * to every task, subtask, and dependency reference. bucketIdMap remaps old
+   * bucket IDs to the new IDs used by the copied project.
+   */
+  async copyProjectTasks(
+    sourceProjectId: string,
+    targetProjectId: string,
+    bucketIdMap: Map<string, string>
+  ): Promise<void> {
+    const sourceTasks = (await this.readProjectFile(sourceProjectId)) ?? [];
+
+    // Build a task ID remap: old task ID → new task ID
+    const taskIdMap = new Map<string, string>();
+    for (const task of sourceTasks) {
+      taskIdMap.set(task.id, crypto.randomUUID());
+    }
+
+    const copiedTasks: PlannerTask[] = sourceTasks.map((task) => ({
+      ...task,
+      id: taskIdMap.get(task.id)!,
+      parentId: task.parentId ? (taskIdMap.get(task.parentId) ?? null) : task.parentId,
+      bucketId: task.bucketId ? (bucketIdMap.get(task.bucketId) ?? undefined) : task.bucketId,
+      dependencies: task.dependencies?.map((dep) => ({
+        ...dep,
+        predecessorId: taskIdMap.get(dep.predecessorId) ?? dep.predecessorId,
+      })),
+      subtasks: task.subtasks?.map((st) => ({
+        ...st,
+        id: crypto.randomUUID(),
+      })),
+    }));
+
+    await this.writeProjectFile(targetProjectId, copiedTasks);
   }
 
   private get activeProjectId(): string {
@@ -69,39 +154,56 @@ export class TaskStore {
   async load(): Promise<void> {
     const raw = ((await this.plugin.loadData()) || {}) as StoredData;
 
-    // Cache the raw data to avoid re-reading from disk on every save
-    this.cachedRawData = raw;
+    // -----------------------------------------------------------------------
+    // MIGRATION: move legacy tasksByProject / tasks from data.json to vault files
+    // -----------------------------------------------------------------------
+    const legacyByProject = raw.tasksByProject as Record<string, PlannerTask[]> | undefined;
+    const legacyTasks = raw.tasks as PlannerTask[] | undefined;
+    let migrated = false;
 
-    // Always try to load existing multiproject data
-    this.tasksByProject = raw.tasksByProject ?? {};
+    if (legacyByProject && Object.keys(legacyByProject).length > 0) {
+      for (const [pid, tasks] of Object.entries(legacyByProject)) {
+        // Only write vault file if one doesn't already exist
+        if (!(await this.readProjectFile(pid))) {
+          await this.writeProjectFile(pid, Array.isArray(tasks) ? tasks : []);
+        }
+      }
+      delete raw.tasksByProject;
+      migrated = true;
+    }
+
+    if (Array.isArray(legacyTasks) && legacyTasks.length > 0) {
+      if (!(await this.readProjectFile(this.activeProjectId))) {
+        await this.writeProjectFile(this.activeProjectId, legacyTasks);
+      }
+      delete raw.tasks;
+      migrated = true;
+    }
+
+    if (migrated) {
+      // Persist cleaned data.json (settings only, no task data)
+      await this.plugin.saveData(raw);
+    }
+
+    // -----------------------------------------------------------------------
+    // Load all projects from their vault files
+    // -----------------------------------------------------------------------
+    this.tasksByProject = {};
+    this.taskIndex.clear();
+
+    for (const project of this.plugin.settings.projects) {
+      const tasks = await this.readProjectFile(project.id) ?? [];
+      this.tasksByProject[project.id] = tasks;
+    }
 
     const projectId = this.activeProjectId;
 
-    // MIGRATION: If legacy tasks exist and no multiproject data yet
-    if (
-      (!this.tasksByProject || Object.keys(this.tasksByProject).length === 0) &&
-      Array.isArray(raw.tasks) &&
-      raw.tasks.length > 0
-    ) {
-      // Create tasksByProject
-      this.tasksByProject = {
-        [projectId]: raw.tasks
-      };
-
-      // Save migrated structure safely
-      raw.tasksByProject = this.tasksByProject;
-      delete raw.tasks; // optional: remove legacy field to avoid confusion
-      await this.plugin.saveData(raw);
-    }
-
-    // Ensure this project has a valid bucket
+    // Ensure active project has a file even if brand-new
     if (!this.tasksByProject[projectId]) {
       this.tasksByProject[projectId] = [];
-      raw.tasksByProject = this.tasksByProject;
-      await this.plugin.saveData(raw);
+      await this.writeProjectFile(projectId, []);
     }
 
-    // Set the working tasks reference
     this.tasks = this.tasksByProject[projectId];
     this.rebuildIndex();
     this.loaded = true;
@@ -139,20 +241,11 @@ export class TaskStore {
     const projectId = this.activeProjectId;
     if (!projectId) return;
 
-    // Update current project bucket
+    // Keep in-memory map in sync
     this.tasksByProject[projectId] = this.tasks;
 
-    // Use cached data instead of re-reading from disk on every save.
-    // Falls back to loadData() if cache is missing (e.g., external modification).
-    const raw = this.cachedRawData ?? ((await this.plugin.loadData()) || {}) as StoredData;
-    raw.tasksByProject = this.tasksByProject;
-    // Always sync settings from the authoritative in-memory object.
-    // Without this, the cache can hold stale settings (e.g., missing newly
-    // created Board buckets) and overwrite them on the next task save.
-    raw.settings = this.plugin.settings;
-    this.cachedRawData = raw;
-
-    await this.plugin.saveData(raw);
+    // Write active project to its vault file (task data is no longer in data.json)
+    await this.writeProjectFile(projectId, this.tasks);
   }
 
   // ---------------------------------------------------------------------------
@@ -169,11 +262,6 @@ export class TaskStore {
 
   isLoaded(): boolean {
     return this.loaded;
-  }
-
-  /** Expose cached raw data so plugin.saveSettings() can merge safely */
-  getCachedRawData(): StoredData | null {
-    return this.cachedRawData;
   }
 
   async ensureLoaded(): Promise<void> {
@@ -334,13 +422,10 @@ export class TaskStore {
       project.lastUpdatedDate = new Date().toISOString();
     }
 
-    // Save and emit changes
-    const raw = this.cachedRawData ?? ((await this.plugin.loadData()) || {}) as StoredData;
-    raw.tasksByProject = this.tasksByProject;
-    this.cachedRawData = raw;
-    await this.plugin.saveData(raw);
+    // Write to vault file
+    await this.writeProjectFile(projectId, projectTasks);
 
-    // If this is the active project, refresh the working tasks
+    // If this is the active project, refresh the working tasks reference
     if (projectId === this.activeProjectId) {
       this.tasks = this.tasksByProject[projectId];
     }
@@ -348,7 +433,7 @@ export class TaskStore {
     this.emit();
   }
 
-  async updateTask(id: string, partial: Partial<PlannerTask>): Promise<void> {
+  async updateTask(id: string, partial: Partial<PlannerTask>, options?: { skipParentRollUp?: boolean }): Promise<void> {
     let task = this.tasks.find((t) => t.id === id);
     let crossProjectId: string | null = null;
 
@@ -432,6 +517,12 @@ export class TaskStore {
     // We emit exactly once at the very end to avoid N full DOM rebuilds.
     await this.saveQuietly();
 
+    // For cross-project tasks, saveQuietly() only writes the active project file.
+    // Explicitly write the cross-project file too.
+    if (crossProjectId) {
+      await this.writeProjectFile(crossProjectId, this.tasksByProject[crossProjectId]);
+    }
+
     // Resolve the project ID the task actually belongs to
     const effectiveProjectId = crossProjectId ?? this.activeProjectId;
 
@@ -464,7 +555,7 @@ export class TaskStore {
       }
 
       // Parent task roll-up: recalculate parent's dates, effort, and % complete
-      if (this.plugin.settings.enableParentRollUp && task.parentId) {
+      if (this.plugin.settings.enableParentRollUp && task.parentId && !options?.skipParentRollUp) {
         await this.rollUpParentFields(task.parentId);
       }
     }
@@ -756,6 +847,72 @@ export class TaskStore {
     }
   }
 
+  /**
+   * Move a task to a different project.
+   * Clears project-scoped fields (bucketId, parentId, dependencies) since
+   * those references are meaningless in the target project.
+   */
+  async moveTaskToProject(taskId: string, targetProjectId: string): Promise<void> {
+    if (targetProjectId === this.activeProjectId) return;
+
+    // Find which project currently owns this task
+    let sourceProjectId: string | null = null;
+    let task: PlannerTask | undefined;
+
+    for (const [projId, projTasks] of Object.entries(this.tasksByProject)) {
+      const found = projTasks.find(t => t.id === taskId);
+      if (found) {
+        sourceProjectId = projId;
+        task = found;
+        break;
+      }
+    }
+
+    if (!task || !sourceProjectId) return;
+
+    const oldParentId = task.parentId;
+
+    // Promote children in the source project to top-level
+    const sourceTasks = this.tasksByProject[sourceProjectId] || [];
+    for (const child of sourceTasks) {
+      if (child.parentId === taskId) child.parentId = null;
+    }
+
+    // Remove from source
+    this.tasksByProject[sourceProjectId] = sourceTasks.filter(t => t.id !== taskId);
+    if (sourceProjectId === this.activeProjectId) {
+      this.tasks = this.tasksByProject[sourceProjectId];
+    }
+    this.taskIndex.delete(taskId);
+
+    // Roll up source parent before the task disappears
+    if (this.plugin.settings.enableParentRollUp && oldParentId && sourceProjectId === this.activeProjectId) {
+      await this.rollUpParentFields(oldParentId);
+    }
+
+    // Clear project-scoped fields
+    task.bucketId = undefined;
+    task.parentId = null;
+    task.dependencies = [];
+    task.lastModifiedDate = getTodayDate();
+
+    // Add to target
+    if (!this.tasksByProject[targetProjectId]) {
+      this.tasksByProject[targetProjectId] = [];
+    }
+    this.tasksByProject[targetProjectId].push(task);
+    this.taskIndex.set(taskId, task);
+    if (targetProjectId === this.activeProjectId) {
+      this.tasks = this.tasksByProject[targetProjectId];
+    }
+
+    // Persist both affected project files
+    await this.writeProjectFile(sourceProjectId, this.tasksByProject[sourceProjectId]);
+    await this.writeProjectFile(targetProjectId, this.tasksByProject[targetProjectId]);
+
+    this.emit();
+  }
+
   async deleteTask(id: string): Promise<void> {
     // Get task before deleting for sync purposes
     const task = this.tasks.find(t => t.id === id);
@@ -780,7 +937,7 @@ export class TaskStore {
     if (task && this.plugin.settings.enableMarkdownSync && this.plugin.settings.autoCreateTaskNotes) {
       const project = this.plugin.settings.projects.find(p => p.id === this.activeProjectId);
       if (project) {
-        await this.plugin.taskSync.deleteTaskMarkdown(task, project.name);
+        await this.plugin.taskSync.deleteTaskMarkdown(task, project.id);
       }
     }
 

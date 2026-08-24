@@ -99,6 +99,12 @@ export default class ProjectPlannerPlugin extends Plugin {
       });
     }
 
+    if (this.settings.showRibbonIconMyTasks) {
+      this.addRibbonIcon("sun", "Open My Tasks", async () => {
+        await this.activateMyDayView();
+      });
+    }
+
     // Register main GridView
     this.registerView(
       VIEW_TYPE_PLANNER,
@@ -358,17 +364,14 @@ export default class ProjectPlannerPlugin extends Plugin {
   // Task Sync Methods
   // ---------------------------------------------------------------------------
   async initializeTaskSync() {
-    const activeProject = this.settings.projects.find(
-      p => p.id === this.settings.activeProjectId
-    );
-    if (!activeProject) return;
+    if (!this.taskSync) return;
 
-    // Start watching for file changes
-    this.taskSync.watchProjectFolder(activeProject.id, activeProject.name);
+    for (const project of this.settings.projects) {
+      this.taskSync.watchProjectFolder(project.id);
 
-    // Perform initial sync if enabled
-    if (this.settings.syncOnStartup) {
-      await this.taskSync.initialSync(activeProject.id, activeProject.name);
+      if (this.settings.syncOnStartup) {
+        await this.taskSync.initialSync(project.id);
+      }
     }
   }
 
@@ -413,7 +416,7 @@ export default class ProjectPlannerPlugin extends Plugin {
     // Ensure we have at least one project
     if (!this.settings.projects || this.settings.projects.length === 0) {
       const defaultProjectId = crypto.randomUUID();
-      this.settings.projects = [{ id: defaultProjectId, name: "My Project" }];
+      this.settings.projects = [{ id: defaultProjectId, name: "My Project", storageKey: "My Project" }];
       this.settings.activeProjectId = defaultProjectId;
     }
 
@@ -437,23 +440,21 @@ export default class ProjectPlannerPlugin extends Plugin {
       this.settings.availablePriorities = DEFAULT_SETTINGS.availablePriorities;
     }
 
+    for (const project of this.settings.projects) {
+      if (!project.storageKey) {
+        project.storageKey = project.name;
+      }
+    }
+
     // Save settings nested properly
     await this.saveSettings();
   }
 
   async saveSettings() {
-    // Use TaskStore's cached data when available to avoid overwriting
-    // in-flight task changes with a stale disk read (race condition).
-    let raw: ProjectPlannerData;
-    if (this.taskStore?.getCachedRawData()) {
-      raw = this.taskStore.getCachedRawData() as ProjectPlannerData;
-    } else {
-      raw = ((await this.loadData()) || {}) as ProjectPlannerData;
-    }
-
-    // Save ONLY under .settings — Preserve ALL other keys (tasksByProject, etc.)
+    // Task data now lives in per-project vault files, so data.json holds
+    // settings only. No merge needed — no risk of overwriting task data.
+    const raw = ((await this.loadData()) || {}) as ProjectPlannerData;
     raw.settings = this.settings;
-
     await this.saveData(raw);
   }
 
@@ -508,9 +509,10 @@ export default class ProjectPlannerPlugin extends Plugin {
     if (!activeProject) return;
 
     const basePath = this.settings.projectsBasePath;
+    const projectFolder = activeProject.storageKey ?? activeProject.name;
     const folderPath = basePath
-      ? `${basePath}/${activeProject.name}/Tasks`
-      : `${activeProject.name}/Tasks`;
+      ? `${basePath}/${projectFolder}/Tasks`
+      : `${projectFolder}/Tasks`;
 
     // Ensure folder exists
     const folder = this.app.vault.getAbstractFileByPath(folderPath);

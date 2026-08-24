@@ -39,6 +39,8 @@ const DEFAULT_SETTINGS = {
     showRibbonIconBoard: false,
     showRibbonIconGraph: false,
     showRibbonIconDailyNoteScan: false,
+    showRibbonIconMyTasks: false,
+    myDayDefaultView: "today",
 };
 class ProjectPlannerSettingTab extends obsidian.PluginSettingTab {
     constructor(app, plugin) {
@@ -74,11 +76,15 @@ class ProjectPlannerSettingTab extends obsidian.PluginSettingTab {
                 this.plugin.settings.projects.push({
                     id,
                     name: "New Project",
+                    storageKey: "New Project",
                     createdDate: now,
                     lastUpdatedDate: now,
                 });
                 this.plugin.settings.activeProjectId = id;
                 await this.plugin.saveSettings();
+                if (this.plugin.settings.enableMarkdownSync) {
+                    await this.plugin.initializeTaskSync();
+                }
                 this.display(); // rebuild settings UI
             });
         });
@@ -92,6 +98,43 @@ class ProjectPlannerSettingTab extends obsidian.PluginSettingTab {
                     .onChange(async (value) => {
                     project.name = value.trim() || "Untitled Project";
                     await this.plugin.saveSettings();
+                });
+            })
+                .addExtraButton((btn) => {
+                btn
+                    .setIcon("copy")
+                    .setTooltip("Duplicate project")
+                    .onClick(async () => {
+                    const newId = crypto.randomUUID();
+                    const now = new Date().toISOString();
+                    // Copy buckets with fresh IDs so board columns are independent
+                    const bucketIdMap = new Map();
+                    const newBuckets = (project.buckets ?? []).map((b) => {
+                        const newBucketId = crypto.randomUUID();
+                        bucketIdMap.set(b.id, newBucketId);
+                        return { ...b, id: newBucketId };
+                    });
+                    const newProject = {
+                        ...project,
+                        id: newId,
+                        name: `${project.name} (Copy)`,
+                        storageKey: `${project.name} (Copy)`,
+                        createdDate: now,
+                        lastUpdatedDate: now,
+                        buckets: newBuckets,
+                    };
+                    this.plugin.settings.projects.push(newProject);
+                    await this.plugin.saveSettings();
+                    // Copy tasks into the new project's vault file
+                    await this.plugin.taskStore.copyProjectTasks(project.id, newId, bucketIdMap);
+                    // Load the new project into the store
+                    await this.plugin.taskStore.load();
+                    if (this.plugin.settings.enableMarkdownSync) {
+                        await this.plugin.initializeTaskSync();
+                    }
+                    this.plugin.settings.activeProjectId = newId;
+                    await this.plugin.saveSettings();
+                    this.display();
                 });
             })
                 .addExtraButton((btn) => {
@@ -258,6 +301,31 @@ class ProjectPlannerSettingTab extends obsidian.PluginSettingTab {
             .setValue(this.plugin.settings.showRibbonIconDailyNoteScan)
             .onChange(async (value) => {
             this.plugin.settings.showRibbonIconDailyNoteScan = value;
+            await this.plugin.saveSettings();
+        }));
+        new obsidian.Setting(containerEl)
+            .setName("My Tasks icon")
+            .setDesc("Show ribbon icon for opening My Tasks view")
+            .addToggle((toggle) => toggle
+            .setValue(this.plugin.settings.showRibbonIconMyTasks)
+            .onChange(async (value) => {
+            this.plugin.settings.showRibbonIconMyTasks = value;
+            await this.plugin.saveSettings();
+        }));
+        // -----------------------------------------------------------------------
+        // My Tasks Section
+        // -----------------------------------------------------------------------
+        new obsidian.Setting(containerEl).setName("My Tasks").setHeading();
+        new obsidian.Setting(containerEl)
+            .setName("Default view")
+            .setDesc("Which tab opens when you open My Tasks.")
+            .addDropdown((dropdown) => dropdown
+            .addOption("today", "Today")
+            .addOption("week", "Week")
+            .addOption("month", "Month")
+            .setValue(this.plugin.settings.myDayDefaultView)
+            .onChange(async (value) => {
+            this.plugin.settings.myDayDefaultView = value;
             await this.plugin.saveSettings();
         }));
         // -----------------------------------------------------------------------
@@ -676,7 +744,7 @@ class ProjectPlannerSettingTab extends obsidian.PluginSettingTab {
 }
 
 function renderPlannerHeader(parent, plugin, options) {
-    const header = parent.createDiv("planner-grid-header");
+    const header = parent.createDiv("planner-header");
     // Project switcher
     const projectContainer = header.createDiv("planner-project-switcher");
     const projectSelect = projectContainer.createEl("select", {
@@ -718,6 +786,12 @@ function renderPlannerHeader(parent, plugin, options) {
     });
     obsidian.setIcon(dashboardViewBtn, "layout-dashboard");
     dashboardViewBtn.onclick = async () => await plugin.activateDashboardView();
+    const myDayBtn = viewSwitcher.createEl("button", {
+        cls: `planner-view-btn${options.active === "myday" ? " planner-view-btn-active" : ""}`,
+        title: "My Tasks",
+    });
+    obsidian.setIcon(myDayBtn, "sun");
+    myDayBtn.onclick = async () => await plugin.activateMyDayView();
     const gridViewBtn = viewSwitcher.createEl("button", {
         cls: `planner-view-btn${options.active === "grid" ? " planner-view-btn-active" : ""}`,
         title: "Grid",
@@ -742,12 +816,6 @@ function renderPlannerHeader(parent, plugin, options) {
     });
     obsidian.setIcon(graphViewBtn, "git-fork");
     graphViewBtn.onclick = async () => await plugin.openDependencyGraph();
-    const myDayBtn = viewSwitcher.createEl("button", {
-        cls: `planner-view-btn${options.active === "myday" ? " planner-view-btn-active" : ""}`,
-        title: "My Tasks",
-    });
-    obsidian.setIcon(myDayBtn, "sun");
-    myDayBtn.onclick = async () => await plugin.activateMyDayView();
     // Header actions (Add task, extra, Project Hub, Settings)
     const headerActions = header.createDiv("planner-header-actions");
     if (!options.hideAddTask) {
@@ -1796,7 +1864,7 @@ class GridView extends obsidian.ItemView {
             if (!project)
                 return;
             // Use the same path as TaskSync
-            const filePath = this.plugin.taskSync.getTaskFilePath(task, project.name);
+            const filePath = this.plugin.taskSync.getTaskFilePath(task, project.id);
             try {
                 const file = this.app.vault.getAbstractFileByPath(filePath);
                 if (file && file instanceof obsidian.TFile) {
@@ -1853,6 +1921,16 @@ class GridView extends obsidian.ItemView {
             // Don't call render() - TaskStore subscription handles it
         }));
         menu.addSeparator();
+        // Move to project (one item per target project, only shown when >1 project exists)
+        const otherProjects = (this.plugin.settings.projects || []).filter((p) => p.id !== this.plugin.settings.activeProjectId);
+        for (const proj of otherProjects) {
+            menu.addItem((item) => item
+                .setTitle(`Move to: ${proj.name}`)
+                .setIcon("folder-input")
+                .onClick(async () => {
+                await this.taskStore.moveTaskToProject(task.id, proj.id);
+            }));
+        }
         menu.addItem((item) => item
             .setTitle("Delete task")
             .setIcon("trash")
@@ -2996,6 +3074,7 @@ class BoardView extends obsidian.ItemView {
         this.renderPending = false;
         this.renderVersion = 0; // Monotonic counter — only the latest render restores scroll
         this.lastHighlightedCard = null;
+        this.clipboardTask = null;
         this.plugin = plugin;
         this.taskStore = plugin.taskStore;
     }
@@ -3248,7 +3327,7 @@ class BoardView extends obsidian.ItemView {
             });
             // Set hover color on the button based on bucket background
             if (bucket.color) {
-                bucketMenuBtn.style.setProperty('--hover-color', isDarkBackground ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)');
+                bucketMenuBtn.style.setProperty('--hover-color', isDarkBackground ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.15)');
             }
             bucketMenuBtn.onclick = (evt) => {
                 evt.stopPropagation();
@@ -3558,6 +3637,52 @@ class BoardView extends obsidian.ItemView {
             .setIcon("pencil")
             .onClick(() => this.plugin.openTaskDetail(task)));
         menu.addSeparator();
+        // Cut
+        menu.addItem((item) => item
+            .setTitle("Cut")
+            .setIcon("scissors")
+            .onClick(() => {
+            this.clipboardTask = { task: { ...task }, isCut: true };
+        }));
+        // Copy
+        menu.addItem((item) => item
+            .setTitle("Copy")
+            .setIcon("copy")
+            .onClick(() => {
+            this.clipboardTask = { task: { ...task }, isCut: false };
+        }));
+        // Paste
+        menu.addItem((item) => item
+            .setTitle("Paste")
+            .setIcon("clipboard")
+            .setDisabled(!this.clipboardTask)
+            .onClick(async () => {
+            if (!this.clipboardTask)
+                return;
+            const { task: clipTask, isCut } = this.clipboardTask;
+            if (isCut) {
+                await this.taskStore.updateTask(clipTask.id, {
+                    bucketId: task.bucketId,
+                });
+                this.clipboardTask = null;
+            }
+            else {
+                const newTask = await this.taskStore.addTask(clipTask.title);
+                await this.taskStore.updateTask(newTask.id, {
+                    description: clipTask.description,
+                    status: clipTask.status,
+                    priority: clipTask.priority,
+                    startDate: clipTask.startDate,
+                    dueDate: clipTask.dueDate,
+                    tags: clipTask.tags ? [...clipTask.tags] : [],
+                    completed: clipTask.completed,
+                    bucketId: task.bucketId,
+                    links: clipTask.links ? [...clipTask.links] : [],
+                    dependencies: [],
+                });
+            }
+        }));
+        menu.addSeparator();
         // Copy link to task
         menu.addItem((item) => item
             .setTitle("Copy link to task")
@@ -3586,7 +3711,7 @@ class BoardView extends obsidian.ItemView {
             const project = this.plugin.settings.projects.find((p) => p.id === projectId);
             if (!project)
                 return;
-            const filePath = this.plugin.taskSync.getTaskFilePath(task, project.name);
+            const filePath = this.plugin.taskSync.getTaskFilePath(task, project.id);
             try {
                 const file = this.app.vault.getAbstractFileByPath(filePath);
                 if (file && file instanceof obsidian.TFile) {
@@ -3606,6 +3731,16 @@ class BoardView extends obsidian.ItemView {
             }
         }));
         menu.addSeparator();
+        // Move to project (one item per target project, only shown when >1 project exists)
+        const otherProjects = (this.plugin.settings.projects || []).filter((p) => p.id !== this.plugin.settings.activeProjectId);
+        for (const proj of otherProjects) {
+            menu.addItem((item) => item
+                .setTitle(`Move to: ${proj.name}`)
+                .setIcon("folder-input")
+                .onClick(async () => {
+                await this.taskStore.moveTaskToProject(task.id, proj.id);
+            }));
+        }
         menu.addItem((item) => item
             .setTitle("Delete task")
             .setIcon("trash")
@@ -4276,6 +4411,23 @@ class TaskDetailView extends obsidian.ItemView {
         this.createEditableMarkdown(container, task.description || "", async (val) => {
             await this.update({ description: val });
         });
+        //
+        // PROJECT — dropdown (move task to another project)
+        //
+        const allProjects = (this.plugin.settings.projects || []);
+        if (allProjects.length > 1) {
+            container.createEl("h3", { text: "Project" });
+            // Find which project currently owns this task
+            const owningProject = allProjects.find((p) => (this.plugin.taskStore.getAllForProject(p.id) || []).some((t) => t.id === task.id)) ?? allProjects.find((p) => p.id === this.plugin.settings.activeProjectId);
+            const projectNames = allProjects.map((p) => p.name);
+            const currentProjectName = owningProject?.name ?? allProjects[0].name;
+            this.createEditableSelect(container, currentProjectName, projectNames, async (val) => {
+                const target = allProjects.find((p) => p.name === val);
+                if (!target || target.id === owningProject?.id)
+                    return;
+                await this.plugin.taskStore.moveTaskToProject(task.id, target.id);
+            });
+        }
         //
         // STATUS — dropdown
         //
@@ -6084,7 +6236,7 @@ class GanttView extends obsidian.ItemView {
                 if (!project)
                     return;
                 // Use the same path as TaskSync
-                const filePath = this.plugin.taskSync.getTaskFilePath(task, project.name);
+                const filePath = this.plugin.taskSync.getTaskFilePath(task, project.id);
                 try {
                     const file = this.app.vault.getAbstractFileByPath(filePath);
                     if (file && file instanceof obsidian.TFile) {
@@ -7710,12 +7862,12 @@ class DashboardView extends obsidian.ItemView {
         const container = this.containerEl;
         const thisRender = ++this.renderVersion;
         // Save scroll position before clearing
-        const existingWrapper = container.querySelector('.dashboard-wrapper');
+        const existingWrapper = container.querySelector('.planner-dashboard-wrapper');
         if (existingWrapper && this.savedScrollTop === null) {
             this.savedScrollTop = existingWrapper.scrollTop;
         }
         container.empty();
-        const wrapper = container.createDiv("dashboard-wrapper");
+        const wrapper = container.createDiv("planner-dashboard-wrapper");
         // Header
         renderPlannerHeader(wrapper, this.plugin, {
             active: "dashboard",
@@ -7796,17 +7948,16 @@ function toDateStr(d) {
 function getTodayDate$1() {
     return toDateStr(new Date());
 }
-/** Get the Monday-through-Sunday dates for the week containing `anchor`. */
+/** Get the Sunday-through-Saturday dates for the week containing `anchor`. */
 function getWeekDates(anchor) {
     const d = new Date(anchor);
     const dayOfWeek = d.getDay(); // 0=Sun
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const monday = new Date(d);
-    monday.setDate(d.getDate() + mondayOffset);
+    const sunday = new Date(d);
+    sunday.setDate(d.getDate() - dayOfWeek);
     const week = [];
     for (let i = 0; i < 7; i++) {
-        const day = new Date(monday);
-        day.setDate(monday.getDate() + i);
+        const day = new Date(sunday);
+        day.setDate(sunday.getDate() + i);
         week.push(day);
     }
     return week;
@@ -7834,9 +7985,14 @@ class MyDayView extends obsidian.ItemView {
         this.viewMode = "today";
         // Week navigation anchor (always the displayed week's reference date)
         this.weekAnchor = new Date();
+        // Month navigation anchor
+        this.monthAnchor = new Date();
         // Task picker panel
         this.pickerOpen = false;
         this.pickerSearch = "";
+        // New task form panel
+        this.newTaskFormOpen = false;
+        this.newTaskProjectId = "";
         // Scroll position preservation
         this.savedScrollTop = null;
         this.savedScrollLeft = null;
@@ -7861,6 +8017,7 @@ class MyDayView extends obsidian.ItemView {
     }
     async onOpen() {
         await this.taskStore.ensureLoaded();
+        this.viewMode = this.plugin.settings.myDayDefaultView ?? "today";
         this.unsubscribe = this.taskStore.subscribe(() => this.render());
         this.render();
     }
@@ -7916,6 +8073,38 @@ class MyDayView extends obsidian.ItemView {
         }
         return map;
     }
+    /** All tasks for the calendar month grid (Sun-before-1st to Sat-after-last). */
+    getMonthTaskMap() {
+        const year = this.monthAnchor.getFullYear();
+        const month = this.monthAnchor.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const startDate = new Date(firstDay);
+        startDate.setDate(firstDay.getDate() - firstDay.getDay()); // back to Sunday
+        const endDate = new Date(lastDay);
+        const endDow = lastDay.getDay();
+        if (endDow < 6)
+            endDate.setDate(lastDay.getDate() + (6 - endDow)); // forward to Saturday
+        const dateSet = new Set();
+        const cur = new Date(startDate);
+        while (cur <= endDate) {
+            dateSet.add(toDateStr(cur));
+            cur.setDate(cur.getDate() + 1);
+        }
+        const map = new Map();
+        for (const ds of dateSet)
+            map.set(ds, []);
+        const projects = this.plugin.settings.projects || [];
+        for (const project of projects) {
+            const tasks = this.taskStore.getAllForProject(project.id) || [];
+            for (const task of tasks) {
+                if (task.dueDate && dateSet.has(task.dueDate)) {
+                    map.get(task.dueDate).push({ task, projectId: project.id, projectName: project.name });
+                }
+            }
+        }
+        return map;
+    }
     applyFilters(items) {
         return items.filter(({ task }) => {
             if (!this.currentFilters.showCompleted && task.completed)
@@ -7965,7 +8154,7 @@ class MyDayView extends obsidian.ItemView {
             this.savedScrollLeft = scrollTarget.scrollLeft;
         }
         container.empty();
-        const wrapper = container.createDiv("myday-wrapper");
+        const wrapper = container.createDiv("planner-myday-wrapper");
         // Header (with mode tabs)
         this.renderHeader(wrapper);
         // Toolbar (filters)
@@ -7977,12 +8166,19 @@ class MyDayView extends obsidian.ItemView {
         if (this.viewMode === "today") {
             this.renderTodayContent(mainArea, thisRender);
         }
-        else {
+        else if (this.viewMode === "week") {
             this.renderWeekContent(mainArea, thisRender);
+        }
+        else {
+            this.renderMonthContent(mainArea, thisRender);
         }
         // Task picker panel (slide-in from the right)
         if (this.pickerOpen) {
             this.renderPickerPanel(body);
+        }
+        // New task form panel (slide-in from the right)
+        if (this.newTaskFormOpen) {
+            this.renderNewTaskForm(body);
         }
     }
     // ---------------------------------------------------------------------------
@@ -7997,32 +8193,30 @@ class MyDayView extends obsidian.ItemView {
                 this.render();
             },
             buildExtraActions: (actionsEl) => {
-                // Today / Week segmented toggle
-                const modeToggle = actionsEl.createDiv("myday-mode-toggle");
-                const todayBtn = modeToggle.createEl("button", {
-                    text: "Today",
-                    cls: `myday-mode-btn${this.viewMode === "today" ? " myday-mode-btn-active" : ""}`,
+                // New Task button
+                const newTaskBtn = actionsEl.createEl("button", {
+                    cls: `myday-add-tasks-btn${this.newTaskFormOpen ? " myday-add-tasks-btn-active" : ""}`,
+                    title: "Create a new task due today",
                 });
-                todayBtn.onclick = () => {
-                    if (this.viewMode !== "today") {
-                        this.viewMode = "today";
-                        this.savedScrollTop = null;
-                        this.savedScrollLeft = null;
-                        this.render();
+                newTaskBtn.createSpan({ text: this.newTaskFormOpen ? "Close" : "New Task" });
+                newTaskBtn.onclick = () => {
+                    this.newTaskFormOpen = !this.newTaskFormOpen;
+                    this.pickerOpen = false;
+                    if (this.newTaskFormOpen) {
+                        this.newTaskProjectId = this.plugin.settings.activeProjectId || "";
                     }
+                    this.render();
                 };
-                const weekBtn = modeToggle.createEl("button", {
-                    text: "Week",
-                    cls: `myday-mode-btn${this.viewMode === "week" ? " myday-mode-btn-active" : ""}`,
+                // Add Tasks button
+                const addTasksBtn = actionsEl.createEl("button", {
+                    cls: `myday-add-tasks-btn${this.pickerOpen ? " myday-add-tasks-btn-active" : ""}`,
                 });
-                weekBtn.onclick = () => {
-                    if (this.viewMode !== "week") {
-                        this.viewMode = "week";
-                        this.weekAnchor = new Date();
-                        this.savedScrollTop = null;
-                        this.savedScrollLeft = null;
-                        this.render();
-                    }
+                addTasksBtn.createSpan({ text: this.pickerOpen ? "Close" : "Add Tasks" });
+                addTasksBtn.onclick = () => {
+                    this.pickerOpen = !this.pickerOpen;
+                    this.newTaskFormOpen = false;
+                    this.pickerSearch = "";
+                    this.render();
                 };
             },
         });
@@ -8066,17 +8260,45 @@ class MyDayView extends obsidian.ItemView {
             this.currentFilters.showCompleted = toggleCheckbox.checked;
             this.render();
         };
-        // Add Tasks button
-        const addTasksBtn = toolbar.createEl("button", {
-            cls: `myday-add-tasks-btn${this.pickerOpen ? " myday-add-tasks-btn-active" : ""}`,
+        // Today / Week / Month mode toggle
+        const modeToggle = toolbar.createDiv("myday-mode-toggle");
+        const todayBtn = modeToggle.createEl("button", {
+            text: "Today",
+            cls: `myday-mode-btn${this.viewMode === "today" ? " myday-mode-btn-active" : ""}`,
         });
-        const addIcon = addTasksBtn.createSpan("myday-add-tasks-btn-icon");
-        obsidian.setIcon(addIcon, this.pickerOpen ? "x" : "plus-circle");
-        addTasksBtn.createSpan({ text: this.pickerOpen ? "Close" : "Add Tasks" });
-        addTasksBtn.onclick = () => {
-            this.pickerOpen = !this.pickerOpen;
-            this.pickerSearch = "";
-            this.render();
+        todayBtn.onclick = () => {
+            if (this.viewMode !== "today") {
+                this.viewMode = "today";
+                this.savedScrollTop = null;
+                this.savedScrollLeft = null;
+                this.render();
+            }
+        };
+        const weekBtn = modeToggle.createEl("button", {
+            text: "Week",
+            cls: `myday-mode-btn${this.viewMode === "week" ? " myday-mode-btn-active" : ""}`,
+        });
+        weekBtn.onclick = () => {
+            if (this.viewMode !== "week") {
+                this.viewMode = "week";
+                this.weekAnchor = new Date();
+                this.savedScrollTop = null;
+                this.savedScrollLeft = null;
+                this.render();
+            }
+        };
+        const monthBtn = modeToggle.createEl("button", {
+            text: "Month",
+            cls: `myday-mode-btn${this.viewMode === "month" ? " myday-mode-btn-active" : ""}`,
+        });
+        monthBtn.onclick = () => {
+            if (this.viewMode !== "month") {
+                this.viewMode = "month";
+                this.monthAnchor = new Date();
+                this.savedScrollTop = null;
+                this.savedScrollLeft = null;
+                this.render();
+            }
         };
         // Week navigation (only in week mode)
         if (this.viewMode === "week") {
@@ -8100,6 +8322,41 @@ class MyDayView extends obsidian.ItemView {
             obsidian.setIcon(nextBtn, "chevron-right");
             nextBtn.onclick = () => {
                 this.weekAnchor.setDate(this.weekAnchor.getDate() + 7);
+                this.savedScrollTop = null;
+                this.savedScrollLeft = null;
+                this.render();
+            };
+        }
+        // Month navigation (only in month mode)
+        if (this.viewMode === "month") {
+            const monthNav = toolbar.createDiv("myday-week-nav");
+            const prevBtn = monthNav.createEl("button", { cls: "myday-week-nav-btn", title: "Previous month" });
+            obsidian.setIcon(prevBtn, "chevron-left");
+            prevBtn.onclick = () => {
+                this.monthAnchor = new Date(this.monthAnchor.getFullYear(), this.monthAnchor.getMonth() - 1, 1);
+                this.savedScrollTop = null;
+                this.savedScrollLeft = null;
+                this.render();
+            };
+            const y = this.monthAnchor.getFullYear();
+            const m = this.monthAnchor.getMonth();
+            const isCurrentMonth = y === new Date().getFullYear() && m === new Date().getMonth();
+            const monthNavLabel = `${MONTH_NAMES[m]} ${y}`;
+            const thisMonthBtn = monthNav.createEl("button", {
+                cls: `myday-week-nav-today${isCurrentMonth ? " myday-week-nav-today-active" : ""}`,
+                text: monthNavLabel,
+                title: "Go to today's month",
+            });
+            thisMonthBtn.onclick = () => {
+                this.monthAnchor = new Date();
+                this.savedScrollTop = null;
+                this.savedScrollLeft = null;
+                this.render();
+            };
+            const nextBtn = monthNav.createEl("button", { cls: "myday-week-nav-btn", title: "Next month" });
+            obsidian.setIcon(nextBtn, "chevron-right");
+            nextBtn.onclick = () => {
+                this.monthAnchor = new Date(this.monthAnchor.getFullYear(), this.monthAnchor.getMonth() + 1, 1);
                 this.savedScrollTop = null;
                 this.savedScrollLeft = null;
                 this.render();
@@ -8251,6 +8508,74 @@ class MyDayView extends obsidian.ItemView {
         };
     }
     // ===========================================================================
+    // MONTH content (calendar grid)
+    // ===========================================================================
+    renderMonthContent(wrapper, thisRender) {
+        const year = this.monthAnchor.getFullYear();
+        const month = this.monthAnchor.getMonth();
+        const todayStr = getTodayDate$1();
+        const taskMap = this.getMonthTaskMap();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const startDate = new Date(firstDay);
+        startDate.setDate(firstDay.getDate() - firstDay.getDay()); // back to Sunday
+        const endDate = new Date(lastDay);
+        const endDow = lastDay.getDay();
+        if (endDow < 6)
+            endDate.setDate(lastDay.getDate() + (6 - endDow)); // forward to Saturday
+        const scroll = wrapper.createDiv("myday-month-scroll");
+        this.restoreScroll(scroll, thisRender);
+        const grid = scroll.createDiv("myday-month-grid");
+        // Day-name header row
+        for (const name of DAY_NAMES_SHORT) {
+            grid.createDiv({ text: name, cls: "myday-month-day-name" });
+        }
+        // Day cells
+        const cur = new Date(startDate);
+        while (cur <= endDate) {
+            const dateStr = toDateStr(cur);
+            const isCurrentMonth = cur.getMonth() === month;
+            const isToday = dateStr === todayStr;
+            const rawTasks = taskMap.get(dateStr) || [];
+            const filtered = this.applyFilters(rawTasks);
+            const cell = grid.createDiv("myday-month-cell");
+            if (!isCurrentMonth)
+                cell.addClass("myday-month-cell-outside");
+            if (isToday)
+                cell.addClass("myday-month-cell-today");
+            // Date number
+            const numEl = cell.createDiv({ text: String(cur.getDate()), cls: "myday-month-cell-num" });
+            if (isToday)
+                numEl.addClass("myday-month-cell-num-today");
+            // Task pills (max 3, then "+N more")
+            const MAX_VISIBLE = 3;
+            const sorted = sortTasks(filtered);
+            for (const item of sorted.slice(0, MAX_VISIBLE)) {
+                this.renderMonthTask(cell, item);
+            }
+            const overflow = sorted.length - MAX_VISIBLE;
+            if (overflow > 0) {
+                cell.createDiv({ text: `+${overflow} more`, cls: "myday-month-overflow" });
+            }
+            cur.setDate(cur.getDate() + 1);
+        }
+    }
+    renderMonthTask(cell, item) {
+        const { task } = item;
+        const taskEl = cell.createDiv("myday-month-task");
+        if (task.completed)
+            taskEl.addClass("myday-month-task-completed");
+        const priorityDef = this.plugin.settings.availablePriorities?.find((p) => p.name === task.priority);
+        const priorityColor = priorityDef?.color || "var(--interactive-accent)";
+        taskEl.style.setProperty("--task-priority-color", priorityColor);
+        taskEl.createSpan({ text: task.title, cls: "myday-month-task-title" });
+        taskEl.onclick = () => this.plugin.openTaskDetail(task);
+        taskEl.oncontextmenu = (evt) => {
+            evt.preventDefault();
+            this.showRowMenu(item, evt);
+        };
+    }
+    // ===========================================================================
     // Task picker panel
     // ===========================================================================
     getAllPickerTasks() {
@@ -8267,6 +8592,92 @@ class MyDayView extends obsidian.ItemView {
             }
         }
         return result;
+    }
+    renderNewTaskForm(body) {
+        const panel = body.createDiv("myday-picker");
+        // Panel header
+        const panelHeader = panel.createDiv("myday-picker-header");
+        panelHeader.createDiv({ text: "New Task", cls: "myday-picker-title" });
+        const closeBtn = panelHeader.createEl("button", { cls: "myday-picker-close", title: "Close" });
+        obsidian.setIcon(closeBtn, "x");
+        closeBtn.onclick = () => {
+            this.newTaskFormOpen = false;
+            this.render();
+        };
+        const form = panel.createDiv("myday-new-task-form");
+        // Title
+        const titleInput = form.createEl("input", {
+            type: "text",
+            placeholder: "Task title...",
+            cls: "myday-picker-search",
+        });
+        requestAnimationFrame(() => titleInput.focus());
+        // Project selector (only when >1 project)
+        const projects = this.plugin.settings.projects || [];
+        let selectedProjectId = this.newTaskProjectId || this.plugin.settings.activeProjectId || "";
+        if (projects.length > 1) {
+            const projectSelect = form.createEl("select", { cls: "myday-new-task-select" });
+            for (const proj of projects) {
+                const opt = projectSelect.createEl("option", { value: proj.id, text: proj.name });
+                if (proj.id === selectedProjectId)
+                    opt.selected = true;
+            }
+            projectSelect.onchange = () => {
+                selectedProjectId = projectSelect.value;
+                this.newTaskProjectId = selectedProjectId;
+            };
+        }
+        // Priority selector
+        const priorities = (this.plugin.settings.availablePriorities || []).map(p => p.name);
+        const priorityDefaults = priorities.length > 0 ? priorities : ["Critical", "High", "Medium", "Low"];
+        let selectedPriority = "Medium";
+        const prioritySelect = form.createEl("select", { cls: "myday-new-task-select" });
+        for (const p of priorityDefaults) {
+            const opt = prioritySelect.createEl("option", { value: p, text: p });
+            if (p === "Medium")
+                opt.selected = true;
+        }
+        prioritySelect.onchange = () => { selectedPriority = prioritySelect.value; };
+        // Submit button
+        const submitBtn = form.createEl("button", {
+            cls: "myday-new-task-submit",
+            text: "Add to My Day",
+        });
+        const submit = async () => {
+            const title = titleInput.value.trim();
+            if (!title) {
+                titleInput.addClass("myday-new-task-input-error");
+                titleInput.focus();
+                return;
+            }
+            const today = getTodayDate$1();
+            const task = {
+                id: crypto.randomUUID(),
+                title,
+                status: "Not Started",
+                priority: selectedPriority,
+                completed: false,
+                parentId: null,
+                collapsed: false,
+                createdDate: today,
+                lastModifiedDate: today,
+                startDate: today,
+                dueDate: today,
+            };
+            const targetProjectId = selectedProjectId || this.plugin.settings.activeProjectId || "";
+            await this.taskStore.addTaskToProject(task, targetProjectId);
+            // Close the form — store emit from addTaskToProject triggers re-render
+            this.newTaskFormOpen = false;
+        };
+        submitBtn.onclick = submit;
+        titleInput.onkeydown = (e) => {
+            if (e.key === "Enter")
+                submit();
+            if (e.key === "Escape") {
+                this.newTaskFormOpen = false;
+                this.render();
+            }
+        };
     }
     renderPickerPanel(body) {
         const panel = body.createDiv("myday-picker");
@@ -8338,7 +8749,7 @@ class MyDayView extends obsidian.ItemView {
                 obsidian.setIcon(btnIcon, "plus");
                 addBtn.createSpan({ text: "Add" });
                 addBtn.onclick = async () => {
-                    await this.taskStore.updateTask(task.id, { dueDate: getTodayDate$1() });
+                    await this.taskStore.updateTask(task.id, { dueDate: getTodayDate$1() }, { skipParentRollUp: true });
                 };
             }
         }
@@ -8469,10 +8880,24 @@ class MyDayView extends obsidian.ItemView {
             await this.taskStore.updateTask(task.id, { dueDate: "" });
         }));
         menu.addSeparator();
-        menu.addItem((i) => i
-            .setTitle(`Project: ${projectName}`)
-            .setIcon("folder")
-            .setDisabled(true));
+        // Move to project (one item per target project, only shown when >1 project exists)
+        const otherProjects = (this.plugin.settings.projects || []).filter((p) => p.id !== projectId);
+        if (otherProjects.length > 0) {
+            for (const proj of otherProjects) {
+                menu.addItem((i) => i
+                    .setTitle(`Move to: ${proj.name}`)
+                    .setIcon("folder-input")
+                    .onClick(async () => {
+                    await this.taskStore.moveTaskToProject(task.id, proj.id);
+                }));
+            }
+        }
+        else {
+            menu.addItem((i) => i
+                .setTitle(`Project: ${projectName}`)
+                .setIcon("folder")
+                .setDisabled(true));
+        }
         menu.showAtMouseEvent(evt);
     }
 }
@@ -8510,9 +8935,80 @@ class TaskStore {
         this.taskIndex = new Map();
         this.listeners = new Set();
         this.loaded = false;
-        /** Cached non-task data from data.json, loaded once and kept in sync */
-        this.cachedRawData = null;
         this.plugin = plugin;
+    }
+    // ---------------------------------------------------------------------------
+    // VAULT FILE HELPERS — per-project .planner-tasks.json
+    // ---------------------------------------------------------------------------
+    /**
+     * Returns the vault-relative path for a project's task file.
+     * e.g. "Project Planner/My Project/.planner-tasks.json"
+     */
+    getProjectFilePath(projectId) {
+        const project = this.plugin.settings.projects.find(p => p.id === projectId);
+        if (!project)
+            return null;
+        const basePath = (this.plugin.settings.projectsBasePath || "Project Planner").trim();
+        const projectFolder = project.storageKey ?? project.name;
+        return `${basePath}/${projectFolder}/.planner-tasks.json`;
+    }
+    /** Read a project's tasks from its vault file. Returns null if file doesn't exist yet. */
+    async readProjectFile(projectId) {
+        const filePath = this.getProjectFilePath(projectId);
+        if (!filePath)
+            return null;
+        try {
+            const adapter = this.plugin.app.vault.adapter;
+            if (!(await adapter.exists(filePath)))
+                return null;
+            const raw = await adapter.read(filePath);
+            const data = JSON.parse(raw);
+            return Array.isArray(data.tasks) ? data.tasks : null;
+        }
+        catch {
+            return null;
+        }
+    }
+    /** Write a project's tasks to its vault file, creating the folder if needed. */
+    async writeProjectFile(projectId, tasks) {
+        const filePath = this.getProjectFilePath(projectId);
+        if (!filePath)
+            return;
+        const adapter = this.plugin.app.vault.adapter;
+        const folder = filePath.substring(0, filePath.lastIndexOf("/"));
+        if (folder && !(await adapter.exists(folder))) {
+            await adapter.mkdir(folder);
+        }
+        const data = { version: 1, projectId, tasks };
+        await adapter.write(filePath, JSON.stringify(data, null, 2));
+    }
+    /**
+     * Copy all tasks from sourceProjectId to targetProjectId, assigning fresh IDs
+     * to every task, subtask, and dependency reference. bucketIdMap remaps old
+     * bucket IDs to the new IDs used by the copied project.
+     */
+    async copyProjectTasks(sourceProjectId, targetProjectId, bucketIdMap) {
+        const sourceTasks = (await this.readProjectFile(sourceProjectId)) ?? [];
+        // Build a task ID remap: old task ID → new task ID
+        const taskIdMap = new Map();
+        for (const task of sourceTasks) {
+            taskIdMap.set(task.id, crypto.randomUUID());
+        }
+        const copiedTasks = sourceTasks.map((task) => ({
+            ...task,
+            id: taskIdMap.get(task.id),
+            parentId: task.parentId ? (taskIdMap.get(task.parentId) ?? null) : task.parentId,
+            bucketId: task.bucketId ? (bucketIdMap.get(task.bucketId) ?? undefined) : task.bucketId,
+            dependencies: task.dependencies?.map((dep) => ({
+                ...dep,
+                predecessorId: taskIdMap.get(dep.predecessorId) ?? dep.predecessorId,
+            })),
+            subtasks: task.subtasks?.map((st) => ({
+                ...st,
+                id: crypto.randomUUID(),
+            })),
+        }));
+        await this.writeProjectFile(targetProjectId, copiedTasks);
     }
     get activeProjectId() {
         return this.plugin.settings.activeProjectId;
@@ -8522,31 +9018,48 @@ class TaskStore {
     // ---------------------------------------------------------------------------
     async load() {
         const raw = ((await this.plugin.loadData()) || {});
-        // Cache the raw data to avoid re-reading from disk on every save
-        this.cachedRawData = raw;
-        // Always try to load existing multiproject data
-        this.tasksByProject = raw.tasksByProject ?? {};
-        const projectId = this.activeProjectId;
-        // MIGRATION: If legacy tasks exist and no multiproject data yet
-        if ((!this.tasksByProject || Object.keys(this.tasksByProject).length === 0) &&
-            Array.isArray(raw.tasks) &&
-            raw.tasks.length > 0) {
-            // Create tasksByProject
-            this.tasksByProject = {
-                [projectId]: raw.tasks
-            };
-            // Save migrated structure safely
-            raw.tasksByProject = this.tasksByProject;
-            delete raw.tasks; // optional: remove legacy field to avoid confusion
+        // -----------------------------------------------------------------------
+        // MIGRATION: move legacy tasksByProject / tasks from data.json to vault files
+        // -----------------------------------------------------------------------
+        const legacyByProject = raw.tasksByProject;
+        const legacyTasks = raw.tasks;
+        let migrated = false;
+        if (legacyByProject && Object.keys(legacyByProject).length > 0) {
+            for (const [pid, tasks] of Object.entries(legacyByProject)) {
+                // Only write vault file if one doesn't already exist
+                if (!(await this.readProjectFile(pid))) {
+                    await this.writeProjectFile(pid, Array.isArray(tasks) ? tasks : []);
+                }
+            }
+            delete raw.tasksByProject;
+            migrated = true;
+        }
+        if (Array.isArray(legacyTasks) && legacyTasks.length > 0) {
+            if (!(await this.readProjectFile(this.activeProjectId))) {
+                await this.writeProjectFile(this.activeProjectId, legacyTasks);
+            }
+            delete raw.tasks;
+            migrated = true;
+        }
+        if (migrated) {
+            // Persist cleaned data.json (settings only, no task data)
             await this.plugin.saveData(raw);
         }
-        // Ensure this project has a valid bucket
+        // -----------------------------------------------------------------------
+        // Load all projects from their vault files
+        // -----------------------------------------------------------------------
+        this.tasksByProject = {};
+        this.taskIndex.clear();
+        for (const project of this.plugin.settings.projects) {
+            const tasks = await this.readProjectFile(project.id) ?? [];
+            this.tasksByProject[project.id] = tasks;
+        }
+        const projectId = this.activeProjectId;
+        // Ensure active project has a file even if brand-new
         if (!this.tasksByProject[projectId]) {
             this.tasksByProject[projectId] = [];
-            raw.tasksByProject = this.tasksByProject;
-            await this.plugin.saveData(raw);
+            await this.writeProjectFile(projectId, []);
         }
-        // Set the working tasks reference
         this.tasks = this.tasksByProject[projectId];
         this.rebuildIndex();
         this.loaded = true;
@@ -8580,18 +9093,10 @@ class TaskStore {
         const projectId = this.activeProjectId;
         if (!projectId)
             return;
-        // Update current project bucket
+        // Keep in-memory map in sync
         this.tasksByProject[projectId] = this.tasks;
-        // Use cached data instead of re-reading from disk on every save.
-        // Falls back to loadData() if cache is missing (e.g., external modification).
-        const raw = this.cachedRawData ?? ((await this.plugin.loadData()) || {});
-        raw.tasksByProject = this.tasksByProject;
-        // Always sync settings from the authoritative in-memory object.
-        // Without this, the cache can hold stale settings (e.g., missing newly
-        // created Board buckets) and overwrite them on the next task save.
-        raw.settings = this.plugin.settings;
-        this.cachedRawData = raw;
-        await this.plugin.saveData(raw);
+        // Write active project to its vault file (task data is no longer in data.json)
+        await this.writeProjectFile(projectId, this.tasks);
     }
     // ---------------------------------------------------------------------------
     // PUBLIC API
@@ -8604,10 +9109,6 @@ class TaskStore {
     }
     isLoaded() {
         return this.loaded;
-    }
-    /** Expose cached raw data so plugin.saveSettings() can merge safely */
-    getCachedRawData() {
-        return this.cachedRawData;
     }
     async ensureLoaded() {
         if (!this.loaded) {
@@ -8755,18 +9256,15 @@ class TaskStore {
         if (project) {
             project.lastUpdatedDate = new Date().toISOString();
         }
-        // Save and emit changes
-        const raw = this.cachedRawData ?? ((await this.plugin.loadData()) || {});
-        raw.tasksByProject = this.tasksByProject;
-        this.cachedRawData = raw;
-        await this.plugin.saveData(raw);
-        // If this is the active project, refresh the working tasks
+        // Write to vault file
+        await this.writeProjectFile(projectId, projectTasks);
+        // If this is the active project, refresh the working tasks reference
         if (projectId === this.activeProjectId) {
             this.tasks = this.tasksByProject[projectId];
         }
         this.emit();
     }
-    async updateTask(id, partial) {
+    async updateTask(id, partial, options) {
         let task = this.tasks.find((t) => t.id === id);
         let crossProjectId = null;
         // If not in the active project, search all projects (needed by MyDayView
@@ -8844,6 +9342,11 @@ class TaskStore {
         // Persist without emitting — cascade/rollup may trigger additional saves.
         // We emit exactly once at the very end to avoid N full DOM rebuilds.
         await this.saveQuietly();
+        // For cross-project tasks, saveQuietly() only writes the active project file.
+        // Explicitly write the cross-project file too.
+        if (crossProjectId) {
+            await this.writeProjectFile(crossProjectId, this.tasksByProject[crossProjectId]);
+        }
         // Resolve the project ID the task actually belongs to
         const effectiveProjectId = crossProjectId ?? this.activeProjectId;
         // Sync to markdown if enabled
@@ -8874,7 +9377,7 @@ class TaskStore {
                 }
             }
             // Parent task roll-up: recalculate parent's dates, effort, and % complete
-            if (this.plugin.settings.enableParentRollUp && task.parentId) {
+            if (this.plugin.settings.enableParentRollUp && task.parentId && !options?.skipParentRollUp) {
                 await this.rollUpParentFields(task.parentId);
             }
         }
@@ -9140,6 +9643,63 @@ class TaskStore {
                 return null;
         }
     }
+    /**
+     * Move a task to a different project.
+     * Clears project-scoped fields (bucketId, parentId, dependencies) since
+     * those references are meaningless in the target project.
+     */
+    async moveTaskToProject(taskId, targetProjectId) {
+        if (targetProjectId === this.activeProjectId)
+            return;
+        // Find which project currently owns this task
+        let sourceProjectId = null;
+        let task;
+        for (const [projId, projTasks] of Object.entries(this.tasksByProject)) {
+            const found = projTasks.find(t => t.id === taskId);
+            if (found) {
+                sourceProjectId = projId;
+                task = found;
+                break;
+            }
+        }
+        if (!task || !sourceProjectId)
+            return;
+        const oldParentId = task.parentId;
+        // Promote children in the source project to top-level
+        const sourceTasks = this.tasksByProject[sourceProjectId] || [];
+        for (const child of sourceTasks) {
+            if (child.parentId === taskId)
+                child.parentId = null;
+        }
+        // Remove from source
+        this.tasksByProject[sourceProjectId] = sourceTasks.filter(t => t.id !== taskId);
+        if (sourceProjectId === this.activeProjectId) {
+            this.tasks = this.tasksByProject[sourceProjectId];
+        }
+        this.taskIndex.delete(taskId);
+        // Roll up source parent before the task disappears
+        if (this.plugin.settings.enableParentRollUp && oldParentId && sourceProjectId === this.activeProjectId) {
+            await this.rollUpParentFields(oldParentId);
+        }
+        // Clear project-scoped fields
+        task.bucketId = undefined;
+        task.parentId = null;
+        task.dependencies = [];
+        task.lastModifiedDate = getTodayDate();
+        // Add to target
+        if (!this.tasksByProject[targetProjectId]) {
+            this.tasksByProject[targetProjectId] = [];
+        }
+        this.tasksByProject[targetProjectId].push(task);
+        this.taskIndex.set(taskId, task);
+        if (targetProjectId === this.activeProjectId) {
+            this.tasks = this.tasksByProject[targetProjectId];
+        }
+        // Persist both affected project files
+        await this.writeProjectFile(sourceProjectId, this.tasksByProject[sourceProjectId]);
+        await this.writeProjectFile(targetProjectId, this.tasksByProject[targetProjectId]);
+        this.emit();
+    }
     async deleteTask(id) {
         // Get task before deleting for sync purposes
         const task = this.tasks.find(t => t.id === id);
@@ -9159,7 +9719,7 @@ class TaskStore {
         if (task && this.plugin.settings.enableMarkdownSync && this.plugin.settings.autoCreateTaskNotes) {
             const project = this.plugin.settings.projects.find(p => p.id === this.activeProjectId);
             if (project) {
-                await this.plugin.taskSync.deleteTaskMarkdown(task, project.name);
+                await this.plugin.taskSync.deleteTaskMarkdown(task, project.id);
             }
         }
         // Roll up parent after child deletion
@@ -9235,6 +9795,7 @@ class TaskStore {
 class TaskSync {
     constructor(app, plugin) {
         this.syncInProgress = new Set(); // Prevent infinite loops
+        this.watchedProjects = new Map();
         this.app = app;
         this.plugin = plugin;
     }
@@ -9483,14 +10044,19 @@ class TaskSync {
     /**
      * Get the file path for a task's markdown note
      */
-    getTaskFilePath(task, projectName) {
+    getTaskFilePath(task, projectId) {
+        const project = this.plugin.settings.projects.find(p => p.id === projectId);
+        if (!project) {
+            return `${task.title.replace(/[\\/:*?"<>|]/g, '-')}.md`;
+        }
         // Sanitize title for filename
         const safeName = task.title.replace(/[\\/:*?"<>|]/g, '-');
         const basePath = this.plugin.settings.projectsBasePath;
+        const projectFolder = project.storageKey ?? project.name;
         if (basePath) {
-            return `${basePath}/${projectName}/Tasks/${safeName}.md`;
+            return `${basePath}/${projectFolder}/Tasks/${safeName}.md`;
         }
-        return `${projectName}/Tasks/${safeName}.md`;
+        return `${projectFolder}/Tasks/${safeName}.md`;
     }
     /**
      * Handle task rename by deleting old file and creating new one
@@ -9501,7 +10067,7 @@ class TaskSync {
             return;
         // Get old file path using old title
         const oldTask = { ...task, title: oldTitle };
-        const oldFilePath = this.getTaskFilePath(oldTask, project.name);
+        const oldFilePath = this.getTaskFilePath(oldTask, projectId);
         // Delete old file if it exists
         const oldFile = this.app.vault.getAbstractFileByPath(oldFilePath);
         if (oldFile instanceof obsidian.TFile) {
@@ -9525,7 +10091,7 @@ class TaskSync {
         const project = this.plugin.settings.projects.find(p => p.id === projectId);
         if (!project)
             return;
-        const filePath = this.getTaskFilePath(task, project.name);
+        const filePath = this.getTaskFilePath(task, projectId);
         // Mark forward sync in progress so reverse sync (md→task) is blocked.
         // Always allow forward writes — reset timer if already set.
         this.syncInProgress.add(task.id);
@@ -9580,7 +10146,7 @@ class TaskSync {
                 if (titleChanged) {
                     const project = this.plugin.settings.projects.find(p => p.id === projectId);
                     if (project) {
-                        const newFilePath = this.getTaskFilePath(task, project.name);
+                        const newFilePath = this.getTaskFilePath(task, projectId);
                         // Only rename if the file path actually changed
                         if (file.path !== newFilePath) {
                             try {
@@ -9607,8 +10173,8 @@ class TaskSync {
     /**
      * Delete a task's markdown note
      */
-    async deleteTaskMarkdown(task, projectName) {
-        const filePath = this.getTaskFilePath(task, projectName);
+    async deleteTaskMarkdown(task, projectId) {
+        const filePath = this.getTaskFilePath(task, projectId);
         const file = this.app.vault.getAbstractFileByPath(filePath);
         if (file instanceof obsidian.TFile) {
             await this.app.vault.delete(file);
@@ -9617,9 +10183,18 @@ class TaskSync {
     /**
      * Watch for changes to markdown files in project folders
      */
-    watchProjectFolder(projectId, projectName) {
+    watchProjectFolder(projectId) {
+        const project = this.plugin.settings.projects.find(p => p.id === projectId);
+        if (!project)
+            return;
         const basePath = this.plugin.settings.projectsBasePath;
-        const folderPath = basePath ? `${basePath}/${projectName}/Tasks` : `${projectName}/Tasks`;
+        const projectFolder = project.storageKey ?? project.name;
+        const folderPath = basePath ? `${basePath}/${projectFolder}/Tasks` : `${projectFolder}/Tasks`;
+        const existingFolder = this.watchedProjects.get(projectId);
+        if (existingFolder === folderPath) {
+            return;
+        }
+        this.watchedProjects.set(projectId, folderPath);
         // Track task IDs by file path so we can delete tasks after the file
         // (and its metadata cache) are gone. Obsidian clears the cache on
         // deletion, so reading it inside the 'delete' handler always returns null.
@@ -9658,7 +10233,7 @@ class TaskSync {
     /**
      * Perform initial sync - scan project folder and sync all markdown files
      */
-    async initialSync(projectId, projectName) {
+    async initialSync(projectId) {
         const project = this.plugin.settings.projects.find(p => p.id === projectId);
         if (!project)
             return;
@@ -9669,7 +10244,8 @@ class TaskSync {
             return;
         }
         const basePath = this.plugin.settings.projectsBasePath;
-        const folderPath = basePath ? `${basePath}/${projectName}/Tasks` : `${projectName}/Tasks`;
+        const projectFolder = project.storageKey ?? project.name;
+        const folderPath = basePath ? `${basePath}/${projectFolder}/Tasks` : `${projectFolder}/Tasks`;
         const folder = this.app.vault.getAbstractFileByPath(folderPath);
         if (!folder) {
             return;
@@ -10188,6 +10764,11 @@ class ProjectPlannerPlugin extends obsidian.Plugin {
                 await this.dailyNoteScanner.quickScan();
             });
         }
+        if (this.settings.showRibbonIconMyTasks) {
+            this.addRibbonIcon("sun", "Open My Tasks", async () => {
+                await this.activateMyDayView();
+            });
+        }
         // Register main GridView
         this.registerView(VIEW_TYPE_PLANNER, (leaf) => new GridView(leaf, this));
         // Register Board View
@@ -10392,14 +10973,13 @@ class ProjectPlannerPlugin extends obsidian.Plugin {
     // Task Sync Methods
     // ---------------------------------------------------------------------------
     async initializeTaskSync() {
-        const activeProject = this.settings.projects.find(p => p.id === this.settings.activeProjectId);
-        if (!activeProject)
+        if (!this.taskSync)
             return;
-        // Start watching for file changes
-        this.taskSync.watchProjectFolder(activeProject.id, activeProject.name);
-        // Perform initial sync if enabled
-        if (this.settings.syncOnStartup) {
-            await this.taskSync.initialSync(activeProject.id, activeProject.name);
+        for (const project of this.settings.projects) {
+            this.taskSync.watchProjectFolder(project.id);
+            if (this.settings.syncOnStartup) {
+                await this.taskSync.initialSync(project.id);
+            }
         }
     }
     async initializeDailyNoteScanner() {
@@ -10433,7 +11013,7 @@ class ProjectPlannerPlugin extends obsidian.Plugin {
         // Ensure we have at least one project
         if (!this.settings.projects || this.settings.projects.length === 0) {
             const defaultProjectId = crypto.randomUUID();
-            this.settings.projects = [{ id: defaultProjectId, name: "My Project" }];
+            this.settings.projects = [{ id: defaultProjectId, name: "My Project", storageKey: "My Project" }];
             this.settings.activeProjectId = defaultProjectId;
         }
         // Ensure activeProjectId is valid
@@ -10449,20 +11029,18 @@ class ProjectPlannerPlugin extends obsidian.Plugin {
         if (!this.settings.availablePriorities || this.settings.availablePriorities.length === 0) {
             this.settings.availablePriorities = DEFAULT_SETTINGS.availablePriorities;
         }
+        for (const project of this.settings.projects) {
+            if (!project.storageKey) {
+                project.storageKey = project.name;
+            }
+        }
         // Save settings nested properly
         await this.saveSettings();
     }
     async saveSettings() {
-        // Use TaskStore's cached data when available to avoid overwriting
-        // in-flight task changes with a stale disk read (race condition).
-        let raw;
-        if (this.taskStore?.getCachedRawData()) {
-            raw = this.taskStore.getCachedRawData();
-        }
-        else {
-            raw = ((await this.loadData()) || {});
-        }
-        // Save ONLY under .settings — Preserve ALL other keys (tasksByProject, etc.)
+        // Task data now lives in per-project vault files, so data.json holds
+        // settings only. No merge needed — no risk of overwriting task data.
+        const raw = ((await this.loadData()) || {});
         raw.settings = this.settings;
         await this.saveData(raw);
     }
@@ -10511,9 +11089,10 @@ class ProjectPlannerPlugin extends obsidian.Plugin {
         if (!activeProject)
             return;
         const basePath = this.settings.projectsBasePath;
+        const projectFolder = activeProject.storageKey ?? activeProject.name;
         const folderPath = basePath
-            ? `${basePath}/${activeProject.name}/Tasks`
-            : `${activeProject.name}/Tasks`;
+            ? `${basePath}/${projectFolder}/Tasks`
+            : `${projectFolder}/Tasks`;
         // Ensure folder exists
         const folder = this.app.vault.getAbstractFileByPath(folderPath);
         if (!folder) {

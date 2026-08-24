@@ -1090,7 +1090,7 @@ export class GridView extends ItemView {
           if (!project) return;
 
           // Use the same path as TaskSync
-          const filePath = this.plugin.taskSync.getTaskFilePath(task, project.name);
+          const filePath = this.plugin.taskSync.getTaskFilePath(task, project.id);
 
           try {
             const file = this.app.vault.getAbstractFileByPath(filePath);
@@ -1160,6 +1160,21 @@ export class GridView extends ItemView {
     );
 
     menu.addSeparator();
+
+    // Move to project (one item per target project, only shown when >1 project exists)
+    const otherProjects = (this.plugin.settings.projects || []).filter(
+      (p) => p.id !== this.plugin.settings.activeProjectId
+    );
+    for (const proj of otherProjects) {
+      menu.addItem((item) =>
+        item
+          .setTitle(`Move to: ${proj.name}`)
+          .setIcon("folder-input")
+          .onClick(async () => {
+            await this.taskStore.moveTaskToProject(task.id, proj.id);
+          })
+      );
+    }
 
     menu.addItem((item) =>
       item

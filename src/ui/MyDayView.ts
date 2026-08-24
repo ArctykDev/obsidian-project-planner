@@ -6,7 +6,7 @@ import { renderPlannerHeader } from "./Header";
 
 export const VIEW_TYPE_MY_DAY = "project-planner-my-day-view";
 
-type ViewMode = "today" | "week";
+type ViewMode = "today" | "week" | "month";
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DAY_NAMES_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -31,17 +31,16 @@ function getTodayDate(): string {
   return toDateStr(new Date());
 }
 
-/** Get the Monday-through-Sunday dates for the week containing `anchor`. */
+/** Get the Sunday-through-Saturday dates for the week containing `anchor`. */
 function getWeekDates(anchor: Date): Date[] {
   const d = new Date(anchor);
   const dayOfWeek = d.getDay(); // 0=Sun
-  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const monday = new Date(d);
-  monday.setDate(d.getDate() + mondayOffset);
+  const sunday = new Date(d);
+  sunday.setDate(d.getDate() - dayOfWeek);
   const week: Date[] = [];
   for (let i = 0; i < 7; i++) {
-    const day = new Date(monday);
-    day.setDate(monday.getDate() + i);
+    const day = new Date(sunday);
+    day.setDate(sunday.getDate() + i);
     week.push(day);
   }
   return week;
@@ -80,9 +79,16 @@ export class MyDayView extends ItemView {
   // Week navigation anchor (always the displayed week's reference date)
   private weekAnchor: Date = new Date();
 
+  // Month navigation anchor
+  private monthAnchor: Date = new Date();
+
   // Task picker panel
   private pickerOpen = false;
   private pickerSearch = "";
+
+  // New task form panel
+  private newTaskFormOpen = false;
+  private newTaskProjectId = "";
 
   // Scroll position preservation
   private savedScrollTop: number | null = null;
@@ -116,6 +122,7 @@ export class MyDayView extends ItemView {
 
   async onOpen() {
     await this.taskStore.ensureLoaded();
+    this.viewMode = this.plugin.settings.myDayDefaultView ?? "today";
     this.unsubscribe = this.taskStore.subscribe(() => this.render());
     this.render();
   }
@@ -178,6 +185,42 @@ export class MyDayView extends ItemView {
     return map;
   }
 
+  /** All tasks for the calendar month grid (Sun-before-1st to Sat-after-last). */
+  private getMonthTaskMap(): Map<string, MyDayTask[]> {
+    const year = this.monthAnchor.getFullYear();
+    const month = this.monthAnchor.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+
+    const startDate = new Date(firstDay);
+    startDate.setDate(firstDay.getDate() - firstDay.getDay()); // back to Sunday
+
+    const endDate = new Date(lastDay);
+    const endDow = lastDay.getDay();
+    if (endDow < 6) endDate.setDate(lastDay.getDate() + (6 - endDow)); // forward to Saturday
+
+    const dateSet = new Set<string>();
+    const cur = new Date(startDate);
+    while (cur <= endDate) {
+      dateSet.add(toDateStr(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    const map = new Map<string, MyDayTask[]>();
+    for (const ds of dateSet) map.set(ds, []);
+
+    const projects = this.plugin.settings.projects || [];
+    for (const project of projects) {
+      const tasks = this.taskStore.getAllForProject(project.id) || [];
+      for (const task of tasks) {
+        if (task.dueDate && dateSet.has(task.dueDate)) {
+          map.get(task.dueDate)!.push({ task, projectId: project.id, projectName: project.name });
+        }
+      }
+    }
+    return map;
+  }
+
   private applyFilters(items: MyDayTask[]): MyDayTask[] {
     return items.filter(({ task }) => {
       if (!this.currentFilters.showCompleted && task.completed) return false;
@@ -230,7 +273,7 @@ export class MyDayView extends ItemView {
     }
 
     container.empty();
-    const wrapper = container.createDiv("myday-wrapper");
+    const wrapper = container.createDiv("planner-myday-wrapper");
 
     // Header (with mode tabs)
     this.renderHeader(wrapper);
@@ -245,13 +288,20 @@ export class MyDayView extends ItemView {
     const mainArea = body.createDiv("myday-main");
     if (this.viewMode === "today") {
       this.renderTodayContent(mainArea, thisRender);
-    } else {
+    } else if (this.viewMode === "week") {
       this.renderWeekContent(mainArea, thisRender);
+    } else {
+      this.renderMonthContent(mainArea, thisRender);
     }
 
     // Task picker panel (slide-in from the right)
     if (this.pickerOpen) {
       this.renderPickerPanel(body);
+    }
+
+    // New task form panel (slide-in from the right)
+    if (this.newTaskFormOpen) {
+      this.renderNewTaskForm(body);
     }
   }
 
@@ -268,34 +318,31 @@ export class MyDayView extends ItemView {
         this.render();
       },
       buildExtraActions: (actionsEl) => {
-        // Today / Week segmented toggle
-        const modeToggle = actionsEl.createDiv("myday-mode-toggle");
-
-        const todayBtn = modeToggle.createEl("button", {
-          text: "Today",
-          cls: `myday-mode-btn${this.viewMode === "today" ? " myday-mode-btn-active" : ""}`,
+        // New Task button
+        const newTaskBtn = actionsEl.createEl("button", {
+          cls: `myday-add-tasks-btn${this.newTaskFormOpen ? " myday-add-tasks-btn-active" : ""}`,
+          title: "Create a new task due today",
         });
-        todayBtn.onclick = () => {
-          if (this.viewMode !== "today") {
-            this.viewMode = "today";
-            this.savedScrollTop = null;
-            this.savedScrollLeft = null;
-            this.render();
+        newTaskBtn.createSpan({ text: this.newTaskFormOpen ? "Close" : "New Task" });
+        newTaskBtn.onclick = () => {
+          this.newTaskFormOpen = !this.newTaskFormOpen;
+          this.pickerOpen = false;
+          if (this.newTaskFormOpen) {
+            this.newTaskProjectId = this.plugin.settings.activeProjectId || "";
           }
+          this.render();
         };
 
-        const weekBtn = modeToggle.createEl("button", {
-          text: "Week",
-          cls: `myday-mode-btn${this.viewMode === "week" ? " myday-mode-btn-active" : ""}`,
+        // Add Tasks button
+        const addTasksBtn = actionsEl.createEl("button", {
+          cls: `myday-add-tasks-btn${this.pickerOpen ? " myday-add-tasks-btn-active" : ""}`,
         });
-        weekBtn.onclick = () => {
-          if (this.viewMode !== "week") {
-            this.viewMode = "week";
-            this.weekAnchor = new Date();
-            this.savedScrollTop = null;
-            this.savedScrollLeft = null;
-            this.render();
-          }
+        addTasksBtn.createSpan({ text: this.pickerOpen ? "Close" : "Add Tasks" });
+        addTasksBtn.onclick = () => {
+          this.pickerOpen = !this.pickerOpen;
+          this.newTaskFormOpen = false;
+          this.pickerSearch = "";
+          this.render();
         };
       },
     });
@@ -344,17 +391,48 @@ export class MyDayView extends ItemView {
       this.render();
     };
 
-    // Add Tasks button
-    const addTasksBtn = toolbar.createEl("button", {
-      cls: `myday-add-tasks-btn${this.pickerOpen ? " myday-add-tasks-btn-active" : ""}`,
+    // Today / Week / Month mode toggle
+    const modeToggle = toolbar.createDiv("myday-mode-toggle");
+
+    const todayBtn = modeToggle.createEl("button", {
+      text: "Today",
+      cls: `myday-mode-btn${this.viewMode === "today" ? " myday-mode-btn-active" : ""}`,
     });
-    const addIcon = addTasksBtn.createSpan("myday-add-tasks-btn-icon");
-    setIcon(addIcon, this.pickerOpen ? "x" : "plus-circle");
-    addTasksBtn.createSpan({ text: this.pickerOpen ? "Close" : "Add Tasks" });
-    addTasksBtn.onclick = () => {
-      this.pickerOpen = !this.pickerOpen;
-      this.pickerSearch = "";
-      this.render();
+    todayBtn.onclick = () => {
+      if (this.viewMode !== "today") {
+        this.viewMode = "today";
+        this.savedScrollTop = null;
+        this.savedScrollLeft = null;
+        this.render();
+      }
+    };
+
+    const weekBtn = modeToggle.createEl("button", {
+      text: "Week",
+      cls: `myday-mode-btn${this.viewMode === "week" ? " myday-mode-btn-active" : ""}`,
+    });
+    weekBtn.onclick = () => {
+      if (this.viewMode !== "week") {
+        this.viewMode = "week";
+        this.weekAnchor = new Date();
+        this.savedScrollTop = null;
+        this.savedScrollLeft = null;
+        this.render();
+      }
+    };
+
+    const monthBtn = modeToggle.createEl("button", {
+      text: "Month",
+      cls: `myday-mode-btn${this.viewMode === "month" ? " myday-mode-btn-active" : ""}`,
+    });
+    monthBtn.onclick = () => {
+      if (this.viewMode !== "month") {
+        this.viewMode = "month";
+        this.monthAnchor = new Date();
+        this.savedScrollTop = null;
+        this.savedScrollLeft = null;
+        this.render();
+      }
     };
 
     // Week navigation (only in week mode)
@@ -382,6 +460,46 @@ export class MyDayView extends ItemView {
       setIcon(nextBtn, "chevron-right");
       nextBtn.onclick = () => {
         this.weekAnchor.setDate(this.weekAnchor.getDate() + 7);
+        this.savedScrollTop = null;
+        this.savedScrollLeft = null;
+        this.render();
+      };
+    }
+
+    // Month navigation (only in month mode)
+    if (this.viewMode === "month") {
+      const monthNav = toolbar.createDiv("myday-week-nav");
+
+      const prevBtn = monthNav.createEl("button", { cls: "myday-week-nav-btn", title: "Previous month" });
+      setIcon(prevBtn, "chevron-left");
+      prevBtn.onclick = () => {
+        this.monthAnchor = new Date(this.monthAnchor.getFullYear(), this.monthAnchor.getMonth() - 1, 1);
+        this.savedScrollTop = null;
+        this.savedScrollLeft = null;
+        this.render();
+      };
+
+      const y = this.monthAnchor.getFullYear();
+      const m = this.monthAnchor.getMonth();
+      const isCurrentMonth =
+        y === new Date().getFullYear() && m === new Date().getMonth();
+      const monthNavLabel = `${MONTH_NAMES[m]} ${y}`;
+      const thisMonthBtn = monthNav.createEl("button", {
+        cls: `myday-week-nav-today${isCurrentMonth ? " myday-week-nav-today-active" : ""}`,
+        text: monthNavLabel,
+        title: "Go to today's month",
+      });
+      thisMonthBtn.onclick = () => {
+        this.monthAnchor = new Date();
+        this.savedScrollTop = null;
+        this.savedScrollLeft = null;
+        this.render();
+      };
+
+      const nextBtn = monthNav.createEl("button", { cls: "myday-week-nav-btn", title: "Next month" });
+      setIcon(nextBtn, "chevron-right");
+      nextBtn.onclick = () => {
+        this.monthAnchor = new Date(this.monthAnchor.getFullYear(), this.monthAnchor.getMonth() + 1, 1);
         this.savedScrollTop = null;
         this.savedScrollLeft = null;
         this.render();
@@ -563,6 +681,88 @@ export class MyDayView extends ItemView {
   }
 
   // ===========================================================================
+  // MONTH content (calendar grid)
+  // ===========================================================================
+
+  private renderMonthContent(wrapper: HTMLElement, thisRender: number) {
+    const year = this.monthAnchor.getFullYear();
+    const month = this.monthAnchor.getMonth();
+    const todayStr = getTodayDate();
+    const taskMap = this.getMonthTaskMap();
+
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+
+    const startDate = new Date(firstDay);
+    startDate.setDate(firstDay.getDate() - firstDay.getDay()); // back to Sunday
+
+    const endDate = new Date(lastDay);
+    const endDow = lastDay.getDay();
+    if (endDow < 6) endDate.setDate(lastDay.getDate() + (6 - endDow)); // forward to Saturday
+
+    const scroll = wrapper.createDiv("myday-month-scroll");
+    this.restoreScroll(scroll, thisRender);
+
+    const grid = scroll.createDiv("myday-month-grid");
+
+    // Day-name header row
+    for (const name of DAY_NAMES_SHORT) {
+      grid.createDiv({ text: name, cls: "myday-month-day-name" });
+    }
+
+    // Day cells
+    const cur = new Date(startDate);
+    while (cur <= endDate) {
+      const dateStr = toDateStr(cur);
+      const isCurrentMonth = cur.getMonth() === month;
+      const isToday = dateStr === todayStr;
+      const rawTasks = taskMap.get(dateStr) || [];
+      const filtered = this.applyFilters(rawTasks);
+
+      const cell = grid.createDiv("myday-month-cell");
+      if (!isCurrentMonth) cell.addClass("myday-month-cell-outside");
+      if (isToday) cell.addClass("myday-month-cell-today");
+
+      // Date number
+      const numEl = cell.createDiv({ text: String(cur.getDate()), cls: "myday-month-cell-num" });
+      if (isToday) numEl.addClass("myday-month-cell-num-today");
+
+      // Task pills (max 3, then "+N more")
+      const MAX_VISIBLE = 3;
+      const sorted = sortTasks(filtered);
+      for (const item of sorted.slice(0, MAX_VISIBLE)) {
+        this.renderMonthTask(cell, item);
+      }
+      const overflow = sorted.length - MAX_VISIBLE;
+      if (overflow > 0) {
+        cell.createDiv({ text: `+${overflow} more`, cls: "myday-month-overflow" });
+      }
+
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+
+  private renderMonthTask(cell: HTMLElement, item: MyDayTask) {
+    const { task } = item;
+    const taskEl = cell.createDiv("myday-month-task");
+    if (task.completed) taskEl.addClass("myday-month-task-completed");
+
+    const priorityDef = this.plugin.settings.availablePriorities?.find(
+      (p) => p.name === task.priority
+    );
+    const priorityColor = priorityDef?.color || "var(--interactive-accent)";
+    taskEl.style.setProperty("--task-priority-color", priorityColor);
+
+    taskEl.createSpan({ text: task.title, cls: "myday-month-task-title" });
+
+    taskEl.onclick = () => this.plugin.openTaskDetail(task);
+    taskEl.oncontextmenu = (evt) => {
+      evt.preventDefault();
+      this.showRowMenu(item, evt);
+    };
+  }
+
+  // ===========================================================================
   // Task picker panel
   // ===========================================================================
 
@@ -581,6 +781,101 @@ export class MyDayView extends ItemView {
       }
     }
     return result;
+  }
+
+  private renderNewTaskForm(body: HTMLElement) {
+    const panel = body.createDiv("myday-picker");
+
+    // Panel header
+    const panelHeader = panel.createDiv("myday-picker-header");
+    panelHeader.createDiv({ text: "New Task", cls: "myday-picker-title" });
+    const closeBtn = panelHeader.createEl("button", { cls: "myday-picker-close", title: "Close" });
+    setIcon(closeBtn, "x");
+    closeBtn.onclick = () => {
+      this.newTaskFormOpen = false;
+      this.render();
+    };
+
+    const form = panel.createDiv("myday-new-task-form");
+
+    // Title
+    const titleInput = form.createEl("input", {
+      type: "text",
+      placeholder: "Task title...",
+      cls: "myday-picker-search",
+    });
+    requestAnimationFrame(() => titleInput.focus());
+
+    // Project selector (only when >1 project)
+    const projects = this.plugin.settings.projects || [];
+    let selectedProjectId = this.newTaskProjectId || this.plugin.settings.activeProjectId || "";
+    if (projects.length > 1) {
+      const projectSelect = form.createEl("select", { cls: "myday-new-task-select" });
+      for (const proj of projects) {
+        const opt = projectSelect.createEl("option", { value: proj.id, text: proj.name });
+        if (proj.id === selectedProjectId) opt.selected = true;
+      }
+      projectSelect.onchange = () => {
+        selectedProjectId = projectSelect.value;
+        this.newTaskProjectId = selectedProjectId;
+      };
+    }
+
+    // Priority selector
+    const priorities = (this.plugin.settings.availablePriorities || []).map(p => p.name);
+    const priorityDefaults = priorities.length > 0 ? priorities : ["Critical", "High", "Medium", "Low"];
+    let selectedPriority = "Medium";
+    const prioritySelect = form.createEl("select", { cls: "myday-new-task-select" });
+    for (const p of priorityDefaults) {
+      const opt = prioritySelect.createEl("option", { value: p, text: p });
+      if (p === "Medium") opt.selected = true;
+    }
+    prioritySelect.onchange = () => { selectedPriority = prioritySelect.value; };
+
+    // Submit button
+    const submitBtn = form.createEl("button", {
+      cls: "myday-new-task-submit",
+      text: "Add to My Day",
+    });
+
+    const submit = async () => {
+      const title = titleInput.value.trim();
+      if (!title) {
+        titleInput.addClass("myday-new-task-input-error");
+        titleInput.focus();
+        return;
+      }
+
+      const today = getTodayDate();
+      const task: import("../types").PlannerTask = {
+        id: crypto.randomUUID(),
+        title,
+        status: "Not Started",
+        priority: selectedPriority,
+        completed: false,
+        parentId: null,
+        collapsed: false,
+        createdDate: today,
+        lastModifiedDate: today,
+        startDate: today,
+        dueDate: today,
+      };
+
+      const targetProjectId = selectedProjectId || this.plugin.settings.activeProjectId || "";
+      await this.taskStore.addTaskToProject(task, targetProjectId);
+
+      // Close the form — store emit from addTaskToProject triggers re-render
+      this.newTaskFormOpen = false;
+    };
+
+    submitBtn.onclick = submit;
+    titleInput.onkeydown = (e) => {
+      if (e.key === "Enter") submit();
+      if (e.key === "Escape") {
+        this.newTaskFormOpen = false;
+        this.render();
+      }
+    };
   }
 
   private renderPickerPanel(body: HTMLElement) {
@@ -661,7 +956,7 @@ export class MyDayView extends ItemView {
         setIcon(btnIcon, "plus");
         addBtn.createSpan({ text: "Add" });
         addBtn.onclick = async () => {
-          await this.taskStore.updateTask(task.id, { dueDate: getTodayDate() });
+          await this.taskStore.updateTask(task.id, { dueDate: getTodayDate() }, { skipParentRollUp: true });
         };
       }
     }
@@ -817,12 +1112,29 @@ export class MyDayView extends ItemView {
 
     menu.addSeparator();
 
-    menu.addItem((i) =>
-      i
-        .setTitle(`Project: ${projectName}`)
-        .setIcon("folder")
-        .setDisabled(true)
+    // Move to project (one item per target project, only shown when >1 project exists)
+    const otherProjects = (this.plugin.settings.projects || []).filter(
+      (p) => p.id !== projectId
     );
+    if (otherProjects.length > 0) {
+      for (const proj of otherProjects) {
+        menu.addItem((i) =>
+          i
+            .setTitle(`Move to: ${proj.name}`)
+            .setIcon("folder-input")
+            .onClick(async () => {
+              await this.taskStore.moveTaskToProject(task.id, proj.id);
+            })
+        );
+      }
+    } else {
+      menu.addItem((i) =>
+        i
+          .setTitle(`Project: ${projectName}`)
+          .setIcon("folder")
+          .setDisabled(true)
+      );
+    }
 
     menu.showAtMouseEvent(evt);
   }

@@ -210,6 +210,26 @@ export class TaskDetailView extends ItemView {
     );
 
     //
+    // PROJECT — dropdown (move task to another project)
+    //
+    const allProjects = (this.plugin.settings.projects || []);
+    if (allProjects.length > 1) {
+      container.createEl("h3", { text: "Project" });
+      // Find which project currently owns this task
+      const owningProject = allProjects.find(
+        (p) => (this.plugin.taskStore.getAllForProject(p.id) || []).some((t) => t.id === task.id)
+      ) ?? allProjects.find((p) => p.id === this.plugin.settings.activeProjectId);
+      const projectNames = allProjects.map((p) => p.name);
+      const currentProjectName = owningProject?.name ?? allProjects[0].name;
+
+      this.createEditableSelect(container, currentProjectName, projectNames, async (val) => {
+        const target = allProjects.find((p) => p.name === val);
+        if (!target || target.id === owningProject?.id) return;
+        await this.plugin.taskStore.moveTaskToProject(task.id, target.id);
+      });
+    }
+
+    //
     // STATUS — dropdown
     //
     container.createEl("h3", { text: "Status" });

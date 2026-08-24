@@ -392,7 +392,7 @@ Task description here.
 
             mockPlugin.settings.projectsBasePath = "";
 
-            const path = taskSync.getTaskFilePath(task, "Test Project");
+            const path = taskSync.getTaskFilePath(task, "project-1");
 
             expect(path).toBe("Test Project/Tasks/My Task.md");
         });
@@ -407,7 +407,7 @@ Task description here.
 
             mockPlugin.settings.projectsBasePath = "Projects";
 
-            const path = taskSync.getTaskFilePath(task, "Test Project");
+            const path = taskSync.getTaskFilePath(task, "project-1");
 
             expect(path).toBe("Projects/Test Project/Tasks/My Task.md");
         });
@@ -420,7 +420,7 @@ Task description here.
                 completed: false,
             };
 
-            const path = taskSync.getTaskFilePath(task, "Test Project");
+            const path = taskSync.getTaskFilePath(task, "project-1");
 
             expect(path).toBe("Test Project/Tasks/Invalid- -------- chars.md");
         });
@@ -834,7 +834,7 @@ id: task-lock
             mockVault.read.mockResolvedValue("---\nid: task-1\n---");
             mockPlugin.settings.projects[0].lastSyncTimestamp = undefined;
 
-            await taskSync.initialSync("project-1", "Test Project");
+            await taskSync.initialSync("project-1");
 
             expect(mockPlugin.taskStore.addTaskFromObject).toHaveBeenCalled();
             expect(mockPlugin.saveSettings).toHaveBeenCalled();
@@ -844,13 +844,13 @@ id: task-lock
             const fiveMinutesAgo = Date.now() - (3 * 60 * 1000); // 3 minutes ago
             mockPlugin.settings.projects[0].lastSyncTimestamp = fiveMinutesAgo;
 
-            await taskSync.initialSync("project-1", "Test Project");
+            await taskSync.initialSync("project-1");
 
             expect(mockVault.getMarkdownFiles).not.toHaveBeenCalled();
         });
 
         it("should do nothing if project not found", async () => {
-            await taskSync.initialSync("non-existent", "Non-existent");
+            await taskSync.initialSync("non-existent");
 
             expect(mockVault.getMarkdownFiles).not.toHaveBeenCalled();
         });
@@ -859,7 +859,7 @@ id: task-lock
             mockPlugin.settings.projects[0].lastSyncTimestamp = undefined;
             mockVault.getAbstractFileByPath.mockReturnValue(null);
 
-            await taskSync.initialSync("project-1", "Test Project");
+            await taskSync.initialSync("project-1");
 
             expect(mockVault.getMarkdownFiles).not.toHaveBeenCalled();
         });

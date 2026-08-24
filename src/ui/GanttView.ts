@@ -379,7 +379,7 @@ export class GanttView extends ItemView {
                 if (!project) return;
 
                 // Use the same path as TaskSync
-                const filePath = this.plugin.taskSync.getTaskFilePath(task, project.name);
+                const filePath = this.plugin.taskSync.getTaskFilePath(task, project.id);
 
                 try {
                     const file = this.app.vault.getAbstractFileByPath(filePath);
