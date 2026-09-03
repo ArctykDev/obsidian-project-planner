@@ -85,10 +85,13 @@ export class GanttView extends ItemView {
             this.unsubscribe();
             this.unsubscribe = null;
         }
-        // Clean up any in-progress drag listeners
         if (this.activeDragCleanup) {
             this.activeDragCleanup();
             this.activeDragCleanup = null;
+        }
+        if (this.activeResizerCleanup) {
+            this.activeResizerCleanup();
+            this.activeResizerCleanup = null;
         }
     }
 

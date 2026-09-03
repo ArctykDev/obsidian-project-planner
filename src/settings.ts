@@ -978,11 +978,15 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       .setName("Documentation & Updates")
       .setDesc("Visit the official website for documentation, guides, and updates")
       .addButton((btn) => {
-        btn
-          .setButtonText("Visit projectplanner.md")
-          .onClick(() => {
-            window.open("https://projectplanner.md", "_blank");
-          });
+        btn.setButtonText("Visit projectplanner.md");
+        const a = btn.buttonEl.createEl("a", {
+          href: "https://projectplanner.md",
+          attr: { target: "_blank", rel: "noopener noreferrer" },
+        });
+        // Render the button text inside the link so the button acts as a link
+        a.style.cssText = "position:absolute;inset:0;";
+        btn.buttonEl.style.position = "relative";
+        btn.buttonEl.style.overflow = "hidden";
       });
     
     const coffeeSetting = new Setting(containerEl)

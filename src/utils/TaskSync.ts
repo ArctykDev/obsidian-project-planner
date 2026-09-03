@@ -1,4 +1,4 @@
-import { App, TFile } from "obsidian";
+import { App, TFile, normalizePath } from "obsidian";
 import { PlannerTask, TaskDependency, TaskLink, PlannerSubtask, DependencyType } from "../types";
 import type ProjectPlannerPlugin from "../main";
 
@@ -276,14 +276,13 @@ export class TaskSync {
         if (!project) {
             return `${task.title.replace(/[\\/:*?"<>|]/g, '-')}.md`;
         }
-        // Sanitize title for filename
         const safeName = task.title.replace(/[\\/:*?"<>|]/g, '-');
         const basePath = this.plugin.settings.projectsBasePath;
         const projectFolder = project.storageKey ?? project.name;
         if (basePath) {
-            return `${basePath}/${projectFolder}/Tasks/${safeName}.md`;
+            return normalizePath(`${basePath}/${projectFolder}/Tasks/${safeName}.md`);
         }
-        return `${projectFolder}/Tasks/${safeName}.md`;
+        return normalizePath(`${projectFolder}/Tasks/${safeName}.md`);
     }
 
     /**
@@ -464,14 +463,12 @@ export class TaskSync {
             })
         );
 
-        // Watch for new files (manual task creation)
+        // Watch for new files (manual task creation). Use metadataCache 'resolve'
+        // so we sync only after the cache is populated — avoids an untracked setTimeout.
         this.plugin.registerEvent(
-            this.app.vault.on('create', async (file) => {
+            this.app.metadataCache.on('resolve', async (file) => {
                 if (file instanceof TFile && file.path.startsWith(folderPath) && file.extension === 'md') {
-                    // Wait for metadata cache to populate
-                    setTimeout(async () => {
-                        await this.syncMarkdownToTask(file, projectId);
-                    }, 1000);
+                    await this.syncMarkdownToTask(file, projectId);
                 }
             })
         );

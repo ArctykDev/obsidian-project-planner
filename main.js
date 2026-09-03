@@ -716,11 +716,15 @@ class ProjectPlannerSettingTab extends obsidian.PluginSettingTab {
             .setName("Documentation & Updates")
             .setDesc("Visit the official website for documentation, guides, and updates")
             .addButton((btn) => {
-            btn
-                .setButtonText("Visit projectplanner.md")
-                .onClick(() => {
-                window.open("https://projectplanner.md", "_blank");
+            btn.setButtonText("Visit projectplanner.md");
+            const a = btn.buttonEl.createEl("a", {
+                href: "https://projectplanner.md",
+                attr: { target: "_blank", rel: "noopener noreferrer" },
             });
+            // Render the button text inside the link so the button acts as a link
+            a.style.cssText = "position:absolute;inset:0;";
+            btn.buttonEl.style.position = "relative";
+            btn.buttonEl.style.overflow = "hidden";
         });
         const coffeeSetting = new obsidian.Setting(containerEl)
             .setName("Buy me a coffee")
@@ -4260,6 +4264,9 @@ class TaskDetailView extends obsidian.ItemView {
     getDisplayText() {
         return "Task Details";
     }
+    getIcon() {
+        return "list-check";
+    }
     // ---------------------------------------------------------------------------
     // Canonical task retrieval
     // ---------------------------------------------------------------------------
@@ -5976,10 +5983,13 @@ class GanttView extends obsidian.ItemView {
             this.unsubscribe();
             this.unsubscribe = null;
         }
-        // Clean up any in-progress drag listeners
         if (this.activeDragCleanup) {
             this.activeDragCleanup();
             this.activeDragCleanup = null;
+        }
+        if (this.activeResizerCleanup) {
+            this.activeResizerCleanup();
+            this.activeResizerCleanup = null;
         }
     }
     parseLocalDate(dateStr) {
@@ -7345,20 +7355,20 @@ class DashboardView extends obsidian.ItemView {
         const overdueTasks = tasks.filter(t => {
             if (!t.dueDate || t.status === "Completed")
                 return false;
-            const dueDate = new Date(t.dueDate).getTime();
-            return dueDate < today;
+            const [y, m, d] = t.dueDate.split("-").map(Number);
+            return new Date(y, m - 1, d).getTime() < today;
         }).length;
         const dueTodayTasks = tasks.filter(t => {
             if (!t.dueDate || t.status === "Completed")
                 return false;
-            const dueDate = new Date(t.dueDate);
-            dueDate.setHours(0, 0, 0, 0);
-            return dueDate.getTime() === today;
+            const [y, m, d] = t.dueDate.split("-").map(Number);
+            return new Date(y, m - 1, d).getTime() === today;
         }).length;
         const dueThisWeekTasks = tasks.filter(t => {
             if (!t.dueDate || t.status === "Completed")
                 return false;
-            const dueDate = new Date(t.dueDate).getTime();
+            const [y, m, d] = t.dueDate.split("-").map(Number);
+            const dueDate = new Date(y, m - 1, d).getTime();
             return dueDate >= today && dueDate <= weekFromNow;
         }).length;
         const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -7536,6 +7546,9 @@ class DashboardView extends obsidian.ItemView {
         document.body.appendChild(modal);
     }
     getPriorityColor(priority) {
+        const priorityObj = this.plugin.settings.availablePriorities?.find((p) => p.name === priority);
+        if (priorityObj)
+            return priorityObj.color;
         switch (priority) {
             case "Critical": return "#d70022";
             case "High": return "#f59e0b";
@@ -7603,20 +7616,20 @@ class DashboardView extends obsidian.ItemView {
         const overdueTasks = allTasks.filter(t => {
             if (!t.dueDate || t.status === "Completed")
                 return false;
-            const dueDate = new Date(t.dueDate).getTime();
-            return dueDate < today;
+            const [y, m, d] = t.dueDate.split("-").map(Number);
+            return new Date(y, m - 1, d).getTime() < today;
         });
         const dueTodayTasks = allTasks.filter(t => {
             if (!t.dueDate || t.status === "Completed")
                 return false;
-            const dueDate = new Date(t.dueDate);
-            dueDate.setHours(0, 0, 0, 0);
-            return dueDate.getTime() === today;
+            const [y, m, d] = t.dueDate.split("-").map(Number);
+            return new Date(y, m - 1, d).getTime() === today;
         });
         const dueThisWeekTasks = allTasks.filter(t => {
             if (!t.dueDate || t.status === "Completed")
                 return false;
-            const dueDate = new Date(t.dueDate).getTime();
+            const [y, m, d] = t.dueDate.split("-").map(Number);
+            const dueDate = new Date(y, m - 1, d).getTime();
             return dueDate >= today && dueDate <= weekFromNow;
         });
         const criticalTasks = allTasks.filter(t => t.priority === "Critical" && t.status !== "Completed");
@@ -8950,7 +8963,7 @@ class TaskStore {
             return null;
         const basePath = (this.plugin.settings.projectsBasePath || "Project Planner").trim();
         const projectFolder = project.storageKey ?? project.name;
-        return `${basePath}/${projectFolder}/.planner-tasks.json`;
+        return obsidian.normalizePath(`${basePath}/${projectFolder}/.planner-tasks.json`);
     }
     /** Read a project's tasks from its vault file. Returns null if file doesn't exist yet. */
     async readProjectFile(projectId) {
@@ -8975,7 +8988,7 @@ class TaskStore {
         if (!filePath)
             return;
         const adapter = this.plugin.app.vault.adapter;
-        const folder = filePath.substring(0, filePath.lastIndexOf("/"));
+        const folder = obsidian.normalizePath(filePath.substring(0, filePath.lastIndexOf("/")));
         if (folder && !(await adapter.exists(folder))) {
             await adapter.mkdir(folder);
         }
@@ -9126,7 +9139,9 @@ class TaskStore {
             try {
                 l();
             }
-            catch { }
+            catch (e) {
+                console.error("TaskStore subscriber error:", e);
+            }
         }
     }
     // Public method to manually trigger view updates (e.g., after settings change)
@@ -9799,6 +9814,10 @@ class TaskSync {
         this.app = app;
         this.plugin = plugin;
     }
+    resolveProject(projectIdentifier) {
+        return this.plugin.settings.projects.find(p => p.id === projectIdentifier)
+            ?? this.plugin.settings.projects.find(p => p.name === projectIdentifier);
+    }
     /**
      * Convert a PlannerTask to YAML frontmatter + markdown content
      */
@@ -10045,24 +10064,23 @@ class TaskSync {
      * Get the file path for a task's markdown note
      */
     getTaskFilePath(task, projectId) {
-        const project = this.plugin.settings.projects.find(p => p.id === projectId);
+        const project = this.resolveProject(projectId);
         if (!project) {
             return `${task.title.replace(/[\\/:*?"<>|]/g, '-')}.md`;
         }
-        // Sanitize title for filename
         const safeName = task.title.replace(/[\\/:*?"<>|]/g, '-');
         const basePath = this.plugin.settings.projectsBasePath;
         const projectFolder = project.storageKey ?? project.name;
         if (basePath) {
-            return `${basePath}/${projectFolder}/Tasks/${safeName}.md`;
+            return obsidian.normalizePath(`${basePath}/${projectFolder}/Tasks/${safeName}.md`);
         }
-        return `${projectFolder}/Tasks/${safeName}.md`;
+        return obsidian.normalizePath(`${projectFolder}/Tasks/${safeName}.md`);
     }
     /**
      * Handle task rename by deleting old file and creating new one
      */
     async handleTaskRename(task, oldTitle, projectId) {
-        const project = this.plugin.settings.projects.find(p => p.id === projectId);
+        const project = this.resolveProject(projectId);
         if (!project)
             return;
         // Get old file path using old title
@@ -10088,7 +10106,7 @@ class TaskSync {
      * guard only blocks reverse sync (markdown→task) to prevent infinite loops.
      */
     async syncTaskToMarkdown(task, projectId) {
-        const project = this.plugin.settings.projects.find(p => p.id === projectId);
+        const project = this.resolveProject(projectId);
         if (!project)
             return;
         const filePath = this.getTaskFilePath(task, projectId);
@@ -10144,7 +10162,7 @@ class TaskSync {
                 await this.plugin.taskStore.addTaskFromObject(task);
                 // If title changed, rename the markdown file to match new title
                 if (titleChanged) {
-                    const project = this.plugin.settings.projects.find(p => p.id === projectId);
+                    const project = this.resolveProject(projectId);
                     if (project) {
                         const newFilePath = this.getTaskFilePath(task, projectId);
                         // Only rename if the file path actually changed
@@ -10184,7 +10202,7 @@ class TaskSync {
      * Watch for changes to markdown files in project folders
      */
     watchProjectFolder(projectId) {
-        const project = this.plugin.settings.projects.find(p => p.id === projectId);
+        const project = this.resolveProject(projectId);
         if (!project)
             return;
         const basePath = this.plugin.settings.projectsBasePath;
@@ -10220,13 +10238,11 @@ class TaskSync {
                 }
             }
         }));
-        // Watch for new files (manual task creation)
-        this.plugin.registerEvent(this.app.vault.on('create', async (file) => {
+        // Watch for new files (manual task creation). Use metadataCache 'resolve'
+        // so we sync only after the cache is populated — avoids an untracked setTimeout.
+        this.plugin.registerEvent(this.app.metadataCache.on('resolve', async (file) => {
             if (file instanceof obsidian.TFile && file.path.startsWith(folderPath) && file.extension === 'md') {
-                // Wait for metadata cache to populate
-                setTimeout(async () => {
-                    await this.syncMarkdownToTask(file, projectId);
-                }, 1000);
+                await this.syncMarkdownToTask(file, projectId);
             }
         }));
     }
@@ -10234,7 +10250,7 @@ class TaskSync {
      * Perform initial sync - scan project folder and sync all markdown files
      */
     async initialSync(projectId) {
-        const project = this.plugin.settings.projects.find(p => p.id === projectId);
+        const project = this.resolveProject(projectId);
         if (!project)
             return;
         // Check if we've synced recently (within last 5 minutes) to avoid repeated syncs
@@ -10328,20 +10344,16 @@ class DailyNoteTaskScanner {
      * Find existing task by content similarity to avoid duplicates
      */
     findDuplicateTaskByContent(title) {
-        // Get all tasks from TaskStore (across all projects)
-        const allTasks = this.plugin.taskStore.getAll();
         const normalizedTitle = title.trim().toLowerCase();
-        // Find tasks with matching title that were imported from daily notes
-        // Note: Since TaskStore.getAll() returns tasks from active project only,
-        // we can assume any daily-task- ID found is in the current project
-        const duplicates = allTasks.filter(t => {
-            if (!t.id.startsWith('daily-task-'))
-                return false;
-            if (t.title.trim().toLowerCase() !== normalizedTitle)
-                return false;
-            return true;
-        });
-        return duplicates.length > 0 ? duplicates[0] : null;
+        // Search all projects, not just the active one
+        for (const project of this.plugin.settings.projects) {
+            const tasks = this.plugin.taskStore.getAllForProject(project.id);
+            const match = tasks.find(t => t.id.startsWith('daily-task-') &&
+                t.title.trim().toLowerCase() === normalizedTitle);
+            if (match)
+                return match;
+        }
+        return null;
     }
     /**
      * Extract project name from a tag pattern
@@ -10533,7 +10545,7 @@ class DailyNoteTaskScanner {
             return;
         // Check if file is in scan folders (if specified)
         if (this.plugin.settings.dailyNoteScanFolders.length > 0) {
-            const shouldScan = this.plugin.settings.dailyNoteScanFolders.some(folder => file.path.startsWith(folder));
+            const shouldScan = this.plugin.settings.dailyNoteScanFolders.some(folder => file.path.startsWith(obsidian.normalizePath(folder)));
             if (!shouldScan)
                 return;
         }
@@ -11038,11 +11050,7 @@ class ProjectPlannerPlugin extends obsidian.Plugin {
         await this.saveSettings();
     }
     async saveSettings() {
-        // Task data now lives in per-project vault files, so data.json holds
-        // settings only. No merge needed — no risk of overwriting task data.
-        const raw = ((await this.loadData()) || {});
-        raw.settings = this.settings;
-        await this.saveData(raw);
+        await this.saveData({ settings: this.settings });
     }
     setActiveProject(projectId) {
         const found = this.settings.projects.find((p) => p.id === projectId);
@@ -11085,73 +11093,24 @@ class ProjectPlannerPlugin extends obsidian.Plugin {
     async createTaskNotes() {
         await this.taskStore.ensureLoaded();
         const tasks = this.taskStore.getAll();
-        const activeProject = this.settings.projects.find(p => p.id === this.settings.activeProjectId);
-        if (!activeProject)
+        const activeProjectId = this.settings.activeProjectId;
+        if (!activeProjectId)
             return;
-        const basePath = this.settings.projectsBasePath;
-        const projectFolder = activeProject.storageKey ?? activeProject.name;
-        const folderPath = basePath
-            ? `${basePath}/${projectFolder}/Tasks`
-            : `${projectFolder}/Tasks`;
-        // Ensure folder exists
-        const folder = this.app.vault.getAbstractFileByPath(folderPath);
-        if (!folder) {
-            try {
-                await this.app.vault.createFolder(folderPath);
-            }
-            catch {
-                // Folder may already exist from a concurrent call
-            }
-        }
+        let succeeded = 0;
+        let failed = 0;
         for (const task of tasks) {
-            const fileName = `${folderPath}/${task.title.replace(/[\\/:*?"<>|]/g, '_')}.md`;
             try {
-                const existingFile = this.app.vault.getAbstractFileByPath(fileName);
-                let content = `# ${task.title}\n\n`;
-                content += `**Status**: ${task.status}\n`;
-                if (task.priority)
-                    content += `**Priority**: ${task.priority}\n`;
-                if (task.startDate)
-                    content += `**Start Date**: ${task.startDate}\n`;
-                if (task.dueDate)
-                    content += `**Due Date**: ${task.dueDate}\n`;
-                content += `\n---\n\n`;
-                if (task.description)
-                    content += `${task.description}\n\n`;
-                if (task.dependencies && task.dependencies.length > 0) {
-                    content += `## Dependencies\n\n`;
-                    task.dependencies.forEach(dep => {
-                        const depTask = tasks.find(t => t.id === dep.predecessorId);
-                        if (depTask) {
-                            content += `- ${dep.type}: [[${depTask.title}]]\n`;
-                        }
-                    });
-                    content += `\n`;
-                }
-                if (task.links && task.links.length > 0) {
-                    content += `## Links\n\n`;
-                    task.links.forEach(link => {
-                        if (link.type === "obsidian") {
-                            content += `- [[${link.url}]]\n`;
-                        }
-                        else {
-                            content += `- [${link.url}](${link.url})\n`;
-                        }
-                    });
-                    content += `\n`;
-                }
-                content += `\n---\n*Task from Project: ${activeProject.name}*\n`;
-                if (existingFile instanceof obsidian.TFile) {
-                    await this.app.vault.modify(existingFile, content);
-                }
-                else {
-                    await this.app.vault.create(fileName, content);
-                }
+                await this.taskSync.syncTaskToMarkdown(task, activeProjectId);
+                succeeded++;
             }
             catch (error) {
-                console.error(`Failed to create/update task note: ${fileName}`, error);
+                console.error(`Failed to create/update task note: ${task.title}`, error);
                 new obsidian.Notice(`Failed to create task note: ${task.title}`);
+                failed++;
             }
+        }
+        if (succeeded > 0) {
+            new obsidian.Notice(`Created ${succeeded} task note${succeeded !== 1 ? 's' : ''}${failed > 0 ? ` (${failed} failed)` : ''}`);
         }
     }
     // ---------------------------------------------------------------------------

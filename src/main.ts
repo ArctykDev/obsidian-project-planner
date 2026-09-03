@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, Notice, TFile, FileSystemAdapter } from "obsidian";
+import { Plugin, WorkspaceLeaf, Notice, FileSystemAdapter } from "obsidian";
 
 import {
   ProjectPlannerSettingTab,
@@ -451,11 +451,7 @@ export default class ProjectPlannerPlugin extends Plugin {
   }
 
   async saveSettings() {
-    // Task data now lives in per-project vault files, so data.json holds
-    // settings only. No merge needed — no risk of overwriting task data.
-    const raw = ((await this.loadData()) || {}) as ProjectPlannerData;
-    raw.settings = this.settings;
-    await this.saveData(raw);
+    await this.saveData({ settings: this.settings });
   }
 
   setActiveProject(projectId: string) {
@@ -502,76 +498,25 @@ export default class ProjectPlannerPlugin extends Plugin {
   async createTaskNotes() {
     await this.taskStore.ensureLoaded();
     const tasks = this.taskStore.getAll();
-    const activeProject = this.settings.projects.find(
-      p => p.id === this.settings.activeProjectId
-    );
+    const activeProjectId = this.settings.activeProjectId;
 
-    if (!activeProject) return;
+    if (!activeProjectId) return;
 
-    const basePath = this.settings.projectsBasePath;
-    const projectFolder = activeProject.storageKey ?? activeProject.name;
-    const folderPath = basePath
-      ? `${basePath}/${projectFolder}/Tasks`
-      : `${projectFolder}/Tasks`;
-
-    // Ensure folder exists
-    const folder = this.app.vault.getAbstractFileByPath(folderPath);
-    if (!folder) {
+    let succeeded = 0;
+    let failed = 0;
+    for (const task of tasks) {
       try {
-        await this.app.vault.createFolder(folderPath);
-      } catch {
-        // Folder may already exist from a concurrent call
+        await this.taskSync.syncTaskToMarkdown(task, activeProjectId);
+        succeeded++;
+      } catch (error) {
+        console.error(`Failed to create/update task note: ${task.title}`, error);
+        new Notice(`Failed to create task note: ${task.title}`);
+        failed++;
       }
     }
 
-    for (const task of tasks) {
-      const fileName = `${folderPath}/${task.title.replace(/[\\/:*?"<>|]/g, '_')}.md`;
-      
-      try {
-        const existingFile = this.app.vault.getAbstractFileByPath(fileName);
-
-        let content = `# ${task.title}\n\n`;
-        content += `**Status**: ${task.status}\n`;
-        if (task.priority) content += `**Priority**: ${task.priority}\n`;
-        if (task.startDate) content += `**Start Date**: ${task.startDate}\n`;
-        if (task.dueDate) content += `**Due Date**: ${task.dueDate}\n`;
-        content += `\n---\n\n`;
-        if (task.description) content += `${task.description}\n\n`;
-
-        if (task.dependencies && task.dependencies.length > 0) {
-          content += `## Dependencies\n\n`;
-          task.dependencies.forEach(dep => {
-            const depTask = tasks.find(t => t.id === dep.predecessorId);
-            if (depTask) {
-              content += `- ${dep.type}: [[${depTask.title}]]\n`;
-            }
-          });
-          content += `\n`;
-        }
-
-        if (task.links && task.links.length > 0) {
-          content += `## Links\n\n`;
-          task.links.forEach(link => {
-            if (link.type === "obsidian") {
-              content += `- [[${link.url}]]\n`;
-            } else {
-              content += `- [${link.url}](${link.url})\n`;
-            }
-          });
-          content += `\n`;
-        }
-
-        content += `\n---\n*Task from Project: ${activeProject.name}*\n`;
-
-        if (existingFile instanceof TFile) {
-          await this.app.vault.modify(existingFile, content);
-        } else {
-          await this.app.vault.create(fileName, content);
-        }
-      } catch (error) {
-        console.error(`Failed to create/update task note: ${fileName}`, error);
-        new Notice(`Failed to create task note: ${task.title}`);
-      }
+    if (succeeded > 0) {
+      new Notice(`Created ${succeeded} task note${succeeded !== 1 ? 's' : ''}${failed > 0 ? ` (${failed} failed)` : ''}`);
     }
   }
 

@@ -2,6 +2,26 @@
 
 All notable changes to Obsidian Project Planner will be documented in this file.
 
+## [0.8.4] - 2026-09-03
+
+### Fixed
+
+- **GanttView column resizer listener leak** (GanttView): `onClose()` now invokes `activeResizerCleanup()` alongside the existing `activeDragCleanup()` call. Previously, if the view was closed while the user was resizing the left column, the `document` `mousemove` and `mouseup` listeners added by `attachResizerHandlers()` were never removed and persisted for the lifetime of the Obsidian session.
+- **DashboardView overdue/due-today/due-this-week UTC timezone bug** (DashboardView): `calculateProjectStats()` and the matching filter blocks in `render()` were constructing dates with `new Date(t.dueDate)`, which parses a YYYY-MM-DD string as UTC midnight. For users in UTC+ timezones this caused tasks due today to appear overdue and "due this week" counts to be off by one day. Both call sites now parse dates using `new Date(y, m - 1, d)` (local midnight), matching the established pattern in `GanttView.parseLocalDate()` and `TaskStore.parseDate()`.
+- **TaskSync untracked `setTimeout` on file create** (TaskSync): The `vault.on('create')` watcher in `watchProjectFolder()` used a bare `setTimeout(..., 1000)` to wait for the metadata cache before syncing a newly-created markdown file. If the plugin was unloaded during that window, the callback would fire against a partially torn-down plugin. Replaced with `metadataCache.on('resolve')` registered via `plugin.registerEvent()`, which fires exactly when the cache is ready and is automatically cleaned up with the plugin lifecycle.
+- **`normalizePath()` not called on vault paths** (TaskStore, TaskSync, DailyNoteTaskScanner): All paths passed to vault adapter methods (`exists`, `read`, `write`, `mkdir`) and `getAbstractFileByPath` are now wrapped in `normalizePath()`. Previously, manually concatenated paths could contain platform-inconsistent separators or double slashes that caused silent failures. `normalizePath` is now imported in TaskStore and added to the existing TaskSync import; DailyNoteTaskScanner now applies it to scan-folder prefixes before `startsWith()` comparisons (removing the dead import).
+- **`createTaskNotes()` produced inconsistently formatted notes** (main.ts): The "Create Notes" action in Settings was building markdown with a plain `**Status**:` text template that did not match the YAML frontmatter format produced by `TaskSync.taskToMarkdown()`. Notes created this way could not be read back by the sync watcher. The method now delegates entirely to `taskSync.syncTaskToMarkdown()`, ensuring all task notes — however created — have identical structure. The now-unused `TFile` import was also removed from main.ts.
+- **`DailyNoteTaskScanner` duplicate detection only searched active project** (DailyNoteTaskScanner): `findDuplicateTaskByContent()` called `taskStore.getAll()`, which returns tasks from the active project only. Tasks imported from daily notes into other projects were not found, causing re-imports as duplicates. The method now iterates `plugin.settings.projects` and calls `taskStore.getAllForProject()` for each, covering the full vault.
+
+### Internal
+
+- **`TaskStore.emit()` now logs subscriber errors** (TaskStore): The subscriber dispatch loop previously swallowed all exceptions with an empty `catch {}`, making render failures invisible. Errors are now logged via `console.error("TaskStore subscriber error:", e)`.
+- **`window.open()` replaced with `<a>` element** (Settings): The "Visit projectplanner.md" button used `window.open()` in its `onClick` handler. It now renders a transparent `<a href>` overlay with `target="_blank" rel="noopener noreferrer"`, consistent with the changelog and Buy Me a Coffee links in the same settings panel.
+- **`TaskDetailView` now implements `getIcon()`** (TaskDetailView): Added the missing `getIcon()` method returning `"list-check"`. All other `ItemView` subclasses already implement it; without it, the Task Details tab displayed a generic fallback icon.
+- **`saveSettings()` no longer reads before writing** (main.ts): The method was calling `loadData()` to merge before every save, even though `data.json` now holds settings only and the in-memory `this.settings` is always authoritative. Replaced with a direct `saveData({ settings: this.settings })`, eliminating one vault read on every settings change (which fires on every inline toggle and text input in the settings panel).
+- **`DashboardView.getPriorityColor()` reads from user settings** (DashboardView): Hardcoded hex values are now used only as a fallback. The method first checks `plugin.settings.availablePriorities`, matching the pattern already used by `getStatusColor()`. User-customised priority colours now appear correctly in task-list modals.
+- **`versions.json` history filled out** (versions.json): Added entries for all releases from v0.6.0 through v0.8.3, mapped to `minAppVersion: "1.5.0"`. The community registry and BRAT use this file to determine compatibility; a sparse file prevented older versions from being correctly advertised.
+
 ## [0.8.3] - 2026-08-24 (Release fixes)
 
 ### Fixed

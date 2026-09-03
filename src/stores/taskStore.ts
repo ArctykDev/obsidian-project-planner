@@ -1,3 +1,4 @@
+import { normalizePath } from "obsidian";
 import type ProjectPlannerPlugin from "../main";
 import type { PlannerTask, DependencyType } from "../types";
 import { getTaskEstimatedCost, getTaskActualCost } from "../utils/costUtils";
@@ -76,7 +77,7 @@ export class TaskStore {
     if (!project) return null;
     const basePath = (this.plugin.settings.projectsBasePath || "Project Planner").trim();
     const projectFolder = project.storageKey ?? project.name;
-    return `${basePath}/${projectFolder}/.planner-tasks.json`;
+    return normalizePath(`${basePath}/${projectFolder}/.planner-tasks.json`);
   }
 
   /** Read a project's tasks from its vault file. Returns null if file doesn't exist yet. */
@@ -99,7 +100,7 @@ export class TaskStore {
     const filePath = this.getProjectFilePath(projectId);
     if (!filePath) return;
     const adapter = this.plugin.app.vault.adapter;
-    const folder = filePath.substring(0, filePath.lastIndexOf("/"));
+    const folder = normalizePath(filePath.substring(0, filePath.lastIndexOf("/")));
     if (folder && !(await adapter.exists(folder))) {
       await adapter.mkdir(folder);
     }
@@ -279,7 +280,7 @@ export class TaskStore {
 
   private emit() {
     for (const l of this.listeners) {
-      try { l(); } catch { }
+      try { l(); } catch (e) { console.error("TaskStore subscriber error:", e); }
     }
   }
 

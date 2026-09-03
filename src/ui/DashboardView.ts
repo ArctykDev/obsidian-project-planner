@@ -108,20 +108,20 @@ export class DashboardView extends ItemView {
 
         const overdueTasks = tasks.filter(t => {
             if (!t.dueDate || t.status === "Completed") return false;
-            const dueDate = new Date(t.dueDate).getTime();
-            return dueDate < today;
+            const [y, m, d] = t.dueDate.split("-").map(Number);
+            return new Date(y, m - 1, d).getTime() < today;
         }).length;
 
         const dueTodayTasks = tasks.filter(t => {
             if (!t.dueDate || t.status === "Completed") return false;
-            const dueDate = new Date(t.dueDate);
-            dueDate.setHours(0, 0, 0, 0);
-            return dueDate.getTime() === today;
+            const [y, m, d] = t.dueDate.split("-").map(Number);
+            return new Date(y, m - 1, d).getTime() === today;
         }).length;
 
         const dueThisWeekTasks = tasks.filter(t => {
             if (!t.dueDate || t.status === "Completed") return false;
-            const dueDate = new Date(t.dueDate).getTime();
+            const [y, m, d] = t.dueDate.split("-").map(Number);
+            const dueDate = new Date(y, m - 1, d).getTime();
             return dueDate >= today && dueDate <= weekFromNow;
         }).length;
 
@@ -330,6 +330,8 @@ export class DashboardView extends ItemView {
     }
 
     private getPriorityColor(priority: string): string {
+        const priorityObj = this.plugin.settings.availablePriorities?.find((p) => p.name === priority);
+        if (priorityObj) return priorityObj.color;
         switch (priority) {
             case "Critical": return "#d70022";
             case "High": return "#f59e0b";
@@ -418,20 +420,20 @@ export class DashboardView extends ItemView {
 
         const overdueTasks = allTasks.filter(t => {
             if (!t.dueDate || t.status === "Completed") return false;
-            const dueDate = new Date(t.dueDate).getTime();
-            return dueDate < today;
+            const [y, m, d] = t.dueDate.split("-").map(Number);
+            return new Date(y, m - 1, d).getTime() < today;
         });
 
         const dueTodayTasks = allTasks.filter(t => {
             if (!t.dueDate || t.status === "Completed") return false;
-            const dueDate = new Date(t.dueDate);
-            dueDate.setHours(0, 0, 0, 0);
-            return dueDate.getTime() === today;
+            const [y, m, d] = t.dueDate.split("-").map(Number);
+            return new Date(y, m - 1, d).getTime() === today;
         });
 
         const dueThisWeekTasks = allTasks.filter(t => {
             if (!t.dueDate || t.status === "Completed") return false;
-            const dueDate = new Date(t.dueDate).getTime();
+            const [y, m, d] = t.dueDate.split("-").map(Number);
+            const dueDate = new Date(y, m - 1, d).getTime();
             return dueDate >= today && dueDate <= weekFromNow;
         });
 

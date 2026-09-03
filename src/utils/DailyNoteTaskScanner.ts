@@ -73,20 +73,17 @@ export class DailyNoteTaskScanner {
      * Find existing task by content similarity to avoid duplicates
      */
     private findDuplicateTaskByContent(title: string): PlannerTask | null {
-        // Get all tasks from TaskStore (across all projects)
-        const allTasks = this.plugin.taskStore.getAll();
         const normalizedTitle = title.trim().toLowerCase();
-        
-        // Find tasks with matching title that were imported from daily notes
-        // Note: Since TaskStore.getAll() returns tasks from active project only,
-        // we can assume any daily-task- ID found is in the current project
-        const duplicates = allTasks.filter(t => {
-            if (!t.id.startsWith('daily-task-')) return false;
-            if (t.title.trim().toLowerCase() !== normalizedTitle) return false;
-            return true;
-        });
-        
-        return duplicates.length > 0 ? duplicates[0] : null;
+        // Search all projects, not just the active one
+        for (const project of this.plugin.settings.projects) {
+            const tasks = this.plugin.taskStore.getAllForProject(project.id);
+            const match = tasks.find(t =>
+                t.id.startsWith('daily-task-') &&
+                t.title.trim().toLowerCase() === normalizedTitle
+            );
+            if (match) return match;
+        }
+        return null;
     }
 
     /**
@@ -309,7 +306,7 @@ export class DailyNoteTaskScanner {
         // Check if file is in scan folders (if specified)
         if (this.plugin.settings.dailyNoteScanFolders.length > 0) {
             const shouldScan = this.plugin.settings.dailyNoteScanFolders.some(
-                folder => file.path.startsWith(folder)
+                folder => file.path.startsWith(normalizePath(folder))
             );
             if (!shouldScan) return;
         }

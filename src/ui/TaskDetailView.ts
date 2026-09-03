@@ -31,6 +31,10 @@ export class TaskDetailView extends ItemView {
     return "Task Details";
   }
 
+  getIcon() {
+    return "list-check";
+  }
+
   // ---------------------------------------------------------------------------
   // Canonical task retrieval
   // ---------------------------------------------------------------------------
