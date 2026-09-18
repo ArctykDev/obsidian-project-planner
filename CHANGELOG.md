@@ -2,6 +2,24 @@
 
 All notable changes to Obsidian Project Planner will be documented in this file.
 
+## [0.8.5] - 2026-09-18
+
+### Added
+
+- **Configurable default status for new tasks** (#111) (Settings, TaskStore): A new "Default status for new tasks" dropdown in Settings lets you choose the status applied when any task is created. Previously hard-coded to "Not Started". Defaults to first available status when left empty.
+- **Timeline bar approaching-due-date colour** (#81) (GanttView, Settings): Gantt bars now turn amber when a task is not yet completed and its due date falls within a configurable threshold (default 48 hours). A new "Approaching-due colour threshold (hours)" field appears in a new "Timeline (Gantt)" settings section. Set to 0 to disable.
+- **Dashboard project card reordering** (#74) (DashboardView, Settings): In "Show All Projects" mode, project cards can now be drag-and-drop reordered. A grip handle appears on each card header; the order is persisted in settings as `dashboardProjectOrder`.
+
+### Fixed
+
+- **TaskDetailView.getCanonicalTask() cross-project blind spot** (TaskDetailView, TaskStore): Opening a task from My Tasks or via URI that belongs to a non-active project could display stale data in the Task Details panel. `getCanonicalTask()` now uses a new `getTaskByIdAcrossProjects()` store method that searches all loaded projects, not just the active one.
+- **TaskSync watchers not re-registered after projectsBasePath change** (TaskSync, Settings): Changing the "Projects base folder" setting at runtime left stale watchers pointing at the old path and registered no watchers for the new one. The `onChange` handler now calls `clearWatchedProjects()` followed by `initializeTaskSync()`, forcing all project folders to be re-watched against the updated path.
+
+### Internal
+
+- **DashboardView modals migrated to Obsidian Modal class** (DashboardView): The task-list and cost-report modals previously appended raw DOM elements to `document.body`, bypassing Obsidian's modal layer. Both are now proper `Modal` subclasses (`TaskListModal`, `CostReportModal`), giving correct z-index stacking, focus trapping, and Escape-key handling managed by Obsidian.
+- **js-yaml dev dependency patched** (package-lock.json): Upgraded transitive dev dependency `js-yaml` from 3.15.1 to 3.15.2 via `npm audit fix` to resolve GHSA-2883-xcg3-v3hh (DoS via empty merge keys). Not present in the production bundle; no user-facing impact.
+
 ## [0.8.4] - 2026-09-03
 
 ### Fixed

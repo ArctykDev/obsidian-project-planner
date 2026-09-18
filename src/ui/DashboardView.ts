@@ -1,10 +1,258 @@
-import { ItemView, WorkspaceLeaf, setIcon } from "obsidian";
+import { ItemView, WorkspaceLeaf, setIcon, Modal } from "obsidian";
 import type ProjectPlannerPlugin from "../main";
 import type { PlannerTask } from "../types";
+import type { PlannerProject } from "../settings";
 import { renderPlannerHeader } from "./Header";
 import { getProjectCostSummary, formatCurrency, getCostBreakdown } from "../utils/costUtils";
 
 export const VIEW_TYPE_DASHBOARD = "project-planner-dashboard-view";
+
+// ---------------------------------------------------------------------------
+// Modal: task list
+// ---------------------------------------------------------------------------
+class TaskListModal extends Modal {
+    constructor(
+        private readonly plugin: ProjectPlannerPlugin,
+        private readonly modalTitle: string,
+        private readonly tasks: PlannerTask[],
+    ) {
+        super(plugin.app);
+    }
+
+    onOpen() {
+        this.contentEl.addClass("dashboard-task-modal-content");
+
+        const header = this.contentEl.createDiv("dashboard-task-modal-header");
+        header.createEl("h3", { text: this.modalTitle });
+        const closeBtn = header.createEl("button", { cls: "dashboard-task-modal-close" });
+        const closeIcon = closeBtn.createSpan({ cls: "dashboard-task-modal-close-icon" });
+        setIcon(closeIcon, "x");
+        closeBtn.onclick = () => this.close();
+
+        const taskList = this.contentEl.createDiv("dashboard-task-modal-list");
+
+        if (this.tasks.length === 0) {
+            taskList.createDiv({ text: "No tasks found", cls: "dashboard-task-modal-empty" });
+            return;
+        }
+
+        this.tasks.forEach(task => {
+            const taskItem = taskList.createDiv("dashboard-task-modal-item");
+
+            const checkbox = taskItem.createEl("input", {
+                type: "checkbox",
+                cls: "dashboard-task-modal-checkbox"
+            });
+            checkbox.checked = task.completed;
+            checkbox.onclick = async (e) => {
+                e.stopPropagation();
+                const isDone = checkbox.checked;
+                await this.plugin.taskStore.updateTask(task.id, {
+                    completed: isDone,
+                    status: isDone ? "Completed" : "Not Started"
+                });
+                task.completed = isDone;
+                task.status = isDone ? "Completed" : "Not Started";
+                isDone
+                    ? titleEl.addClass("dashboard-task-modal-completed")
+                    : titleEl.removeClass("dashboard-task-modal-completed");
+                statusBadge.textContent = task.status;
+                statusBadge.style.backgroundColor = this.getStatusColor(task.status);
+            };
+
+            const titleEl = taskItem.createDiv({
+                text: task.title,
+                cls: "dashboard-task-modal-title"
+            });
+            if (task.completed) titleEl.addClass("dashboard-task-modal-completed");
+
+            const meta = taskItem.createDiv("dashboard-task-modal-meta");
+            const statusBadge = meta.createSpan({ text: task.status, cls: "status-pill" });
+            statusBadge.style.backgroundColor = this.getStatusColor(task.status);
+
+            if (task.priority) {
+                const priorityPill = meta.createSpan({ text: task.priority, cls: "priority-pill" });
+                priorityPill.style.backgroundColor = this.getPriorityColor(task.priority);
+            }
+            if (task.dueDate) {
+                meta.createSpan({ text: `Due: ${task.dueDate}`, cls: "dashboard-task-modal-due" });
+            }
+
+            taskItem.onclick = () => {
+                this.close();
+                this.plugin.openTaskDetail(task);
+            };
+        });
+    }
+
+    onClose() { this.contentEl.empty(); }
+
+    private getStatusColor(status: string): string {
+        const obj = this.plugin.settings.availableStatuses?.find(s => s.name === status);
+        if (obj) return obj.color;
+        switch (status) {
+            case "Completed": return "#2f9e44";
+            case "In Progress": return "#0a84ff";
+            case "Blocked": return "#d70022";
+            default: return "#6c757d";
+        }
+    }
+
+    private getPriorityColor(priority: string): string {
+        const obj = this.plugin.settings.availablePriorities?.find(p => p.name === priority);
+        if (obj) return obj.color;
+        switch (priority) {
+            case "Critical": return "#d70022";
+            case "High": return "#f59e0b";
+            case "Medium": return "#0a84ff";
+            default: return "#6366f1";
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Modal: cost report
+// ---------------------------------------------------------------------------
+class CostReportModal extends Modal {
+    constructor(
+        private readonly plugin: ProjectPlannerPlugin,
+        private readonly projectId: string,
+        private readonly tasks: PlannerTask[],
+    ) {
+        super(plugin.app);
+    }
+
+    onOpen() {
+        this.contentEl.addClass("dashboard-task-modal-content", "dashboard-cost-report-content");
+
+        const project = this.plugin.settings.projects?.find(p => p.id === this.projectId);
+        const currency = project?.currencySymbol || "$";
+        const buckets = project?.buckets || [];
+
+        const header = this.contentEl.createDiv("dashboard-task-modal-header");
+        header.createEl("h3", { text: "Cost Report" });
+        const closeBtn = header.createEl("button", { cls: "dashboard-task-modal-close" });
+        const closeIcon = closeBtn.createSpan({ cls: "dashboard-task-modal-close-icon" });
+        setIcon(closeIcon, "x");
+        closeBtn.onclick = () => this.close();
+
+        const tabBar = this.contentEl.createDiv("dashboard-cost-report-tabs");
+        const tabBody = this.contentEl.createDiv("dashboard-cost-report-body");
+
+        type TabKey = "bucket" | "status" | "priority" | "overbudget";
+        let activeTab: TabKey = "bucket";
+
+        const renderTab = (tab: TabKey) => {
+            activeTab = tab;
+            tabBar.querySelectorAll(".dashboard-cost-tab").forEach(el => el.removeClass("active"));
+            tabBar.querySelector(`[data-tab="${tab}"]`)?.addClass("active");
+            tabBody.empty();
+
+            if (tab === "overbudget") {
+                this.renderOverBudgetList(tabBody, this.tasks, project, currency);
+            } else {
+                const groupFn =
+                    tab === "bucket"
+                        ? (t: PlannerTask) => { const b = buckets.find(bk => bk.id === t.bucketId); return b ? b.name : "Unassigned"; }
+                    : tab === "status"
+                        ? (t: PlannerTask) => t.status || "No Status"
+                        : (t: PlannerTask) => t.priority || "No Priority";
+                const rows = getCostBreakdown(this.tasks, groupFn, project);
+                this.renderCostBreakdownTable(tabBody, rows, currency);
+            }
+        };
+
+        const tabs: { key: TabKey; label: string }[] = [
+            { key: "bucket", label: "By Bucket" },
+            { key: "status", label: "By Status" },
+            { key: "priority", label: "By Priority" },
+            { key: "overbudget", label: "Over Budget" },
+        ];
+        tabs.forEach(t => {
+            const btn = tabBar.createEl("button", { text: t.label, cls: "dashboard-cost-tab", attr: { "data-tab": t.key } });
+            if (t.key === activeTab) btn.addClass("active");
+            btn.onclick = () => renderTab(t.key);
+        });
+
+        renderTab(activeTab);
+    }
+
+    onClose() { this.contentEl.empty(); }
+
+    private renderCostBreakdownTable(
+        container: HTMLElement,
+        rows: { label: string; estimated: number; actual: number; variance: number; taskCount: number }[],
+        currency: string
+    ) {
+        if (rows.length === 0) {
+            container.createDiv({ text: "No cost data available.", cls: "dashboard-task-modal-empty" });
+            return;
+        }
+        const table = container.createEl("table", { cls: "dashboard-cost-table" });
+        const headerRow = table.createEl("thead").createEl("tr");
+        ["Group", "Tasks", "Estimated", "Actual", "Variance"].forEach(h => headerRow.createEl("th", { text: h }));
+        const tbody = table.createEl("tbody");
+        let totalEst = 0, totalAct = 0, totalVar = 0, totalCount = 0;
+        rows.forEach(row => {
+            const tr = tbody.createEl("tr");
+            tr.createEl("td", { text: row.label });
+            tr.createEl("td", { text: String(row.taskCount), cls: "dashboard-cost-num" });
+            tr.createEl("td", { text: formatCurrency(row.estimated, currency), cls: "dashboard-cost-num" });
+            tr.createEl("td", { text: formatCurrency(row.actual, currency), cls: "dashboard-cost-num" });
+            const varCell = tr.createEl("td", { cls: "dashboard-cost-num" });
+            varCell.textContent = formatCurrency(row.variance, currency);
+            if (row.variance < 0) varCell.classList.add("planner-cost-over-budget");
+            else if (row.variance > 0) varCell.classList.add("planner-cost-under-budget");
+            totalEst += row.estimated; totalAct += row.actual; totalVar += row.variance; totalCount += row.taskCount;
+        });
+        const footRow = table.createEl("tfoot").createEl("tr");
+        footRow.createEl("td", { text: "Total", cls: "dashboard-cost-total-label" });
+        footRow.createEl("td", { text: String(totalCount), cls: "dashboard-cost-num" });
+        footRow.createEl("td", { text: formatCurrency(totalEst, currency), cls: "dashboard-cost-num" });
+        footRow.createEl("td", { text: formatCurrency(totalAct, currency), cls: "dashboard-cost-num" });
+        const totalVarCell = footRow.createEl("td", { cls: "dashboard-cost-num" });
+        totalVarCell.textContent = formatCurrency(totalVar, currency);
+        if (totalVar < 0) totalVarCell.classList.add("planner-cost-over-budget");
+        else if (totalVar > 0) totalVarCell.classList.add("planner-cost-under-budget");
+    }
+
+    private renderOverBudgetList(
+        container: HTMLElement,
+        tasks: PlannerTask[],
+        project: { defaultHourlyRate?: number; currencySymbol?: string } | undefined,
+        currency: string
+    ) {
+        const overBudget = tasks.filter(t => {
+            if (!t.costType) return false;
+            const rate = t.hourlyRate ?? project?.defaultHourlyRate ?? 0;
+            const est = t.costType === "hourly"
+                ? ((t.effortCompleted ?? 0) + (t.effortRemaining ?? 0)) * rate
+                : (t.costEstimate ?? 0);
+            const act = t.costType === "hourly"
+                ? (t.effortCompleted ?? 0) * rate
+                : (t.costActual ?? 0);
+            return est > 0 && act > est;
+        });
+        if (overBudget.length === 0) {
+            container.createDiv({ text: "No over-budget tasks.", cls: "dashboard-task-modal-empty" });
+            return;
+        }
+        overBudget.forEach(t => {
+            const row = container.createDiv("dashboard-task-modal-item");
+            row.createDiv({ text: t.title, cls: "dashboard-task-modal-title" });
+            const rate = t.hourlyRate ?? project?.defaultHourlyRate ?? 0;
+            const est = t.costType === "hourly"
+                ? ((t.effortCompleted ?? 0) + (t.effortRemaining ?? 0)) * rate
+                : (t.costEstimate ?? 0);
+            const act = t.costType === "hourly"
+                ? (t.effortCompleted ?? 0) * rate
+                : (t.costActual ?? 0);
+            const meta = row.createDiv("dashboard-task-modal-meta");
+            meta.createSpan({ text: `Est: ${formatCurrency(est, currency)}` });
+            meta.createSpan({ text: `Actual: ${formatCurrency(act, currency)}`, cls: "planner-cost-over-budget" });
+        });
+    }
+}
 
 interface ProjectStats {
     projectId: string;
@@ -39,9 +287,6 @@ export class DashboardView extends ItemView {
     private unsubscribe: (() => void) | null = null;
     private showAllProjects: boolean = false;
     private savedScrollTop: number | null = null;
-    private activeModal: HTMLElement | null = null;
-    private activeOverlay: HTMLElement | null = null;
-    private activeKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
     private renderVersion = 0;
 
     constructor(leaf: WorkspaceLeaf, plugin: ProjectPlannerPlugin) {
@@ -68,28 +313,11 @@ export class DashboardView extends ItemView {
     }
 
     async onClose() {
-        this.dismissModal();
         this.containerEl.empty();
         if (this.unsubscribe) {
             this.unsubscribe();
             this.unsubscribe = null;
         }
-    }
-
-    /** Remove modal + overlay from document.body if present. */
-    private dismissModal() {
-        if (this.activeKeydownHandler) {
-            document.removeEventListener("keydown", this.activeKeydownHandler);
-            this.activeKeydownHandler = null;
-        }
-        if (this.activeModal && this.activeModal.parentNode) {
-            this.activeModal.parentNode.removeChild(this.activeModal);
-        }
-        if (this.activeOverlay && this.activeOverlay.parentNode) {
-            this.activeOverlay.parentNode.removeChild(this.activeOverlay);
-        }
-        this.activeModal = null;
-        this.activeOverlay = null;
     }
 
     private calculateProjectStats(projectId: string, projectName: string, tasks: PlannerTask[]): ProjectStats {
@@ -213,120 +441,7 @@ export class DashboardView extends ItemView {
     }
 
     private showTaskListModal(title: string, tasks: PlannerTask[]) {
-        // Dismiss any existing modal first
-        this.dismissModal();
-
-        const modal = document.createElement("div");
-        modal.className = "dashboard-task-modal";
-
-        const overlay = document.createElement("div");
-        overlay.className = "dashboard-task-modal-overlay";
-        overlay.onclick = () => this.dismissModal();
-
-        // Track so we can clean up on view close
-        this.activeModal = modal;
-        this.activeOverlay = overlay;
-
-        // Escape key dismisses the modal
-        const onKeyDown = (e: KeyboardEvent) => {
-            if (e.key === "Escape") {
-                this.dismissModal();
-            }
-        };
-        this.activeKeydownHandler = onKeyDown;
-        document.addEventListener("keydown", onKeyDown);
-
-        const content = modal.createDiv("dashboard-task-modal-content");
-
-        // Header
-        const header = content.createDiv("dashboard-task-modal-header");
-        header.createEl("h3", { text: title });
-
-        const closeBtn = header.createEl("button", {
-            cls: "dashboard-task-modal-close"
-        });
-        const closeIcon = closeBtn.createSpan({ cls: "dashboard-task-modal-close-icon" });
-        setIcon(closeIcon, "x");
-
-        closeBtn.onclick = () => this.dismissModal();
-
-        // Task list
-        const taskList = content.createDiv("dashboard-task-modal-list");
-
-        if (tasks.length === 0) {
-            taskList.createDiv({ text: "No tasks found", cls: "dashboard-task-modal-empty" });
-        } else {
-            tasks.forEach(task => {
-                const taskItem = taskList.createDiv("dashboard-task-modal-item");
-
-                // Checkbox
-                const checkbox = taskItem.createEl("input", {
-                    type: "checkbox",
-                    cls: "dashboard-task-modal-checkbox"
-                });
-                checkbox.checked = task.completed;
-                checkbox.onclick = async (e) => {
-                    e.stopPropagation();
-                    const isDone = checkbox.checked;
-                    await this.plugin.taskStore.updateTask(task.id, {
-                        completed: isDone,
-                        status: isDone ? "Completed" : "Not Started"
-                    });
-                    // Update UI
-                    task.completed = isDone;
-                    task.status = isDone ? "Completed" : "Not Started";
-                    if (isDone) {
-                        titleEl.addClass("dashboard-task-modal-completed");
-                    } else {
-                        titleEl.removeClass("dashboard-task-modal-completed");
-                    }
-                    statusBadge.textContent = task.status;
-                    statusBadge.style.background = this.getStatusColor(task.status);
-                };
-
-                // Task title
-                const titleEl = taskItem.createDiv({
-                    text: task.title,
-                    cls: "dashboard-task-modal-title"
-                });
-                if (task.completed) {
-                    titleEl.addClass("dashboard-task-modal-completed");
-                }
-
-                // Task metadata
-                const meta = taskItem.createDiv("dashboard-task-modal-meta");
-                
-                // Status badge (using same style as Grid/Board views)
-                const statusBadge = meta.createSpan({
-                    text: task.status,
-                    cls: "status-pill"
-                });
-                statusBadge.style.backgroundColor = this.getStatusColor(task.status);
-                
-                if (task.priority) {
-                    const priorityPill = meta.createSpan({
-                        text: task.priority,
-                        cls: "priority-pill"
-                    });
-                    priorityPill.style.backgroundColor = this.getPriorityColor(task.priority);
-                }
-                if (task.dueDate) {
-                    meta.createSpan({
-                        text: `Due: ${task.dueDate}`,
-                        cls: "dashboard-task-modal-due"
-                    });
-                }
-
-                // Click to open task detail
-                taskItem.onclick = () => {
-                    this.dismissModal();
-                    this.plugin.openTaskDetail(task);
-                };
-            });
-        }
-
-        document.body.appendChild(overlay);
-        document.body.appendChild(modal);
+        new TaskListModal(this.plugin, title, tasks).open();
     }
 
     private getPriorityColor(priority: string): string {
@@ -342,11 +457,8 @@ export class DashboardView extends ItemView {
     }
 
     private getStatusColor(status: string): string {
-        const settings = this.plugin.settings;
-        const statusObj = settings.availableStatuses?.find((s) => s.name === status);
+        const statusObj = this.plugin.settings.availableStatuses?.find((s) => s.name === status);
         if (statusObj) return statusObj.color;
-        
-        // Fallback colors
         switch (status) {
             case "Completed": return "#2f9e44";
             case "In Progress": return "#0a84ff";
@@ -356,11 +468,16 @@ export class DashboardView extends ItemView {
         }
     }
 
-    private renderProjectDashboard(container: HTMLElement, stats: ProjectStats, allTasks: PlannerTask[]) {
+    private renderProjectDashboard(container: HTMLElement, stats: ProjectStats, allTasks: PlannerTask[], showDragHandle = false): HTMLElement {
         const projectCard = container.createDiv("dashboard-project-card");
 
         // Header
         const header = projectCard.createDiv("dashboard-project-header");
+        if (showDragHandle) {
+            const grip = header.createDiv({ cls: "dashboard-card-drag-handle" });
+            setIcon(grip, "grip-vertical");
+            projectCard.style.cursor = "grab";
+        }
         const titleSection = header.createDiv("dashboard-project-title-section");
         titleSection.createEl("h2", { text: stats.projectName });
 
@@ -560,6 +677,8 @@ export class DashboardView extends ItemView {
             });
             reportBtn.onclick = () => this.showCostReportModal(stats.projectId, allTasks);
         }
+
+        return projectCard;
     }
 
     private renderBudgetProgressBar(
@@ -585,192 +704,7 @@ export class DashboardView extends ItemView {
     }
 
     private showCostReportModal(projectId: string, tasks: PlannerTask[]) {
-        this.dismissModal();
-
-        const project = this.plugin.settings.projects?.find(p => p.id === projectId);
-        const currency = project?.currencySymbol || "$";
-        const buckets = project?.buckets || [];
-
-        const modal = document.createElement("div");
-        modal.className = "dashboard-task-modal dashboard-cost-report-modal";
-
-        const overlay = document.createElement("div");
-        overlay.className = "dashboard-task-modal-overlay";
-        overlay.onclick = () => this.dismissModal();
-
-        this.activeModal = modal;
-        this.activeOverlay = overlay;
-
-        const onKeyDown = (e: KeyboardEvent) => {
-            if (e.key === "Escape") {
-                this.dismissModal();
-            }
-        };
-        this.activeKeydownHandler = onKeyDown;
-        document.addEventListener("keydown", onKeyDown);
-
-        const content = modal.createDiv("dashboard-task-modal-content dashboard-cost-report-content");
-
-        // Header
-        const header = content.createDiv("dashboard-task-modal-header");
-        header.createEl("h3", { text: "Cost Report" });
-        const closeBtn = header.createEl("button", { cls: "dashboard-task-modal-close" });
-        const closeIcon = closeBtn.createSpan({ cls: "dashboard-task-modal-close-icon" });
-        setIcon(closeIcon, "x");
-        closeBtn.onclick = () => this.dismissModal();
-
-        // Tab bar
-        const tabBar = content.createDiv("dashboard-cost-report-tabs");
-        const tabBody = content.createDiv("dashboard-cost-report-body");
-
-        type TabKey = "bucket" | "status" | "priority" | "overbudget";
-        let activeTab: TabKey = "bucket";
-
-        const renderTab = (tab: TabKey) => {
-            activeTab = tab;
-            tabBar.querySelectorAll(".dashboard-cost-tab").forEach(el => el.removeClass("active"));
-            tabBar.querySelector(`[data-tab="${tab}"]`)?.addClass("active");
-            tabBody.empty();
-
-            if (tab === "overbudget") {
-                this.renderOverBudgetList(tabBody, tasks, project, currency);
-            } else {
-                const groupFn = tab === "bucket"
-                    ? (t: PlannerTask) => {
-                        const b = buckets.find(bk => bk.id === t.bucketId);
-                        return b ? b.name : "Unassigned";
-                    }
-                    : tab === "status"
-                        ? (t: PlannerTask) => t.status || "No Status"
-                        : (t: PlannerTask) => t.priority || "No Priority";
-
-                const rows = getCostBreakdown(tasks, groupFn, project);
-                this.renderCostBreakdownTable(tabBody, rows, currency);
-            }
-        };
-
-        const tabs: { key: TabKey; label: string }[] = [
-            { key: "bucket", label: "By Bucket" },
-            { key: "status", label: "By Status" },
-            { key: "priority", label: "By Priority" },
-            { key: "overbudget", label: "Over Budget" },
-        ];
-
-        tabs.forEach(t => {
-            const btn = tabBar.createEl("button", {
-                text: t.label,
-                cls: "dashboard-cost-tab",
-                attr: { "data-tab": t.key },
-            });
-            if (t.key === activeTab) btn.addClass("active");
-            btn.onclick = () => renderTab(t.key);
-        });
-
-        renderTab(activeTab);
-
-        document.body.appendChild(overlay);
-        document.body.appendChild(modal);
-    }
-
-    private renderCostBreakdownTable(
-        container: HTMLElement,
-        rows: { label: string; estimated: number; actual: number; variance: number; taskCount: number }[],
-        currency: string
-    ) {
-        if (rows.length === 0) {
-            container.createDiv({ text: "No cost data available.", cls: "dashboard-task-modal-empty" });
-            return;
-        }
-
-        const table = container.createEl("table", { cls: "dashboard-cost-table" });
-        const thead = table.createEl("thead");
-        const headerRow = thead.createEl("tr");
-        ["Group", "Tasks", "Estimated", "Actual", "Variance"].forEach(h =>
-            headerRow.createEl("th", { text: h })
-        );
-
-        const tbody = table.createEl("tbody");
-
-        let totalEst = 0, totalAct = 0, totalVar = 0, totalCount = 0;
-
-        rows.forEach(row => {
-            const tr = tbody.createEl("tr");
-            tr.createEl("td", { text: row.label });
-            tr.createEl("td", { text: String(row.taskCount), cls: "dashboard-cost-num" });
-            tr.createEl("td", { text: formatCurrency(row.estimated, currency), cls: "dashboard-cost-num" });
-            tr.createEl("td", { text: formatCurrency(row.actual, currency), cls: "dashboard-cost-num" });
-
-            const varCell = tr.createEl("td", { cls: "dashboard-cost-num" });
-            varCell.textContent = formatCurrency(row.variance, currency);
-            if (row.variance < 0) varCell.classList.add("planner-cost-over-budget");
-            else if (row.variance > 0) varCell.classList.add("planner-cost-under-budget");
-
-            totalEst += row.estimated;
-            totalAct += row.actual;
-            totalVar += row.variance;
-            totalCount += row.taskCount;
-        });
-
-        // Totals row
-        const tfoot = table.createEl("tfoot");
-        const footRow = tfoot.createEl("tr");
-        footRow.createEl("td", { text: "Total", cls: "dashboard-cost-total-label" });
-        footRow.createEl("td", { text: String(totalCount), cls: "dashboard-cost-num" });
-        footRow.createEl("td", { text: formatCurrency(totalEst, currency), cls: "dashboard-cost-num" });
-        footRow.createEl("td", { text: formatCurrency(totalAct, currency), cls: "dashboard-cost-num" });
-        const totalVarCell = footRow.createEl("td", { cls: "dashboard-cost-num" });
-        totalVarCell.textContent = formatCurrency(totalVar, currency);
-        if (totalVar < 0) totalVarCell.classList.add("planner-cost-over-budget");
-        else if (totalVar > 0) totalVarCell.classList.add("planner-cost-under-budget");
-    }
-
-    private renderOverBudgetList(
-        container: HTMLElement,
-        tasks: PlannerTask[],
-        project: { defaultHourlyRate?: number; currencySymbol?: string } | undefined,
-        currency: string
-    ) {
-        const overBudget = tasks.filter(t => {
-            if (!t.costType) return false;
-            const rate = t.hourlyRate ?? project?.defaultHourlyRate ?? 0;
-            const est = t.costType === "hourly"
-                ? ((t.effortCompleted ?? 0) + (t.effortRemaining ?? 0)) * rate
-                : (t.costEstimate ?? 0);
-            const act = t.costType === "hourly"
-                ? (t.effortCompleted ?? 0) * rate
-                : (t.costActual ?? 0);
-            return est > 0 && act > est;
-        });
-
-        if (overBudget.length === 0) {
-            container.createDiv({ text: "No tasks are over budget.", cls: "dashboard-task-modal-empty" });
-            return;
-        }
-
-        overBudget.forEach(task => {
-            const item = container.createDiv("dashboard-task-modal-item");
-
-            const titleEl = item.createDiv({ text: task.title, cls: "dashboard-task-modal-title" });
-
-            const meta = item.createDiv("dashboard-task-modal-meta");
-            const rate = task.hourlyRate ?? project?.defaultHourlyRate ?? 0;
-            const est = task.costType === "hourly"
-                ? ((task.effortCompleted ?? 0) + (task.effortRemaining ?? 0)) * rate
-                : (task.costEstimate ?? 0);
-            const act = task.costType === "hourly"
-                ? (task.effortCompleted ?? 0) * rate
-                : (task.costActual ?? 0);
-            const diff = act - est;
-
-            meta.createSpan({ text: `Est: ${formatCurrency(est, currency)}`, cls: "dashboard-cost-meta" });
-            meta.createSpan({ text: `Act: ${formatCurrency(act, currency)}`, cls: "dashboard-cost-meta" });
-            meta.createSpan({ text: `Over: ${formatCurrency(diff, currency)}`, cls: "dashboard-cost-meta planner-cost-over-budget" });
-
-            item.onclick = () => {
-                this.dismissModal();
-                this.plugin.openTaskDetail(task);
-            };
-        });
+        new CostReportModal(this.plugin, projectId, tasks).open();
     }
 
     render() {
@@ -832,11 +766,59 @@ export class DashboardView extends ItemView {
                 return;
             }
 
-            projects.forEach((project) => {
-                // Load tasks for this project
+            const orderedProjects = this.getSortedProjects(projects);
+            let draggedProjectId: string | null = null;
+
+            orderedProjects.forEach((project) => {
                 const projectTasks = this.plugin.taskStore.getAllForProject?.(project.id) || [];
                 const stats = this.calculateProjectStats(project.id, project.name, projectTasks);
-                this.renderProjectDashboard(content, stats, projectTasks);
+                const card = this.renderProjectDashboard(content, stats, projectTasks, true);
+
+                card.draggable = true;
+
+                card.ondragstart = (e) => {
+                    draggedProjectId = project.id;
+                    card.classList.add("dashboard-project-card-dragging");
+                    e.dataTransfer!.effectAllowed = "move";
+                    e.dataTransfer!.setData("text/plain", project.id);
+                };
+                card.ondragend = () => {
+                    draggedProjectId = null;
+                    card.classList.remove("dashboard-project-card-dragging");
+                    content.querySelectorAll(".dashboard-project-card-dragover").forEach(el =>
+                        el.classList.remove("dashboard-project-card-dragover")
+                    );
+                };
+                card.ondragover = (e) => {
+                    if (!draggedProjectId || draggedProjectId === project.id) return;
+                    e.preventDefault();
+                    e.dataTransfer!.dropEffect = "move";
+                    card.classList.add("dashboard-project-card-dragover");
+                };
+                card.ondragleave = (e) => {
+                    const rect = card.getBoundingClientRect();
+                    if (e.clientX < rect.left || e.clientX >= rect.right ||
+                        e.clientY < rect.top  || e.clientY >= rect.bottom) {
+                        card.classList.remove("dashboard-project-card-dragover");
+                    }
+                };
+                card.ondrop = async (e) => {
+                    if (!draggedProjectId || draggedProjectId === project.id) return;
+                    e.preventDefault();
+                    card.classList.remove("dashboard-project-card-dragover");
+
+                    const currentOrder = this.getProjectOrder(projects);
+                    const fromIdx = currentOrder.indexOf(draggedProjectId);
+                    const toIdx   = currentOrder.indexOf(project.id);
+                    if (fromIdx === -1 || toIdx === -1) return;
+
+                    currentOrder.splice(fromIdx, 1);
+                    currentOrder.splice(fromIdx < toIdx ? toIdx - 1 : toIdx, 0, draggedProjectId);
+
+                    this.plugin.settings.dashboardProjectOrder = currentOrder;
+                    await this.plugin.saveSettings();
+                    this.render();
+                };
             });
         } else {
             // Show active project only
@@ -850,5 +832,28 @@ export class DashboardView extends ItemView {
             const stats = this.calculateProjectStats(activeProject.id, activeProject.name, tasks);
             this.renderProjectDashboard(content, stats, tasks);
         }
+    }
+
+    private getSortedProjects(projects: PlannerProject[]): PlannerProject[] {
+        const order = this.plugin.settings.dashboardProjectOrder || [];
+        if (order.length === 0) return projects;
+        return [...projects].sort((a, b) => {
+            const ia = order.indexOf(a.id);
+            const ib = order.indexOf(b.id);
+            if (ia === -1 && ib === -1) return 0;
+            if (ia === -1) return 1;
+            if (ib === -1) return -1;
+            return ia - ib;
+        });
+    }
+
+    private getProjectOrder(projects: PlannerProject[]): string[] {
+        const saved = this.plugin.settings.dashboardProjectOrder || [];
+        const ids = projects.map(p => p.id);
+        const result = saved.filter(id => ids.includes(id));
+        for (const id of ids) {
+            if (!result.includes(id)) result.push(id);
+        }
+        return result;
     }
 }

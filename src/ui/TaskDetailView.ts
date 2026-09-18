@@ -40,8 +40,8 @@ export class TaskDetailView extends ItemView {
   // ---------------------------------------------------------------------------
 
   private getCanonicalTask(id: string): PlannerTask | null {
-    // Use plugin's taskStore directly - it's the single source of truth
-    return this.plugin.taskStore.getAll().find((t: PlannerTask) => t.id === id) || null;
+    // Search across all loaded projects so tasks from non-active projects are found
+    return this.plugin.taskStore.getTaskByIdAcrossProjects(id);
   }
 
   // Called when GridView selects a task

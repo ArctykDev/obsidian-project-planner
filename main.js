@@ -7,6 +7,7 @@ const DEFAULT_SETTINGS = {
     activeProjectId: "",
     defaultView: "grid",
     showCompleted: true,
+    defaultTaskStatus: "",
     openLinksInNewTab: false,
     openViewsInNewTab: false,
     availableTags: [],
@@ -34,6 +35,7 @@ const DEFAULT_SETTINGS = {
     enableParentRollUp: true,
     dateFormat: "iso",
     ganttLeftColumnWidth: 300,
+    ganttApproachingDueThresholdHours: 48,
     showRibbonIconGrid: true,
     showRibbonIconDashboard: false,
     showRibbonIconBoard: false,
@@ -41,6 +43,7 @@ const DEFAULT_SETTINGS = {
     showRibbonIconDailyNoteScan: false,
     showRibbonIconMyTasks: false,
     myDayDefaultView: "today",
+    dashboardProjectOrder: [],
 };
 class ProjectPlannerSettingTab extends obsidian.PluginSettingTab {
     constructor(app, plugin) {
@@ -216,6 +219,21 @@ class ProjectPlannerSettingTab extends obsidian.PluginSettingTab {
             await this.plugin.saveSettings();
         }));
         new obsidian.Setting(containerEl)
+            .setName("Default status for new tasks")
+            .setDesc("Status applied when a task is created. Leave empty to use the first available status.")
+            .addDropdown((dropdown) => {
+            dropdown.addOption("", "First available status");
+            this.plugin.settings.availableStatuses.forEach((s) => {
+                dropdown.addOption(s.name, s.name);
+            });
+            dropdown
+                .setValue(this.plugin.settings.defaultTaskStatus)
+                .onChange(async (value) => {
+                this.plugin.settings.defaultTaskStatus = value;
+                await this.plugin.saveSettings();
+            });
+        });
+        new obsidian.Setting(containerEl)
             .setName("Show completed tasks in Grid View")
             .setDesc("When disabled, completed tasks will be hidden in Grid View only. Other views (Board, Timeline, Dashboard) will continue to show completed tasks.")
             .addToggle((toggle) => toggle
@@ -231,6 +249,22 @@ class ProjectPlannerSettingTab extends obsidian.PluginSettingTab {
             .setValue(this.plugin.settings.openViewsInNewTab)
             .onChange(async (value) => {
             this.plugin.settings.openViewsInNewTab = value;
+            await this.plugin.saveSettings();
+        }));
+        // -----------------------------------------------------------------------
+        // Gantt / Timeline Section
+        // -----------------------------------------------------------------------
+        new obsidian.Setting(containerEl).setName("Timeline (Gantt)").setHeading();
+        new obsidian.Setting(containerEl)
+            .setName("Approaching-due colour threshold (hours)")
+            .setDesc("Gantt bars turn amber when a task's due date is within this many hours. Set to 0 to disable.")
+            .addText((text) => text
+            .setPlaceholder("48")
+            .setValue(String(this.plugin.settings.ganttApproachingDueThresholdHours))
+            .onChange(async (value) => {
+            const parsed = parseInt(value, 10);
+            this.plugin.settings.ganttApproachingDueThresholdHours =
+                Number.isFinite(parsed) && parsed >= 0 ? parsed : 48;
             await this.plugin.saveSettings();
         }));
         // -----------------------------------------------------------------------
@@ -359,6 +393,10 @@ class ProjectPlannerSettingTab extends obsidian.PluginSettingTab {
             sanitized = sanitized.replace(/\.\./g, "").replace(/^\/+/, "");
             this.plugin.settings.projectsBasePath = sanitized;
             await this.plugin.saveSettings();
+            if (this.plugin.settings.enableMarkdownSync) {
+                this.plugin.taskSync.clearWatchedProjects();
+                await this.plugin.initializeTaskSync();
+            }
         }));
         new obsidian.Setting(containerEl)
             .setName("Auto-create task notes")
@@ -4271,8 +4309,8 @@ class TaskDetailView extends obsidian.ItemView {
     // Canonical task retrieval
     // ---------------------------------------------------------------------------
     getCanonicalTask(id) {
-        // Use plugin's taskStore directly - it's the single source of truth
-        return this.plugin.taskStore.getAll().find((t) => t.id === id) || null;
+        // Search across all loaded projects so tasks from non-active projects are found
+        return this.plugin.taskStore.getTaskByIdAcrossProjects(id);
     }
     // Called when GridView selects a task
     setTask(task) {
@@ -6971,7 +7009,16 @@ class GanttView extends obsidian.ItemView {
             marker.style.left = `${x}px`;
         }
         // Rows: one per visible task (hierarchical)
-        const statusColor = (status) => {
+        const approachingMs = (this.plugin.settings.ganttApproachingDueThresholdHours ?? 48) * 60 * 60 * 1000;
+        const nowMs = Date.now();
+        const statusColor = (status, task) => {
+            if (status !== "Completed" && task.dueDate && approachingMs > 0) {
+                const [y, m, d] = task.dueDate.split("-").map(Number);
+                const dueMs = new Date(y, m - 1, d).getTime();
+                if (dueMs >= nowMs && dueMs - nowMs <= approachingMs) {
+                    return "#f59e0b"; // amber — approaching due date
+                }
+            }
             switch (status) {
                 case "Completed": return "#2f9e44";
                 case "In Progress": return "#0a84ff";
@@ -7047,7 +7094,7 @@ class GanttView extends obsidian.ItemView {
             bar.dataset.taskId = t.id;
             bar.style.left = `${startDays * dayWidth}px`;
             bar.style.width = `${spanDays * dayWidth - 4}px`;
-            bar.style.backgroundColor = statusColor(t.status);
+            bar.style.backgroundColor = statusColor(t.status, t);
             bar.setAttribute("title", `${t.title}`);
             bar.oncontextmenu = (e) => this.showTaskMenu(e, t);
             // Resize handles
@@ -7291,15 +7338,232 @@ class GanttView extends obsidian.ItemView {
 }
 
 const VIEW_TYPE_DASHBOARD = "project-planner-dashboard-view";
+// ---------------------------------------------------------------------------
+// Modal: task list
+// ---------------------------------------------------------------------------
+class TaskListModal extends obsidian.Modal {
+    constructor(plugin, modalTitle, tasks) {
+        super(plugin.app);
+        this.plugin = plugin;
+        this.modalTitle = modalTitle;
+        this.tasks = tasks;
+    }
+    onOpen() {
+        this.contentEl.addClass("dashboard-task-modal-content");
+        const header = this.contentEl.createDiv("dashboard-task-modal-header");
+        header.createEl("h3", { text: this.modalTitle });
+        const closeBtn = header.createEl("button", { cls: "dashboard-task-modal-close" });
+        const closeIcon = closeBtn.createSpan({ cls: "dashboard-task-modal-close-icon" });
+        obsidian.setIcon(closeIcon, "x");
+        closeBtn.onclick = () => this.close();
+        const taskList = this.contentEl.createDiv("dashboard-task-modal-list");
+        if (this.tasks.length === 0) {
+            taskList.createDiv({ text: "No tasks found", cls: "dashboard-task-modal-empty" });
+            return;
+        }
+        this.tasks.forEach(task => {
+            const taskItem = taskList.createDiv("dashboard-task-modal-item");
+            const checkbox = taskItem.createEl("input", {
+                type: "checkbox",
+                cls: "dashboard-task-modal-checkbox"
+            });
+            checkbox.checked = task.completed;
+            checkbox.onclick = async (e) => {
+                e.stopPropagation();
+                const isDone = checkbox.checked;
+                await this.plugin.taskStore.updateTask(task.id, {
+                    completed: isDone,
+                    status: isDone ? "Completed" : "Not Started"
+                });
+                task.completed = isDone;
+                task.status = isDone ? "Completed" : "Not Started";
+                isDone
+                    ? titleEl.addClass("dashboard-task-modal-completed")
+                    : titleEl.removeClass("dashboard-task-modal-completed");
+                statusBadge.textContent = task.status;
+                statusBadge.style.backgroundColor = this.getStatusColor(task.status);
+            };
+            const titleEl = taskItem.createDiv({
+                text: task.title,
+                cls: "dashboard-task-modal-title"
+            });
+            if (task.completed)
+                titleEl.addClass("dashboard-task-modal-completed");
+            const meta = taskItem.createDiv("dashboard-task-modal-meta");
+            const statusBadge = meta.createSpan({ text: task.status, cls: "status-pill" });
+            statusBadge.style.backgroundColor = this.getStatusColor(task.status);
+            if (task.priority) {
+                const priorityPill = meta.createSpan({ text: task.priority, cls: "priority-pill" });
+                priorityPill.style.backgroundColor = this.getPriorityColor(task.priority);
+            }
+            if (task.dueDate) {
+                meta.createSpan({ text: `Due: ${task.dueDate}`, cls: "dashboard-task-modal-due" });
+            }
+            taskItem.onclick = () => {
+                this.close();
+                this.plugin.openTaskDetail(task);
+            };
+        });
+    }
+    onClose() { this.contentEl.empty(); }
+    getStatusColor(status) {
+        const obj = this.plugin.settings.availableStatuses?.find(s => s.name === status);
+        if (obj)
+            return obj.color;
+        switch (status) {
+            case "Completed": return "#2f9e44";
+            case "In Progress": return "#0a84ff";
+            case "Blocked": return "#d70022";
+            default: return "#6c757d";
+        }
+    }
+    getPriorityColor(priority) {
+        const obj = this.plugin.settings.availablePriorities?.find(p => p.name === priority);
+        if (obj)
+            return obj.color;
+        switch (priority) {
+            case "Critical": return "#d70022";
+            case "High": return "#f59e0b";
+            case "Medium": return "#0a84ff";
+            default: return "#6366f1";
+        }
+    }
+}
+// ---------------------------------------------------------------------------
+// Modal: cost report
+// ---------------------------------------------------------------------------
+class CostReportModal extends obsidian.Modal {
+    constructor(plugin, projectId, tasks) {
+        super(plugin.app);
+        this.plugin = plugin;
+        this.projectId = projectId;
+        this.tasks = tasks;
+    }
+    onOpen() {
+        this.contentEl.addClass("dashboard-task-modal-content", "dashboard-cost-report-content");
+        const project = this.plugin.settings.projects?.find(p => p.id === this.projectId);
+        const currency = project?.currencySymbol || "$";
+        const buckets = project?.buckets || [];
+        const header = this.contentEl.createDiv("dashboard-task-modal-header");
+        header.createEl("h3", { text: "Cost Report" });
+        const closeBtn = header.createEl("button", { cls: "dashboard-task-modal-close" });
+        const closeIcon = closeBtn.createSpan({ cls: "dashboard-task-modal-close-icon" });
+        obsidian.setIcon(closeIcon, "x");
+        closeBtn.onclick = () => this.close();
+        const tabBar = this.contentEl.createDiv("dashboard-cost-report-tabs");
+        const tabBody = this.contentEl.createDiv("dashboard-cost-report-body");
+        let activeTab = "bucket";
+        const renderTab = (tab) => {
+            activeTab = tab;
+            tabBar.querySelectorAll(".dashboard-cost-tab").forEach(el => el.removeClass("active"));
+            tabBar.querySelector(`[data-tab="${tab}"]`)?.addClass("active");
+            tabBody.empty();
+            if (tab === "overbudget") {
+                this.renderOverBudgetList(tabBody, this.tasks, project, currency);
+            }
+            else {
+                const groupFn = tab === "bucket"
+                    ? (t) => { const b = buckets.find(bk => bk.id === t.bucketId); return b ? b.name : "Unassigned"; }
+                    : tab === "status"
+                        ? (t) => t.status || "No Status"
+                        : (t) => t.priority || "No Priority";
+                const rows = getCostBreakdown(this.tasks, groupFn, project);
+                this.renderCostBreakdownTable(tabBody, rows, currency);
+            }
+        };
+        const tabs = [
+            { key: "bucket", label: "By Bucket" },
+            { key: "status", label: "By Status" },
+            { key: "priority", label: "By Priority" },
+            { key: "overbudget", label: "Over Budget" },
+        ];
+        tabs.forEach(t => {
+            const btn = tabBar.createEl("button", { text: t.label, cls: "dashboard-cost-tab", attr: { "data-tab": t.key } });
+            if (t.key === activeTab)
+                btn.addClass("active");
+            btn.onclick = () => renderTab(t.key);
+        });
+        renderTab(activeTab);
+    }
+    onClose() { this.contentEl.empty(); }
+    renderCostBreakdownTable(container, rows, currency) {
+        if (rows.length === 0) {
+            container.createDiv({ text: "No cost data available.", cls: "dashboard-task-modal-empty" });
+            return;
+        }
+        const table = container.createEl("table", { cls: "dashboard-cost-table" });
+        const headerRow = table.createEl("thead").createEl("tr");
+        ["Group", "Tasks", "Estimated", "Actual", "Variance"].forEach(h => headerRow.createEl("th", { text: h }));
+        const tbody = table.createEl("tbody");
+        let totalEst = 0, totalAct = 0, totalVar = 0, totalCount = 0;
+        rows.forEach(row => {
+            const tr = tbody.createEl("tr");
+            tr.createEl("td", { text: row.label });
+            tr.createEl("td", { text: String(row.taskCount), cls: "dashboard-cost-num" });
+            tr.createEl("td", { text: formatCurrency(row.estimated, currency), cls: "dashboard-cost-num" });
+            tr.createEl("td", { text: formatCurrency(row.actual, currency), cls: "dashboard-cost-num" });
+            const varCell = tr.createEl("td", { cls: "dashboard-cost-num" });
+            varCell.textContent = formatCurrency(row.variance, currency);
+            if (row.variance < 0)
+                varCell.classList.add("planner-cost-over-budget");
+            else if (row.variance > 0)
+                varCell.classList.add("planner-cost-under-budget");
+            totalEst += row.estimated;
+            totalAct += row.actual;
+            totalVar += row.variance;
+            totalCount += row.taskCount;
+        });
+        const footRow = table.createEl("tfoot").createEl("tr");
+        footRow.createEl("td", { text: "Total", cls: "dashboard-cost-total-label" });
+        footRow.createEl("td", { text: String(totalCount), cls: "dashboard-cost-num" });
+        footRow.createEl("td", { text: formatCurrency(totalEst, currency), cls: "dashboard-cost-num" });
+        footRow.createEl("td", { text: formatCurrency(totalAct, currency), cls: "dashboard-cost-num" });
+        const totalVarCell = footRow.createEl("td", { cls: "dashboard-cost-num" });
+        totalVarCell.textContent = formatCurrency(totalVar, currency);
+        if (totalVar < 0)
+            totalVarCell.classList.add("planner-cost-over-budget");
+        else if (totalVar > 0)
+            totalVarCell.classList.add("planner-cost-under-budget");
+    }
+    renderOverBudgetList(container, tasks, project, currency) {
+        const overBudget = tasks.filter(t => {
+            if (!t.costType)
+                return false;
+            const rate = t.hourlyRate ?? project?.defaultHourlyRate ?? 0;
+            const est = t.costType === "hourly"
+                ? ((t.effortCompleted ?? 0) + (t.effortRemaining ?? 0)) * rate
+                : (t.costEstimate ?? 0);
+            const act = t.costType === "hourly"
+                ? (t.effortCompleted ?? 0) * rate
+                : (t.costActual ?? 0);
+            return est > 0 && act > est;
+        });
+        if (overBudget.length === 0) {
+            container.createDiv({ text: "No over-budget tasks.", cls: "dashboard-task-modal-empty" });
+            return;
+        }
+        overBudget.forEach(t => {
+            const row = container.createDiv("dashboard-task-modal-item");
+            row.createDiv({ text: t.title, cls: "dashboard-task-modal-title" });
+            const rate = t.hourlyRate ?? project?.defaultHourlyRate ?? 0;
+            const est = t.costType === "hourly"
+                ? ((t.effortCompleted ?? 0) + (t.effortRemaining ?? 0)) * rate
+                : (t.costEstimate ?? 0);
+            const act = t.costType === "hourly"
+                ? (t.effortCompleted ?? 0) * rate
+                : (t.costActual ?? 0);
+            const meta = row.createDiv("dashboard-task-modal-meta");
+            meta.createSpan({ text: `Est: ${formatCurrency(est, currency)}` });
+            meta.createSpan({ text: `Actual: ${formatCurrency(act, currency)}`, cls: "planner-cost-over-budget" });
+        });
+    }
+}
 class DashboardView extends obsidian.ItemView {
     constructor(leaf, plugin) {
         super(leaf);
         this.unsubscribe = null;
         this.showAllProjects = false;
         this.savedScrollTop = null;
-        this.activeModal = null;
-        this.activeOverlay = null;
-        this.activeKeydownHandler = null;
         this.renderVersion = 0;
         this.plugin = plugin;
     }
@@ -7318,27 +7582,11 @@ class DashboardView extends obsidian.ItemView {
         this.render();
     }
     async onClose() {
-        this.dismissModal();
         this.containerEl.empty();
         if (this.unsubscribe) {
             this.unsubscribe();
             this.unsubscribe = null;
         }
-    }
-    /** Remove modal + overlay from document.body if present. */
-    dismissModal() {
-        if (this.activeKeydownHandler) {
-            document.removeEventListener("keydown", this.activeKeydownHandler);
-            this.activeKeydownHandler = null;
-        }
-        if (this.activeModal && this.activeModal.parentNode) {
-            this.activeModal.parentNode.removeChild(this.activeModal);
-        }
-        if (this.activeOverlay && this.activeOverlay.parentNode) {
-            this.activeOverlay.parentNode.removeChild(this.activeOverlay);
-        }
-        this.activeModal = null;
-        this.activeOverlay = null;
     }
     calculateProjectStats(projectId, projectName, tasks) {
         const totalTasks = tasks.length;
@@ -7445,105 +7693,7 @@ class DashboardView extends obsidian.ItemView {
         label.textContent = `${percentage}%`;
     }
     showTaskListModal(title, tasks) {
-        // Dismiss any existing modal first
-        this.dismissModal();
-        const modal = document.createElement("div");
-        modal.className = "dashboard-task-modal";
-        const overlay = document.createElement("div");
-        overlay.className = "dashboard-task-modal-overlay";
-        overlay.onclick = () => this.dismissModal();
-        // Track so we can clean up on view close
-        this.activeModal = modal;
-        this.activeOverlay = overlay;
-        // Escape key dismisses the modal
-        const onKeyDown = (e) => {
-            if (e.key === "Escape") {
-                this.dismissModal();
-            }
-        };
-        this.activeKeydownHandler = onKeyDown;
-        document.addEventListener("keydown", onKeyDown);
-        const content = modal.createDiv("dashboard-task-modal-content");
-        // Header
-        const header = content.createDiv("dashboard-task-modal-header");
-        header.createEl("h3", { text: title });
-        const closeBtn = header.createEl("button", {
-            cls: "dashboard-task-modal-close"
-        });
-        const closeIcon = closeBtn.createSpan({ cls: "dashboard-task-modal-close-icon" });
-        obsidian.setIcon(closeIcon, "x");
-        closeBtn.onclick = () => this.dismissModal();
-        // Task list
-        const taskList = content.createDiv("dashboard-task-modal-list");
-        if (tasks.length === 0) {
-            taskList.createDiv({ text: "No tasks found", cls: "dashboard-task-modal-empty" });
-        }
-        else {
-            tasks.forEach(task => {
-                const taskItem = taskList.createDiv("dashboard-task-modal-item");
-                // Checkbox
-                const checkbox = taskItem.createEl("input", {
-                    type: "checkbox",
-                    cls: "dashboard-task-modal-checkbox"
-                });
-                checkbox.checked = task.completed;
-                checkbox.onclick = async (e) => {
-                    e.stopPropagation();
-                    const isDone = checkbox.checked;
-                    await this.plugin.taskStore.updateTask(task.id, {
-                        completed: isDone,
-                        status: isDone ? "Completed" : "Not Started"
-                    });
-                    // Update UI
-                    task.completed = isDone;
-                    task.status = isDone ? "Completed" : "Not Started";
-                    if (isDone) {
-                        titleEl.addClass("dashboard-task-modal-completed");
-                    }
-                    else {
-                        titleEl.removeClass("dashboard-task-modal-completed");
-                    }
-                    statusBadge.textContent = task.status;
-                    statusBadge.style.background = this.getStatusColor(task.status);
-                };
-                // Task title
-                const titleEl = taskItem.createDiv({
-                    text: task.title,
-                    cls: "dashboard-task-modal-title"
-                });
-                if (task.completed) {
-                    titleEl.addClass("dashboard-task-modal-completed");
-                }
-                // Task metadata
-                const meta = taskItem.createDiv("dashboard-task-modal-meta");
-                // Status badge (using same style as Grid/Board views)
-                const statusBadge = meta.createSpan({
-                    text: task.status,
-                    cls: "status-pill"
-                });
-                statusBadge.style.backgroundColor = this.getStatusColor(task.status);
-                if (task.priority) {
-                    const priorityPill = meta.createSpan({
-                        text: task.priority,
-                        cls: "priority-pill"
-                    });
-                    priorityPill.style.backgroundColor = this.getPriorityColor(task.priority);
-                }
-                if (task.dueDate) {
-                    meta.createSpan({
-                        text: `Due: ${task.dueDate}`,
-                        cls: "dashboard-task-modal-due"
-                    });
-                }
-                // Click to open task detail
-                taskItem.onclick = () => {
-                    this.dismissModal();
-                    this.plugin.openTaskDetail(task);
-                };
-            });
-        }
-        document.body.appendChild(overlay);
-        document.body.appendChild(modal);
+        new TaskListModal(this.plugin, title, tasks).open();
     }
     getPriorityColor(priority) {
         const priorityObj = this.plugin.settings.availablePriorities?.find((p) => p.name === priority);
@@ -7558,11 +7708,9 @@ class DashboardView extends obsidian.ItemView {
         }
     }
     getStatusColor(status) {
-        const settings = this.plugin.settings;
-        const statusObj = settings.availableStatuses?.find((s) => s.name === status);
+        const statusObj = this.plugin.settings.availableStatuses?.find((s) => s.name === status);
         if (statusObj)
             return statusObj.color;
-        // Fallback colors
         switch (status) {
             case "Completed": return "#2f9e44";
             case "In Progress": return "#0a84ff";
@@ -7571,10 +7719,15 @@ class DashboardView extends obsidian.ItemView {
             default: return "#6c757d";
         }
     }
-    renderProjectDashboard(container, stats, allTasks) {
+    renderProjectDashboard(container, stats, allTasks, showDragHandle = false) {
         const projectCard = container.createDiv("dashboard-project-card");
         // Header
         const header = projectCard.createDiv("dashboard-project-header");
+        if (showDragHandle) {
+            const grip = header.createDiv({ cls: "dashboard-card-drag-handle" });
+            obsidian.setIcon(grip, "grip-vertical");
+            projectCard.style.cursor = "grab";
+        }
         const titleSection = header.createDiv("dashboard-project-title-section");
         titleSection.createEl("h2", { text: stats.projectName });
         // Project metadata (dates)
@@ -7702,6 +7855,7 @@ class DashboardView extends obsidian.ItemView {
             });
             reportBtn.onclick = () => this.showCostReportModal(stats.projectId, allTasks);
         }
+        return projectCard;
     }
     renderBudgetProgressBar(container, percentage, currency, actual, total) {
         const barContainer = container.createDiv("dashboard-progress-container dashboard-budget-bar");
@@ -7720,156 +7874,7 @@ class DashboardView extends obsidian.ItemView {
         label.textContent = `${formatCurrency(actual, currency)} / ${formatCurrency(total, currency)} (${percentage}%)`;
     }
     showCostReportModal(projectId, tasks) {
-        this.dismissModal();
-        const project = this.plugin.settings.projects?.find(p => p.id === projectId);
-        const currency = project?.currencySymbol || "$";
-        const buckets = project?.buckets || [];
-        const modal = document.createElement("div");
-        modal.className = "dashboard-task-modal dashboard-cost-report-modal";
-        const overlay = document.createElement("div");
-        overlay.className = "dashboard-task-modal-overlay";
-        overlay.onclick = () => this.dismissModal();
-        this.activeModal = modal;
-        this.activeOverlay = overlay;
-        const onKeyDown = (e) => {
-            if (e.key === "Escape") {
-                this.dismissModal();
-            }
-        };
-        this.activeKeydownHandler = onKeyDown;
-        document.addEventListener("keydown", onKeyDown);
-        const content = modal.createDiv("dashboard-task-modal-content dashboard-cost-report-content");
-        // Header
-        const header = content.createDiv("dashboard-task-modal-header");
-        header.createEl("h3", { text: "Cost Report" });
-        const closeBtn = header.createEl("button", { cls: "dashboard-task-modal-close" });
-        const closeIcon = closeBtn.createSpan({ cls: "dashboard-task-modal-close-icon" });
-        obsidian.setIcon(closeIcon, "x");
-        closeBtn.onclick = () => this.dismissModal();
-        // Tab bar
-        const tabBar = content.createDiv("dashboard-cost-report-tabs");
-        const tabBody = content.createDiv("dashboard-cost-report-body");
-        let activeTab = "bucket";
-        const renderTab = (tab) => {
-            activeTab = tab;
-            tabBar.querySelectorAll(".dashboard-cost-tab").forEach(el => el.removeClass("active"));
-            tabBar.querySelector(`[data-tab="${tab}"]`)?.addClass("active");
-            tabBody.empty();
-            if (tab === "overbudget") {
-                this.renderOverBudgetList(tabBody, tasks, project, currency);
-            }
-            else {
-                const groupFn = tab === "bucket"
-                    ? (t) => {
-                        const b = buckets.find(bk => bk.id === t.bucketId);
-                        return b ? b.name : "Unassigned";
-                    }
-                    : tab === "status"
-                        ? (t) => t.status || "No Status"
-                        : (t) => t.priority || "No Priority";
-                const rows = getCostBreakdown(tasks, groupFn, project);
-                this.renderCostBreakdownTable(tabBody, rows, currency);
-            }
-        };
-        const tabs = [
-            { key: "bucket", label: "By Bucket" },
-            { key: "status", label: "By Status" },
-            { key: "priority", label: "By Priority" },
-            { key: "overbudget", label: "Over Budget" },
-        ];
-        tabs.forEach(t => {
-            const btn = tabBar.createEl("button", {
-                text: t.label,
-                cls: "dashboard-cost-tab",
-                attr: { "data-tab": t.key },
-            });
-            if (t.key === activeTab)
-                btn.addClass("active");
-            btn.onclick = () => renderTab(t.key);
-        });
-        renderTab(activeTab);
-        document.body.appendChild(overlay);
-        document.body.appendChild(modal);
-    }
-    renderCostBreakdownTable(container, rows, currency) {
-        if (rows.length === 0) {
-            container.createDiv({ text: "No cost data available.", cls: "dashboard-task-modal-empty" });
-            return;
-        }
-        const table = container.createEl("table", { cls: "dashboard-cost-table" });
-        const thead = table.createEl("thead");
-        const headerRow = thead.createEl("tr");
-        ["Group", "Tasks", "Estimated", "Actual", "Variance"].forEach(h => headerRow.createEl("th", { text: h }));
-        const tbody = table.createEl("tbody");
-        let totalEst = 0, totalAct = 0, totalVar = 0, totalCount = 0;
-        rows.forEach(row => {
-            const tr = tbody.createEl("tr");
-            tr.createEl("td", { text: row.label });
-            tr.createEl("td", { text: String(row.taskCount), cls: "dashboard-cost-num" });
-            tr.createEl("td", { text: formatCurrency(row.estimated, currency), cls: "dashboard-cost-num" });
-            tr.createEl("td", { text: formatCurrency(row.actual, currency), cls: "dashboard-cost-num" });
-            const varCell = tr.createEl("td", { cls: "dashboard-cost-num" });
-            varCell.textContent = formatCurrency(row.variance, currency);
-            if (row.variance < 0)
-                varCell.classList.add("planner-cost-over-budget");
-            else if (row.variance > 0)
-                varCell.classList.add("planner-cost-under-budget");
-            totalEst += row.estimated;
-            totalAct += row.actual;
-            totalVar += row.variance;
-            totalCount += row.taskCount;
-        });
-        // Totals row
-        const tfoot = table.createEl("tfoot");
-        const footRow = tfoot.createEl("tr");
-        footRow.createEl("td", { text: "Total", cls: "dashboard-cost-total-label" });
-        footRow.createEl("td", { text: String(totalCount), cls: "dashboard-cost-num" });
-        footRow.createEl("td", { text: formatCurrency(totalEst, currency), cls: "dashboard-cost-num" });
-        footRow.createEl("td", { text: formatCurrency(totalAct, currency), cls: "dashboard-cost-num" });
-        const totalVarCell = footRow.createEl("td", { cls: "dashboard-cost-num" });
-        totalVarCell.textContent = formatCurrency(totalVar, currency);
-        if (totalVar < 0)
-            totalVarCell.classList.add("planner-cost-over-budget");
-        else if (totalVar > 0)
-            totalVarCell.classList.add("planner-cost-under-budget");
-    }
-    renderOverBudgetList(container, tasks, project, currency) {
-        const overBudget = tasks.filter(t => {
-            if (!t.costType)
-                return false;
-            const rate = t.hourlyRate ?? project?.defaultHourlyRate ?? 0;
-            const est = t.costType === "hourly"
-                ? ((t.effortCompleted ?? 0) + (t.effortRemaining ?? 0)) * rate
-                : (t.costEstimate ?? 0);
-            const act = t.costType === "hourly"
-                ? (t.effortCompleted ?? 0) * rate
-                : (t.costActual ?? 0);
-            return est > 0 && act > est;
-        });
-        if (overBudget.length === 0) {
-            container.createDiv({ text: "No tasks are over budget.", cls: "dashboard-task-modal-empty" });
-            return;
-        }
-        overBudget.forEach(task => {
-            const item = container.createDiv("dashboard-task-modal-item");
-            item.createDiv({ text: task.title, cls: "dashboard-task-modal-title" });
-            const meta = item.createDiv("dashboard-task-modal-meta");
-            const rate = task.hourlyRate ?? project?.defaultHourlyRate ?? 0;
-            const est = task.costType === "hourly"
-                ? ((task.effortCompleted ?? 0) + (task.effortRemaining ?? 0)) * rate
-                : (task.costEstimate ?? 0);
-            const act = task.costType === "hourly"
-                ? (task.effortCompleted ?? 0) * rate
-                : (task.costActual ?? 0);
-            const diff = act - est;
-            meta.createSpan({ text: `Est: ${formatCurrency(est, currency)}`, cls: "dashboard-cost-meta" });
-            meta.createSpan({ text: `Act: ${formatCurrency(act, currency)}`, cls: "dashboard-cost-meta" });
-            meta.createSpan({ text: `Over: ${formatCurrency(diff, currency)}`, cls: "dashboard-cost-meta planner-cost-over-budget" });
-            item.onclick = () => {
-                this.dismissModal();
-                this.plugin.openTaskDetail(task);
-            };
-        });
+        new CostReportModal(this.plugin, projectId, tasks).open();
     }
     render() {
         const container = this.containerEl;
@@ -7920,11 +7925,54 @@ class DashboardView extends obsidian.ItemView {
                 content.createEl("div", { text: "No projects found.", cls: "dashboard-empty" });
                 return;
             }
-            projects.forEach((project) => {
-                // Load tasks for this project
+            const orderedProjects = this.getSortedProjects(projects);
+            let draggedProjectId = null;
+            orderedProjects.forEach((project) => {
                 const projectTasks = this.plugin.taskStore.getAllForProject?.(project.id) || [];
                 const stats = this.calculateProjectStats(project.id, project.name, projectTasks);
-                this.renderProjectDashboard(content, stats, projectTasks);
+                const card = this.renderProjectDashboard(content, stats, projectTasks, true);
+                card.draggable = true;
+                card.ondragstart = (e) => {
+                    draggedProjectId = project.id;
+                    card.classList.add("dashboard-project-card-dragging");
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", project.id);
+                };
+                card.ondragend = () => {
+                    draggedProjectId = null;
+                    card.classList.remove("dashboard-project-card-dragging");
+                    content.querySelectorAll(".dashboard-project-card-dragover").forEach(el => el.classList.remove("dashboard-project-card-dragover"));
+                };
+                card.ondragover = (e) => {
+                    if (!draggedProjectId || draggedProjectId === project.id)
+                        return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    card.classList.add("dashboard-project-card-dragover");
+                };
+                card.ondragleave = (e) => {
+                    const rect = card.getBoundingClientRect();
+                    if (e.clientX < rect.left || e.clientX >= rect.right ||
+                        e.clientY < rect.top || e.clientY >= rect.bottom) {
+                        card.classList.remove("dashboard-project-card-dragover");
+                    }
+                };
+                card.ondrop = async (e) => {
+                    if (!draggedProjectId || draggedProjectId === project.id)
+                        return;
+                    e.preventDefault();
+                    card.classList.remove("dashboard-project-card-dragover");
+                    const currentOrder = this.getProjectOrder(projects);
+                    const fromIdx = currentOrder.indexOf(draggedProjectId);
+                    const toIdx = currentOrder.indexOf(project.id);
+                    if (fromIdx === -1 || toIdx === -1)
+                        return;
+                    currentOrder.splice(fromIdx, 1);
+                    currentOrder.splice(fromIdx < toIdx ? toIdx - 1 : toIdx, 0, draggedProjectId);
+                    this.plugin.settings.dashboardProjectOrder = currentOrder;
+                    await this.plugin.saveSettings();
+                    this.render();
+                };
             });
         }
         else {
@@ -7938,6 +7986,32 @@ class DashboardView extends obsidian.ItemView {
             const stats = this.calculateProjectStats(activeProject.id, activeProject.name, tasks);
             this.renderProjectDashboard(content, stats, tasks);
         }
+    }
+    getSortedProjects(projects) {
+        const order = this.plugin.settings.dashboardProjectOrder || [];
+        if (order.length === 0)
+            return projects;
+        return [...projects].sort((a, b) => {
+            const ia = order.indexOf(a.id);
+            const ib = order.indexOf(b.id);
+            if (ia === -1 && ib === -1)
+                return 0;
+            if (ia === -1)
+                return 1;
+            if (ib === -1)
+                return -1;
+            return ia - ib;
+        });
+    }
+    getProjectOrder(projects) {
+        const saved = this.plugin.settings.dashboardProjectOrder || [];
+        const ids = projects.map(p => p.id);
+        const result = saved.filter(id => ids.includes(id));
+        for (const id of ids) {
+            if (!result.includes(id))
+                result.push(id);
+        }
+        return result;
     }
 }
 
@@ -9153,7 +9227,7 @@ class TaskStore {
         const task = {
             id: crypto.randomUUID(),
             title,
-            status: "Not Started",
+            status: this.plugin.settings.defaultTaskStatus || "Not Started",
             priority: "Medium",
             completed: false,
             parentId: null,
@@ -9187,7 +9261,7 @@ class TaskStore {
         const task = {
             id: crypto.randomUUID(),
             title,
-            status: "Not Started",
+            status: this.plugin.settings.defaultTaskStatus || "Not Started",
             priority: "Medium",
             completed: false,
             parentId: null,
@@ -9778,6 +9852,18 @@ class TaskStore {
     getTaskById(id) {
         return this.taskIndex.get(id);
     }
+    /** Look up a task by id across all loaded projects, not just the active one. */
+    getTaskByIdAcrossProjects(id) {
+        const indexed = this.taskIndex.get(id);
+        if (indexed)
+            return indexed;
+        for (const tasks of Object.values(this.tasksByProject)) {
+            const found = tasks.find(t => t.id === id);
+            if (found)
+                return found;
+        }
+        return null;
+    }
     getTasks() {
         return this.tasks;
     }
@@ -9813,6 +9899,10 @@ class TaskSync {
         this.watchedProjects = new Map();
         this.app = app;
         this.plugin = plugin;
+    }
+    /** Clear the watcher registry so watchProjectFolder re-registers after a base-path change. */
+    clearWatchedProjects() {
+        this.watchedProjects.clear();
     }
     resolveProject(projectIdentifier) {
         return this.plugin.settings.projects.find(p => p.id === projectIdentifier)

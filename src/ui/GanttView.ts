@@ -1234,7 +1234,16 @@ export class GanttView extends ItemView {
         }
 
         // Rows: one per visible task (hierarchical)
-        const statusColor = (status: string): string => {
+        const approachingMs = (this.plugin.settings.ganttApproachingDueThresholdHours ?? 48) * 60 * 60 * 1000;
+        const nowMs = Date.now();
+        const statusColor = (status: string, task: PlannerTask): string => {
+            if (status !== "Completed" && task.dueDate && approachingMs > 0) {
+                const [y, m, d] = task.dueDate.split("-").map(Number);
+                const dueMs = new Date(y, m - 1, d).getTime();
+                if (dueMs >= nowMs && dueMs - nowMs <= approachingMs) {
+                    return "#f59e0b"; // amber — approaching due date
+                }
+            }
             switch (status) {
                 case "Completed": return "#2f9e44";
                 case "In Progress": return "#0a84ff";
@@ -1320,7 +1329,7 @@ export class GanttView extends ItemView {
             bar.dataset.taskId = t.id;
             bar.style.left = `${startDays * dayWidth}px`;
             bar.style.width = `${spanDays * dayWidth - 4}px`;
-            bar.style.backgroundColor = statusColor(t.status);
+            bar.style.backgroundColor = statusColor(t.status, t);
             bar.setAttribute("title", `${t.title}`);
             bar.oncontextmenu = (e) => this.showTaskMenu(e, t);
 

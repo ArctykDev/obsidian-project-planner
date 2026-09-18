@@ -294,7 +294,7 @@ export class TaskStore {
     const task: PlannerTask = {
       id: crypto.randomUUID(),
       title,
-      status: "Not Started",
+      status: this.plugin.settings.defaultTaskStatus || "Not Started",
       priority: "Medium",
       completed: false,
       parentId: null,
@@ -335,7 +335,7 @@ export class TaskStore {
     const task: PlannerTask = {
       id: crypto.randomUUID(),
       title,
-      status: "Not Started",
+      status: this.plugin.settings.defaultTaskStatus || "Not Started",
       priority: "Medium",
       completed: false,
       parentId: null,
@@ -986,6 +986,17 @@ export class TaskStore {
 
   getTaskById(id: string): PlannerTask | undefined {
     return this.taskIndex.get(id);
+  }
+
+  /** Look up a task by id across all loaded projects, not just the active one. */
+  getTaskByIdAcrossProjects(id: string): PlannerTask | null {
+    const indexed = this.taskIndex.get(id);
+    if (indexed) return indexed;
+    for (const tasks of Object.values(this.tasksByProject)) {
+      const found = tasks.find(t => t.id === id);
+      if (found) return found;
+    }
+    return null;
   }
 
   getTasks(): PlannerTask[] {

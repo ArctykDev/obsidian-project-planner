@@ -95,6 +95,7 @@ export interface ProjectPlannerSettings {
   activeProjectId: string;
   defaultView: "grid" | "board" | "gantt" | "dashboard";
   showCompleted: boolean;
+  defaultTaskStatus: string; // Default status for new tasks (empty = first available)
   openLinksInNewTab: boolean;
   openViewsInNewTab: boolean;
   availableTags: PlannerTag[];
@@ -125,6 +126,7 @@ export interface ProjectPlannerSettings {
 
   // View-specific settings
   ganttLeftColumnWidth: number; // Width of left column in Gantt view (pixels)
+  ganttApproachingDueThresholdHours: number; // Hours before due date to show amber bar colour (0 = disabled)
 
   // Grid View persisted settings
   gridViewColumnWidths?: Record<string, number>;
@@ -143,6 +145,7 @@ export interface ProjectPlannerSettings {
 
   // My Tasks view settings
   myDayDefaultView: "today" | "week" | "month"; // Default tab when opening My Tasks
+  dashboardProjectOrder: string[]; // Persisted card order in Dashboard "Show All Projects" view
 }
 
 export const DEFAULT_SETTINGS: ProjectPlannerSettings = {
@@ -150,6 +153,7 @@ export const DEFAULT_SETTINGS: ProjectPlannerSettings = {
   activeProjectId: "",
   defaultView: "grid",
   showCompleted: true,
+  defaultTaskStatus: "",
   openLinksInNewTab: false,
   openViewsInNewTab: false,
   availableTags: [],
@@ -177,6 +181,7 @@ export const DEFAULT_SETTINGS: ProjectPlannerSettings = {
   enableParentRollUp: true,
   dateFormat: "iso",
   ganttLeftColumnWidth: 300,
+  ganttApproachingDueThresholdHours: 48,
   showRibbonIconGrid: true,
   showRibbonIconDashboard: false,
   showRibbonIconBoard: false,
@@ -184,6 +189,7 @@ export const DEFAULT_SETTINGS: ProjectPlannerSettings = {
   showRibbonIconDailyNoteScan: false,
   showRibbonIconMyTasks: false,
   myDayDefaultView: "today",
+  dashboardProjectOrder: [],
 };
 
 export class ProjectPlannerSettingTab extends PluginSettingTab {
@@ -389,6 +395,22 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("Default status for new tasks")
+      .setDesc("Status applied when a task is created. Leave empty to use the first available status.")
+      .addDropdown((dropdown) => {
+        dropdown.addOption("", "First available status");
+        this.plugin.settings.availableStatuses.forEach((s) => {
+          dropdown.addOption(s.name, s.name);
+        });
+        dropdown
+          .setValue(this.plugin.settings.defaultTaskStatus)
+          .onChange(async (value) => {
+            this.plugin.settings.defaultTaskStatus = value;
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
       .setName("Show completed tasks in Grid View")
       .setDesc("When disabled, completed tasks will be hidden in Grid View only. Other views (Board, Timeline, Dashboard) will continue to show completed tasks.")
       .addToggle((toggle) =>
@@ -408,6 +430,26 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.openViewsInNewTab)
           .onChange(async (value) => {
             this.plugin.settings.openViewsInNewTab = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // -----------------------------------------------------------------------
+    // Gantt / Timeline Section
+    // -----------------------------------------------------------------------
+    new Setting(containerEl).setName("Timeline (Gantt)").setHeading();
+
+    new Setting(containerEl)
+      .setName("Approaching-due colour threshold (hours)")
+      .setDesc("Gantt bars turn amber when a task's due date is within this many hours. Set to 0 to disable.")
+      .addText((text) =>
+        text
+          .setPlaceholder("48")
+          .setValue(String(this.plugin.settings.ganttApproachingDueThresholdHours))
+          .onChange(async (value) => {
+            const parsed = parseInt(value, 10);
+            this.plugin.settings.ganttApproachingDueThresholdHours =
+              Number.isFinite(parsed) && parsed >= 0 ? parsed : 48;
             await this.plugin.saveSettings();
           })
       );
@@ -571,6 +613,10 @@ export class ProjectPlannerSettingTab extends PluginSettingTab {
             sanitized = sanitized.replace(/\.\./g, "").replace(/^\/+/, "");
             this.plugin.settings.projectsBasePath = sanitized;
             await this.plugin.saveSettings();
+            if (this.plugin.settings.enableMarkdownSync) {
+              this.plugin.taskSync.clearWatchedProjects();
+              await this.plugin.initializeTaskSync();
+            }
           })
       );
 

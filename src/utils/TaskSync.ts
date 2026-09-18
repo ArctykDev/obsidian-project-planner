@@ -17,6 +17,11 @@ export class TaskSync {
         this.plugin = plugin;
     }
 
+    /** Clear the watcher registry so watchProjectFolder re-registers after a base-path change. */
+    clearWatchedProjects() {
+        this.watchedProjects.clear();
+    }
+
     private resolveProject(projectIdentifier: string) {
         return this.plugin.settings.projects.find(p => p.id === projectIdentifier)
             ?? this.plugin.settings.projects.find(p => p.name === projectIdentifier);
