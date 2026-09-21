@@ -2,6 +2,22 @@
 
 All notable changes to Obsidian Project Planner will be documented in this file.
 
+## [0.8.6] - 2026-09-18
+
+### Added
+
+- **Configurable KPI cards on Dashboard** (DashboardView, Settings): A ⟵ sliders button in the dashboard toolbar expands a chip panel listing all 14 KPI cards. Clicking a chip toggles that KPI's visibility. Active KPIs are shown as filled accent pills; hidden KPIs are struck-through grey outlines. State is persisted in the new `dashboardHiddenKPIs` setting and applies across all project cards in both single and "Show All Projects" modes. Toggleable items: Total Tasks, Completed, In Progress, Blocked, Progress Bar, Overdue, Due Today, Due This Week, Critical Priority, High Priority, Has Dependencies, Not Started, Effort Summary, Budget & Cost.
+- **Show/hide individual project cards on Dashboard** (#74 follow-up) (DashboardView, Settings): In "Show All Projects" mode, each project card header now has an 👁 eye button. Clicking it hides that card and persists its ID in the new `dashboardHiddenProjects` setting. Hidden projects collect into a compact strip at the bottom of the dashboard — each shown as a pill with the project name and an eye-off restore button. Clicking the pill brings the card back.
+
+### Improved
+
+- **Drag-and-drop visual feedback for Dashboard card reordering** (DashboardView, styles.css): The card being dragged is now visually distinct (reduced opacity, dashed accent outline, elevated shadow). The drop target shows a solid accent-colour top border as an insertion indicator. The ⠿ grip handle fades in on hover so it is unobtrusive at rest. All states are driven by CSS classes (`dashboard-project-card-dragging`, `dashboard-project-card-dragover`).
+
+### Internal
+
+- **`console.log` removed from production build** (DailyNoteTaskScanner, TaskSync): Five informational `console.log` calls used during development were left in the production bundle. They have been removed (duplicate-detection confirmation, file-deletion cleanup count, file-rename path log in both utilities). `console.error` in genuine error handlers is retained.
+- **`dataTransfer` null-guarded in Dashboard drag handlers** (DashboardView): Non-null assertions (`!`) on `e.dataTransfer` in `ondragstart` and `ondragover` replaced with explicit `if` guards for defensive correctness.
+
 ## [0.8.5] - 2026-09-18
 
 ### Added

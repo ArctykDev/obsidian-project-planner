@@ -351,7 +351,6 @@ export class DailyNoteTaskScanner {
                         // Double-check for content-based duplicates before adding
                         const contentDuplicate = this.findDuplicateTaskByContent(task.title);
                         if (contentDuplicate) {
-                            console.log(`[DailyNoteScanner] Found duplicate by content, updating existing task: ${task.title}`);
                             // Update the existing duplicate instead of creating new task
                             await this.plugin.taskStore.updateTask(contentDuplicate.id, task);
                             // Update location map to point to existing task
@@ -466,7 +465,6 @@ export class DailyNoteTaskScanner {
         if (keysToDelete.length > 0) {
             keysToDelete.forEach(key => this.taskLocationMap.delete(key));
             await this.saveTaskLocationMap();
-            console.log(`[DailyNoteScanner] Cleaned up ${keysToDelete.length} location entries for deleted file: ${file.path}`);
         }
     }
 
@@ -502,7 +500,6 @@ export class DailyNoteTaskScanner {
             });
             
             await this.saveTaskLocationMap();
-            console.log(`[DailyNoteScanner] Updated ${updates.length} location entries for renamed file: ${oldPath} → ${file.path}`);
         }
     }
 

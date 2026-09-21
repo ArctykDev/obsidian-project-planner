@@ -306,7 +306,6 @@ export class TaskSync {
         if (oldFile instanceof TFile) {
             try {
                 await this.app.vault.delete(oldFile);
-                console.log(`[TaskSync] Deleted old task file: ${oldFilePath}`);
             } catch (error) {
                 console.error(`[TaskSync] Failed to delete old file: ${oldFilePath}`, error);
             }
@@ -390,7 +389,6 @@ export class TaskSync {
                         if (file.path !== newFilePath) {
                             try {
                                 await this.app.fileManager.renameFile(file, newFilePath);
-                                console.log(`[TaskSync] Renamed task file from ${file.path} to ${newFilePath}`);
                             } catch (error) {
                                 console.error(`[TaskSync] Failed to rename file:`, error);
                             }

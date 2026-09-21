@@ -44,6 +44,8 @@ const DEFAULT_SETTINGS = {
     showRibbonIconMyTasks: false,
     myDayDefaultView: "today",
     dashboardProjectOrder: [],
+    dashboardHiddenProjects: [],
+    dashboardHiddenKPIs: [],
 };
 class ProjectPlannerSettingTab extends obsidian.PluginSettingTab {
     constructor(app, plugin) {
@@ -7558,6 +7560,22 @@ class CostReportModal extends obsidian.Modal {
         });
     }
 }
+const KPI_DEFINITIONS = [
+    { id: "total-tasks", label: "Total Tasks" },
+    { id: "completed", label: "Completed" },
+    { id: "in-progress", label: "In Progress" },
+    { id: "blocked", label: "Blocked" },
+    { id: "progress-bar", label: "Progress Bar" },
+    { id: "overdue", label: "Overdue" },
+    { id: "due-today", label: "Due Today" },
+    { id: "due-this-week", label: "Due This Week" },
+    { id: "critical-priority", label: "Critical Priority" },
+    { id: "high-priority", label: "High Priority" },
+    { id: "has-dependencies", label: "Has Dependencies" },
+    { id: "not-started", label: "Not Started" },
+    { id: "effort-section", label: "Effort Summary" },
+    { id: "cost-section", label: "Budget & Cost" },
+];
 class DashboardView extends obsidian.ItemView {
     constructor(leaf, plugin) {
         super(leaf);
@@ -7565,6 +7583,7 @@ class DashboardView extends obsidian.ItemView {
         this.showAllProjects = false;
         this.savedScrollTop = null;
         this.renderVersion = 0;
+        this.kpiConfigOpen = false;
         this.plugin = plugin;
     }
     getViewType() {
@@ -7660,7 +7679,9 @@ class DashboardView extends obsidian.ItemView {
             overBudgetTaskCount: costSummary.overBudgetTasks.length,
         };
     }
-    renderKPICard(container, title, value, icon, color, onClick) {
+    renderKPICard(container, title, value, icon, color, onClick, kpiId) {
+        if (kpiId && (this.plugin.settings.dashboardHiddenKPIs || []).includes(kpiId))
+            return;
         const card = container.createDiv("dashboard-kpi-card");
         if (color)
             card.style.borderLeftColor = color;
@@ -7750,16 +7771,29 @@ class DashboardView extends obsidian.ItemView {
                 });
             }
         }
+        // Hide button (only in "show all" mode where drag handle is also shown)
+        if (showDragHandle) {
+            const hideBtn = header.createEl("button", { cls: "dashboard-card-hide-btn", attr: { title: "Hide this project card" } });
+            const hideIcon = hideBtn.createSpan();
+            obsidian.setIcon(hideIcon, "eye");
+            hideBtn.onclick = async (e) => {
+                e.stopPropagation();
+                await this.toggleHideProject(stats.projectId);
+            };
+        }
         // KPI Grid
         const kpiGrid = projectCard.createDiv("dashboard-kpi-grid");
-        this.renderKPICard(kpiGrid, "Total Tasks", stats.totalTasks, "list", "#6366f1", () => this.showTaskListModal("All Tasks", allTasks));
-        this.renderKPICard(kpiGrid, "Completed", stats.completedTasks, "check-circle", "#2f9e44", () => this.showTaskListModal("Completed Tasks", allTasks.filter(t => t.status === "Completed")));
-        this.renderKPICard(kpiGrid, "In Progress", stats.inProgressTasks, "loader", "#0a84ff", () => this.showTaskListModal("In Progress Tasks", allTasks.filter(t => t.status === "In Progress")));
-        this.renderKPICard(kpiGrid, "Blocked", stats.blockedTasks, "alert-circle", "#d70022", () => this.showTaskListModal("Blocked Tasks", allTasks.filter(t => t.status === "Blocked")));
+        const hiddenKPIs = new Set(this.plugin.settings.dashboardHiddenKPIs || []);
+        this.renderKPICard(kpiGrid, "Total Tasks", stats.totalTasks, "list", "#6366f1", () => this.showTaskListModal("All Tasks", allTasks), "total-tasks");
+        this.renderKPICard(kpiGrid, "Completed", stats.completedTasks, "check-circle", "#2f9e44", () => this.showTaskListModal("Completed Tasks", allTasks.filter(t => t.status === "Completed")), "completed");
+        this.renderKPICard(kpiGrid, "In Progress", stats.inProgressTasks, "loader", "#0a84ff", () => this.showTaskListModal("In Progress Tasks", allTasks.filter(t => t.status === "In Progress")), "in-progress");
+        this.renderKPICard(kpiGrid, "Blocked", stats.blockedTasks, "alert-circle", "#d70022", () => this.showTaskListModal("Blocked Tasks", allTasks.filter(t => t.status === "Blocked")), "blocked");
         // Progress section
-        const progressSection = projectCard.createDiv("dashboard-section");
-        progressSection.createEl("h3", { text: "Completion Progress" });
-        this.renderProgressBar(progressSection, stats.completionPercentage);
+        if (!hiddenKPIs.has("progress-bar")) {
+            const progressSection = projectCard.createDiv("dashboard-section");
+            progressSection.createEl("h3", { text: "Completion Progress" });
+            this.renderProgressBar(progressSection, stats.completionPercentage);
+        }
         // Priority & Due dates section
         const alertsGrid = projectCard.createDiv("dashboard-kpi-grid");
         const now = new Date();
@@ -7786,20 +7820,20 @@ class DashboardView extends obsidian.ItemView {
             return dueDate >= today && dueDate <= weekFromNow;
         });
         const criticalTasks = allTasks.filter(t => t.priority === "Critical" && t.status !== "Completed");
-        this.renderKPICard(alertsGrid, "Overdue", stats.overdueTasks, "alert-triangle", "#d70022", () => this.showTaskListModal("Overdue Tasks", overdueTasks));
-        this.renderKPICard(alertsGrid, "Due Today", stats.dueTodayTasks, "calendar", "#f59e0b", () => this.showTaskListModal("Due Today", dueTodayTasks));
-        this.renderKPICard(alertsGrid, "Due This Week", stats.dueThisWeekTasks, "calendar-days", "#0a84ff", () => this.showTaskListModal("Due This Week", dueThisWeekTasks));
-        this.renderKPICard(alertsGrid, "Critical Priority", stats.criticalPriorityTasks, "flame", "#d70022", () => this.showTaskListModal("Critical Priority Tasks", criticalTasks));
+        this.renderKPICard(alertsGrid, "Overdue", stats.overdueTasks, "alert-triangle", "#d70022", () => this.showTaskListModal("Overdue Tasks", overdueTasks), "overdue");
+        this.renderKPICard(alertsGrid, "Due Today", stats.dueTodayTasks, "calendar", "#f59e0b", () => this.showTaskListModal("Due Today", dueTodayTasks), "due-today");
+        this.renderKPICard(alertsGrid, "Due This Week", stats.dueThisWeekTasks, "calendar-days", "#0a84ff", () => this.showTaskListModal("Due This Week", dueThisWeekTasks), "due-this-week");
+        this.renderKPICard(alertsGrid, "Critical Priority", stats.criticalPriorityTasks, "flame", "#d70022", () => this.showTaskListModal("Critical Priority Tasks", criticalTasks), "critical-priority");
         // Additional stats
         const statsGrid = projectCard.createDiv("dashboard-kpi-grid");
         const highPriorityTasks = allTasks.filter(t => t.priority === "High" && t.status !== "Completed");
         const dependencyTasks = allTasks.filter(t => t.dependencies && t.dependencies.length > 0 && t.status !== "Completed");
         const notStartedTasks = allTasks.filter(t => t.status === "Not Started");
-        this.renderKPICard(statsGrid, "High Priority", stats.highPriorityTasks, "arrow-up", "#f59e0b", () => this.showTaskListModal("High Priority Tasks", highPriorityTasks));
-        this.renderKPICard(statsGrid, "Has Dependencies", stats.tasksWithDependencies, "git-branch", "#6366f1", () => this.showTaskListModal("Tasks with Dependencies", dependencyTasks));
-        this.renderKPICard(statsGrid, "Not Started", stats.notStartedTasks, "circle", "#6c757d", () => this.showTaskListModal("Not Started Tasks", notStartedTasks));
-        // Effort section (only show if any tasks have effort data)
-        if (stats.totalEffort > 0) {
+        this.renderKPICard(statsGrid, "High Priority", stats.highPriorityTasks, "arrow-up", "#f59e0b", () => this.showTaskListModal("High Priority Tasks", highPriorityTasks), "high-priority");
+        this.renderKPICard(statsGrid, "Has Dependencies", stats.tasksWithDependencies, "git-branch", "#6366f1", () => this.showTaskListModal("Tasks with Dependencies", dependencyTasks), "has-dependencies");
+        this.renderKPICard(statsGrid, "Not Started", stats.notStartedTasks, "circle", "#6c757d", () => this.showTaskListModal("Not Started Tasks", notStartedTasks), "not-started");
+        // Effort section (only show if any tasks have effort data and not hidden)
+        if (stats.totalEffort > 0 && !hiddenKPIs.has("effort-section")) {
             const effortSection = projectCard.createDiv("dashboard-section");
             effortSection.createEl("h3", { text: "Effort Summary" });
             // Effort progress bar
@@ -7815,7 +7849,7 @@ class DashboardView extends obsidian.ItemView {
         }
         // Cost / Budget section (show if any tasks have cost data or budget is set)
         const hasCostData = stats.totalEstimatedCost > 0 || stats.totalActualCost > 0 || stats.budgetTotal > 0;
-        if (hasCostData) {
+        if (hasCostData && !hiddenKPIs.has("cost-section")) {
             const activeProj = this.plugin.settings.projects?.find(p => p.id === stats.projectId);
             const currency = activeProj?.currencySymbol || "$";
             const costSection = projectCard.createDiv("dashboard-section");
@@ -7904,6 +7938,38 @@ class DashboardView extends obsidian.ItemView {
             this.showAllProjects = toggleSwitch.checked;
             this.render();
         };
+        // Configure KPIs button
+        const configBtn = toolbar.createEl("button", { cls: "dashboard-config-btn", attr: { title: "Configure visible KPI cards" } });
+        obsidian.setIcon(configBtn.createSpan(), "sliders-horizontal");
+        if (this.kpiConfigOpen)
+            configBtn.addClass("dashboard-config-btn-active");
+        // Config panel — second toolbar row, toggled without re-render
+        const configPanel = toolbar.createDiv("dashboard-kpi-config-panel");
+        if (!this.kpiConfigOpen)
+            configPanel.addClass("dashboard-kpi-config-panel-hidden");
+        const hiddenKPISet = new Set(this.plugin.settings.dashboardHiddenKPIs || []);
+        KPI_DEFINITIONS.forEach(kpi => {
+            const chip = configPanel.createEl("button", {
+                text: kpi.label,
+                cls: `dashboard-kpi-chip${hiddenKPISet.has(kpi.id) ? " dashboard-kpi-chip-hidden" : ""}`,
+            });
+            chip.onclick = async () => {
+                const hidden = [...(this.plugin.settings.dashboardHiddenKPIs || [])];
+                const idx = hidden.indexOf(kpi.id);
+                if (idx === -1)
+                    hidden.push(kpi.id);
+                else
+                    hidden.splice(idx, 1);
+                this.plugin.settings.dashboardHiddenKPIs = hidden;
+                await this.plugin.saveSettings();
+                this.render();
+            };
+        });
+        configBtn.onclick = () => {
+            this.kpiConfigOpen = !this.kpiConfigOpen;
+            configBtn.toggleClass("dashboard-config-btn-active", this.kpiConfigOpen);
+            configPanel.toggleClass("dashboard-kpi-config-panel-hidden", !this.kpiConfigOpen);
+        };
         // Content
         const content = wrapper.createDiv("dashboard-content");
         // Restore scroll position after DOM is rebuilt
@@ -7925,9 +7991,12 @@ class DashboardView extends obsidian.ItemView {
                 content.createEl("div", { text: "No projects found.", cls: "dashboard-empty" });
                 return;
             }
+            const hiddenIds = new Set(settings.dashboardHiddenProjects || []);
             const orderedProjects = this.getSortedProjects(projects);
+            const visibleProjects = orderedProjects.filter(p => !hiddenIds.has(p.id));
+            const hiddenProjects = orderedProjects.filter(p => hiddenIds.has(p.id));
             let draggedProjectId = null;
-            orderedProjects.forEach((project) => {
+            visibleProjects.forEach((project) => {
                 const projectTasks = this.plugin.taskStore.getAllForProject?.(project.id) || [];
                 const stats = this.calculateProjectStats(project.id, project.name, projectTasks);
                 const card = this.renderProjectDashboard(content, stats, projectTasks, true);
@@ -7935,8 +8004,10 @@ class DashboardView extends obsidian.ItemView {
                 card.ondragstart = (e) => {
                     draggedProjectId = project.id;
                     card.classList.add("dashboard-project-card-dragging");
-                    e.dataTransfer.effectAllowed = "move";
-                    e.dataTransfer.setData("text/plain", project.id);
+                    if (e.dataTransfer) {
+                        e.dataTransfer.effectAllowed = "move";
+                        e.dataTransfer.setData("text/plain", project.id);
+                    }
                 };
                 card.ondragend = () => {
                     draggedProjectId = null;
@@ -7947,7 +8018,8 @@ class DashboardView extends obsidian.ItemView {
                     if (!draggedProjectId || draggedProjectId === project.id)
                         return;
                     e.preventDefault();
-                    e.dataTransfer.dropEffect = "move";
+                    if (e.dataTransfer)
+                        e.dataTransfer.dropEffect = "move";
                     card.classList.add("dashboard-project-card-dragover");
                 };
                 card.ondragleave = (e) => {
@@ -7974,6 +8046,26 @@ class DashboardView extends obsidian.ItemView {
                     this.render();
                 };
             });
+            // Hidden projects stub section
+            if (hiddenProjects.length > 0) {
+                const hiddenSection = content.createDiv("dashboard-hidden-section");
+                const hiddenHeader = hiddenSection.createDiv("dashboard-hidden-header");
+                const eyeOffIcon = hiddenHeader.createSpan({ cls: "dashboard-hidden-icon" });
+                obsidian.setIcon(eyeOffIcon, "eye-off");
+                hiddenHeader.createSpan({
+                    text: `${hiddenProjects.length} hidden project${hiddenProjects.length === 1 ? "" : "s"}`,
+                    cls: "dashboard-hidden-label"
+                });
+                const stubList = hiddenSection.createDiv("dashboard-hidden-list");
+                hiddenProjects.forEach(project => {
+                    const stub = stubList.createDiv("dashboard-project-stub");
+                    stub.createSpan({ text: project.name, cls: "dashboard-project-stub-name" });
+                    const showBtn = stub.createEl("button", { cls: "dashboard-card-hide-btn", attr: { title: "Show this project card" } });
+                    const showIcon = showBtn.createSpan();
+                    obsidian.setIcon(showIcon, "eye-off");
+                    showBtn.onclick = async () => this.toggleHideProject(project.id);
+                });
+            }
         }
         else {
             // Show active project only
@@ -7986,6 +8078,17 @@ class DashboardView extends obsidian.ItemView {
             const stats = this.calculateProjectStats(activeProject.id, activeProject.name, tasks);
             this.renderProjectDashboard(content, stats, tasks);
         }
+    }
+    async toggleHideProject(projectId) {
+        const hidden = this.plugin.settings.dashboardHiddenProjects || [];
+        const idx = hidden.indexOf(projectId);
+        if (idx === -1)
+            hidden.push(projectId);
+        else
+            hidden.splice(idx, 1);
+        this.plugin.settings.dashboardHiddenProjects = hidden;
+        await this.plugin.saveSettings();
+        this.render();
     }
     getSortedProjects(projects) {
         const order = this.plugin.settings.dashboardProjectOrder || [];
@@ -10181,7 +10284,6 @@ class TaskSync {
         if (oldFile instanceof obsidian.TFile) {
             try {
                 await this.app.vault.delete(oldFile);
-                console.log(`[TaskSync] Deleted old task file: ${oldFilePath}`);
             }
             catch (error) {
                 console.error(`[TaskSync] Failed to delete old file: ${oldFilePath}`, error);
@@ -10259,7 +10361,6 @@ class TaskSync {
                         if (file.path !== newFilePath) {
                             try {
                                 await this.app.fileManager.renameFile(file, newFilePath);
-                                console.log(`[TaskSync] Renamed task file from ${file.path} to ${newFilePath}`);
                             }
                             catch (error) {
                                 console.error(`[TaskSync] Failed to rename file:`, error);
@@ -10672,7 +10773,6 @@ class DailyNoteTaskScanner {
                         // Double-check for content-based duplicates before adding
                         const contentDuplicate = this.findDuplicateTaskByContent(task.title);
                         if (contentDuplicate) {
-                            console.log(`[DailyNoteScanner] Found duplicate by content, updating existing task: ${task.title}`);
                             // Update the existing duplicate instead of creating new task
                             await this.plugin.taskStore.updateTask(contentDuplicate.id, task);
                             // Update location map to point to existing task
@@ -10768,7 +10868,6 @@ class DailyNoteTaskScanner {
         if (keysToDelete.length > 0) {
             keysToDelete.forEach(key => this.taskLocationMap.delete(key));
             await this.saveTaskLocationMap();
-            console.log(`[DailyNoteScanner] Cleaned up ${keysToDelete.length} location entries for deleted file: ${file.path}`);
         }
     }
     /**
@@ -10799,7 +10898,6 @@ class DailyNoteTaskScanner {
                 }
             });
             await this.saveTaskLocationMap();
-            console.log(`[DailyNoteScanner] Updated ${updates.length} location entries for renamed file: ${oldPath} → ${file.path}`);
         }
     }
     /**

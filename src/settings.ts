@@ -146,6 +146,8 @@ export interface ProjectPlannerSettings {
   // My Tasks view settings
   myDayDefaultView: "today" | "week" | "month"; // Default tab when opening My Tasks
   dashboardProjectOrder: string[]; // Persisted card order in Dashboard "Show All Projects" view
+  dashboardHiddenProjects: string[]; // Project IDs hidden from the "Show All Projects" view
+  dashboardHiddenKPIs: string[]; // KPI card IDs hidden on the dashboard
 }
 
 export const DEFAULT_SETTINGS: ProjectPlannerSettings = {
@@ -190,6 +192,8 @@ export const DEFAULT_SETTINGS: ProjectPlannerSettings = {
   showRibbonIconMyTasks: false,
   myDayDefaultView: "today",
   dashboardProjectOrder: [],
+  dashboardHiddenProjects: [],
+  dashboardHiddenKPIs: [],
 };
 
 export class ProjectPlannerSettingTab extends PluginSettingTab {
