@@ -1135,8 +1135,14 @@ class GridView extends obsidian.ItemView {
             },
             onAddTask: async () => {
                 const all = this.taskStore.getAll();
-                const statusOverride = this.currentFilters.status !== "All" ? this.currentFilters.status : undefined;
-                const newTask = await this.taskStore.addTaskAtIndex("New Task", all.length, statusOverride ? { status: statusOverride } : undefined);
+                const overrides = {};
+                if (this.currentFilters.status !== "All")
+                    overrides.status = this.currentFilters.status;
+                if (this.currentFilters.priority !== "All")
+                    overrides.priority = this.currentFilters.priority;
+                // Clear search so the renamed task isn't filtered out by the old term
+                this.currentFilters.search = "";
+                const newTask = await this.taskStore.addTaskAtIndex("New Task", all.length, Object.keys(overrides).length > 0 ? overrides : undefined);
                 this.focusNewTaskTitleImmediate(newTask.id);
             },
             buildExtraActions: (actionsEl) => {
@@ -2032,8 +2038,10 @@ class GridView extends obsidian.ItemView {
         const newTask = await this.taskStore.addTaskAtIndex("New Task", insertIndex, {
             ...(task.parentId ? { parentId: task.parentId } : {}),
             ...(this.currentFilters.status !== "All" ? { status: this.currentFilters.status } : {}),
+            ...(this.currentFilters.priority !== "All" ? { priority: this.currentFilters.priority } : {}),
         });
         // Focus title editor
+        this.currentFilters.search = "";
         this.focusNewTaskTitleImmediate(newTask.id);
     }
     // ---------------------------------------------------------------------------
@@ -2047,7 +2055,9 @@ class GridView extends obsidian.ItemView {
         const newTask = await this.taskStore.addTaskAtIndex("New Task", insertIndex, {
             ...(task.parentId ? { parentId: task.parentId } : {}),
             ...(this.currentFilters.status !== "All" ? { status: this.currentFilters.status } : {}),
+            ...(this.currentFilters.priority !== "All" ? { priority: this.currentFilters.priority } : {}),
         });
+        this.currentFilters.search = "";
         this.focusNewTaskTitleImmediate(newTask.id);
     }
     // Helper: Focus the title input of the newly created task

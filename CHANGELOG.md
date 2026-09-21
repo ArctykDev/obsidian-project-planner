@@ -2,6 +2,12 @@
 
 All notable changes to Obsidian Project Planner will be documented in this file.
 
+## [0.8.8] - 2026-09-21
+
+### Fixed
+
+- **New tasks disappear after typing a title and pressing Enter** (GridView): A follow-up to the v0.8.7 filter fix. When a search filter was active (e.g. matching the default title "New Task"), renaming the task and pressing Enter caused `render()` to apply the search filter against the new title — which no longer matched — hiding the task. Similarly, if a priority filter was active and the new task's "Medium" default priority didn't match, the task would be filtered out. All three creation paths (Add Task, Add Above, Add Below) now clear the search filter on creation so the renamed task is always visible, and also apply the active priority filter as an override alongside the status fix from v0.8.7.
+
 ## [0.8.7] - 2026-09-21
 
 ### Fixed

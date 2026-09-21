@@ -166,11 +166,15 @@ export class GridView extends ItemView {
       },
       onAddTask: async () => {
         const all = this.taskStore.getAll();
-        const statusOverride = this.currentFilters.status !== "All" ? this.currentFilters.status : undefined;
+        const overrides: Partial<PlannerTask> = {};
+        if (this.currentFilters.status !== "All") overrides.status = this.currentFilters.status;
+        if (this.currentFilters.priority !== "All") overrides.priority = this.currentFilters.priority;
+        // Clear search so the renamed task isn't filtered out by the old term
+        this.currentFilters.search = "";
         const newTask = await this.taskStore.addTaskAtIndex(
           "New Task",
           all.length,
-          statusOverride ? { status: statusOverride } : undefined
+          Object.keys(overrides).length > 0 ? overrides : undefined
         );
         this.focusNewTaskTitleImmediate(newTask.id);
       },
@@ -1245,10 +1249,12 @@ export class GridView extends ItemView {
       {
         ...(task.parentId ? { parentId: task.parentId } : {}),
         ...(this.currentFilters.status !== "All" ? { status: this.currentFilters.status } : {}),
+        ...(this.currentFilters.priority !== "All" ? { priority: this.currentFilters.priority } : {}),
       } as Partial<PlannerTask> | undefined
     );
 
     // Focus title editor
+    this.currentFilters.search = "";
     this.focusNewTaskTitleImmediate(newTask.id);
   }
 
@@ -1269,9 +1275,11 @@ export class GridView extends ItemView {
       {
         ...(task.parentId ? { parentId: task.parentId } : {}),
         ...(this.currentFilters.status !== "All" ? { status: this.currentFilters.status } : {}),
+        ...(this.currentFilters.priority !== "All" ? { priority: this.currentFilters.priority } : {}),
       } as Partial<PlannerTask> | undefined
     );
 
+    this.currentFilters.search = "";
     this.focusNewTaskTitleImmediate(newTask.id);
   }
 
