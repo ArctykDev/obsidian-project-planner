@@ -8,6 +8,7 @@ export interface HeaderOptions {
     onProjectChange?: () => Promise<void> | void;
     buildExtraActions?: (actionsEl: HTMLElement) => void;
     hideAddTask?: boolean;
+    onAddTask?: () => Promise<void> | void;
 }
 
 export function renderPlannerHeader(
@@ -107,7 +108,11 @@ export function renderPlannerHeader(
             text: "Add Task",
         });
         addBtn.onclick = async () => {
-            await plugin.taskStore.addTask("New Task");
+            if (options.onAddTask) {
+                await options.onAddTask();
+            } else {
+                await plugin.taskStore.addTask("New Task");
+            }
         };
     }
 

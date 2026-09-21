@@ -164,6 +164,16 @@ export class GridView extends ItemView {
         await this.taskStore.load();
         this.render();
       },
+      onAddTask: async () => {
+        const all = this.taskStore.getAll();
+        const statusOverride = this.currentFilters.status !== "All" ? this.currentFilters.status : undefined;
+        const newTask = await this.taskStore.addTaskAtIndex(
+          "New Task",
+          all.length,
+          statusOverride ? { status: statusOverride } : undefined
+        );
+        this.focusNewTaskTitleImmediate(newTask.id);
+      },
       buildExtraActions: (actionsEl) => {
         const columnsBtn = actionsEl.createEl("button", {
           cls: "planner-columns-btn",
@@ -1232,7 +1242,10 @@ export class GridView extends ItemView {
     const newTask = await this.taskStore.addTaskAtIndex(
       "New Task",
       insertIndex,
-      task.parentId ? { parentId: task.parentId } : undefined
+      {
+        ...(task.parentId ? { parentId: task.parentId } : {}),
+        ...(this.currentFilters.status !== "All" ? { status: this.currentFilters.status } : {}),
+      } as Partial<PlannerTask> | undefined
     );
 
     // Focus title editor
@@ -1253,7 +1266,10 @@ export class GridView extends ItemView {
     const newTask = await this.taskStore.addTaskAtIndex(
       "New Task",
       insertIndex,
-      task.parentId ? { parentId: task.parentId } : undefined
+      {
+        ...(task.parentId ? { parentId: task.parentId } : {}),
+        ...(this.currentFilters.status !== "All" ? { status: this.currentFilters.status } : {}),
+      } as Partial<PlannerTask> | undefined
     );
 
     this.focusNewTaskTitleImmediate(newTask.id);

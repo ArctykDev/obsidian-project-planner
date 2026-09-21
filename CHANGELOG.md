@@ -2,6 +2,12 @@
 
 All notable changes to Obsidian Project Planner will be documented in this file.
 
+## [0.8.7] - 2026-09-21
+
+### Fixed
+
+- **New tasks disappear immediately after creation when a status filter is active** (GridView, Header): Tasks created via the "Add Task" button, "Add Above", or "Add Below" were immediately filtered out of Grid View when a status filter was set to something other than "All" and the new task's `defaultTaskStatus` didn't match that filter. The task was saved correctly but invisible until the filter was cleared. All three creation paths now use the active status filter value as the task's initial status when a specific filter is set, so new tasks always appear in the current view. `HeaderOptions` gains an `onAddTask` callback to support this without coupling the shared header component to view-specific state.
+
 ## [0.8.6] - 2026-09-18
 
 ### Added

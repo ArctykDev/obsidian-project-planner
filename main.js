@@ -868,7 +868,12 @@ function renderPlannerHeader(parent, plugin, options) {
             text: "Add Task",
         });
         addBtn.onclick = async () => {
-            await plugin.taskStore.addTask("New Task");
+            if (options.onAddTask) {
+                await options.onAddTask();
+            }
+            else {
+                await plugin.taskStore.addTask("New Task");
+            }
         };
     }
     if (options.buildExtraActions) {
@@ -1127,6 +1132,12 @@ class GridView extends obsidian.ItemView {
             onProjectChange: async () => {
                 await this.taskStore.load();
                 this.render();
+            },
+            onAddTask: async () => {
+                const all = this.taskStore.getAll();
+                const statusOverride = this.currentFilters.status !== "All" ? this.currentFilters.status : undefined;
+                const newTask = await this.taskStore.addTaskAtIndex("New Task", all.length, statusOverride ? { status: statusOverride } : undefined);
+                this.focusNewTaskTitleImmediate(newTask.id);
             },
             buildExtraActions: (actionsEl) => {
                 const columnsBtn = actionsEl.createEl("button", {
@@ -2018,7 +2029,10 @@ class GridView extends obsidian.ItemView {
         // Single atomic insert at the correct position with the right parentId.
         // This emits exactly once — no intermediate renders that flash the task
         // at the wrong position or cause it to disappear.
-        const newTask = await this.taskStore.addTaskAtIndex("New Task", insertIndex, task.parentId ? { parentId: task.parentId } : undefined);
+        const newTask = await this.taskStore.addTaskAtIndex("New Task", insertIndex, {
+            ...(task.parentId ? { parentId: task.parentId } : {}),
+            ...(this.currentFilters.status !== "All" ? { status: this.currentFilters.status } : {}),
+        });
         // Focus title editor
         this.focusNewTaskTitleImmediate(newTask.id);
     }
@@ -2030,7 +2044,10 @@ class GridView extends obsidian.ItemView {
         const allIds = all.map((t) => t.id);
         const targetIndex = allIds.indexOf(task.id);
         const insertIndex = targetIndex >= 0 ? targetIndex + 1 : all.length;
-        const newTask = await this.taskStore.addTaskAtIndex("New Task", insertIndex, task.parentId ? { parentId: task.parentId } : undefined);
+        const newTask = await this.taskStore.addTaskAtIndex("New Task", insertIndex, {
+            ...(task.parentId ? { parentId: task.parentId } : {}),
+            ...(this.currentFilters.status !== "All" ? { status: this.currentFilters.status } : {}),
+        });
         this.focusNewTaskTitleImmediate(newTask.id);
     }
     // Helper: Focus the title input of the newly created task
