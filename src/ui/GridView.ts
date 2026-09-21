@@ -1948,10 +1948,13 @@ export class GridView extends ItemView {
         }, 150);
       };
 
-      input.onblur = () => void save();
+      // Guard prevents onblur (fired when replaceWith removes the input) from double-saving
+      let saveInProgress = false;
+      input.onblur = () => { if (!saveInProgress) void save(); };
       input.onkeydown = (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
+          saveInProgress = true;
           void save();
         }
         if (e.key === "Escape") {

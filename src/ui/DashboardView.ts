@@ -758,6 +758,7 @@ export class DashboardView extends ItemView {
         // Header
         renderPlannerHeader(wrapper, this.plugin, {
             active: "dashboard",
+            hideAddTask: true,
             onProjectChange: async () => {
                 await this.plugin.taskStore.load();
                 // No explicit render() — TaskStore.load() → emit() already re-renders via subscription

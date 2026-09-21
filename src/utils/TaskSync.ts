@@ -301,6 +301,10 @@ export class TaskSync {
         const oldTask = { ...task, title: oldTitle };
         const oldFilePath = this.getTaskFilePath(oldTask, projectId);
         
+        // Guard BEFORE deleting so the vault delete watcher skips deleteTask
+        // (this is a rename, not a user-initiated file deletion)
+        this.syncInProgress.add(task.id);
+
         // Delete old file if it exists
         const oldFile = this.app.vault.getAbstractFileByPath(oldFilePath);
         if (oldFile instanceof TFile) {
@@ -460,7 +464,10 @@ export class TaskSync {
                     const taskId = taskIdByPath.get(file.path);
                     if (taskId) {
                         taskIdByPath.delete(file.path);
-                        await this.plugin.taskStore.deleteTask(taskId);
+                        // Skip if this deletion is part of a rename (syncInProgress guards that)
+                        if (!this.syncInProgress.has(taskId)) {
+                            await this.plugin.taskStore.deleteTask(taskId);
+                        }
                     }
                 }
             })

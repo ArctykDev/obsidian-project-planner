@@ -2620,10 +2620,14 @@ class GridView extends obsidian.ItemView {
                     span.style.opacity = "1";
                 }, 150);
             };
-            input.onblur = () => void save();
+            // Guard prevents onblur (fired when replaceWith removes the input) from double-saving
+            let saveInProgress = false;
+            input.onblur = () => { if (!saveInProgress)
+                void save(); };
             input.onkeydown = (e) => {
                 if (e.key === "Enter") {
                     e.preventDefault();
+                    saveInProgress = true;
                     void save();
                 }
                 if (e.key === "Escape") {
@@ -7950,6 +7954,7 @@ class DashboardView extends obsidian.ItemView {
         // Header
         renderPlannerHeader(wrapper, this.plugin, {
             active: "dashboard",
+            hideAddTask: true,
             onProjectChange: async () => {
                 await this.plugin.taskStore.load();
                 // No explicit render() — TaskStore.load() → emit() already re-renders via subscription
@@ -10306,6 +10311,9 @@ class TaskSync {
         // Get old file path using old title
         const oldTask = { ...task, title: oldTitle };
         const oldFilePath = this.getTaskFilePath(oldTask, projectId);
+        // Guard BEFORE deleting so the vault delete watcher skips deleteTask
+        // (this is a rename, not a user-initiated file deletion)
+        this.syncInProgress.add(task.id);
         // Delete old file if it exists
         const oldFile = this.app.vault.getAbstractFileByPath(oldFilePath);
         if (oldFile instanceof obsidian.TFile) {
@@ -10452,7 +10460,10 @@ class TaskSync {
                 const taskId = taskIdByPath.get(file.path);
                 if (taskId) {
                     taskIdByPath.delete(file.path);
-                    await this.plugin.taskStore.deleteTask(taskId);
+                    // Skip if this deletion is part of a rename (syncInProgress guards that)
+                    if (!this.syncInProgress.has(taskId)) {
+                        await this.plugin.taskStore.deleteTask(taskId);
+                    }
                 }
             }
         }));
